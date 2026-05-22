@@ -2,9 +2,9 @@ name: Build & Release BenchFlow
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Trigger rules
-#   push → main      build both platforms, upload as workflow artifacts (30 days)
-#   push → v*.*.*    build + create GitHub Release with DMG + ZIP + checksums
-#   pull_request     build only (no upload) to verify nothing is broken
+#   push → main      build both platforms + create/update GitHub Release
+#   push → v*.*.*    same (tag push also triggers a release)
+#   pull_request     build only — no release — just verify nothing breaks
 # ─────────────────────────────────────────────────────────────────────────────
 on:
   push:
@@ -177,12 +177,13 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  # ── GitHub Release (tag pushes only) ──────────────────────────────────────
+  # ── GitHub Release (every push to main + tag pushes) ─────────────────────
   release:
     name: 🚀 GitHub Release
     needs: [version, build-macos, build-windows]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Run on any push event (main branch or tag) — skip pull_request builds.
+    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
@@ -210,7 +211,6 @@ jobs:
         run: ls -lh release-assets/
 
       - name: Extract changelog section
-        id: changelog
         env:
           TAG: ${{ needs.version.outputs.tag }}
         run: |
@@ -225,19 +225,41 @@ jobs:
           m = re.search(pattern, text, re.DOTALL)
           notes = m.group(1).strip() if m else "See CHANGELOG.md for details."
 
-          # Write to file so the next step can read it
           pathlib.Path("release_notes.md").write_text(notes)
           print(notes)
           EOF
 
+      - name: Delete existing release and tag (if any)
+        # Ensures a clean slate so re-pushing main always updates the release
+        # with the latest assets.  --cleanup-tag also removes the git tag so
+        # the next step can create it fresh.  "|| true" silences errors when
+        # no release exists yet.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          sleep 2
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "BenchFlow ${{ needs.version.outputs.tag }}"
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ contains(needs.version.outputs.tag, '-') }}
-          files: |
-            release-assets/BenchFlow-*.dmg
-            release-assets/BenchFlow-*.zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG:     ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          PRERELEASE=""
+          # Treat versions containing a hyphen (e.g. 1.0.0-beta) as pre-releases
+          if echo "$VERSION" | grep -q '-'; then
+            PRERELEASE="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            --title "BenchFlow $TAG" \
+            --notes-file release_notes.md \
+            --latest \
+            $PRERELEASE \
+            release-assets/BenchFlow-*.dmg \
+            release-assets/BenchFlow-*.zip \
             release-assets/checksums.txt
+
+          echo "✓ Release $TAG published"
