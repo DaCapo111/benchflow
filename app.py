@@ -1441,16 +1441,16 @@ class LibraryPage(PageBase):
     # ── Build ─────────────────────────────────────────────────────────────────
     def _build(self):
         hdr = ctk.CTkFrame(self, fg_color="transparent")
-        hdr.grid(row=0, column=0, sticky="ew", padx=28, pady=(28, 8))
-        hdr.grid_columnconfigure(3, weight=1)   # spacer before search
+        hdr.grid(row=0, column=0, sticky="ew", padx=28, pady=(22, 0))
 
-        # Title
-        label(hdr, "Protocol Library", size=24, weight="bold").grid(
-            row=0, column=0, sticky="w")
+        # ── Line 1: Title · Toggle · Search (all via pack) ───────────────────
+        line1 = ctk.CTkFrame(hdr, fg_color="transparent")
+        line1.pack(fill="x", pady=(0, 2))
 
-        # ── View-mode toggle ─────────────────────────────────────────────────
-        tog = ctk.CTkFrame(hdr, fg_color="transparent")
-        tog.grid(row=0, column=1, padx=(18, 0))
+        label(line1, "Protocol Library", size=24, weight="bold").pack(side="left")
+
+        tog = ctk.CTkFrame(line1, fg_color="transparent")
+        tog.pack(side="left", padx=(20, 0))
         self._btn_protos = ctk.CTkButton(
             tog, text="My Protocols", font=(FONT, 12, "bold"),
             width=118, height=32, corner_radius=R_SM,
@@ -1462,9 +1462,16 @@ class LibraryPage(PageBase):
             command=lambda: self._set_view("templates"))
         self._btn_templates.pack(side="left")
 
-        # ── Protocol-mode controls (shown in "protocols" view) ───────────────
+        # Search on the far right of line 1
+        self._search_entry = ctk.CTkEntry(
+            line1, placeholder_text="🔍  Search...",
+            textvariable=self._search_var, font=(FONT, 13),
+            height=34, width=220, corner_radius=R_XL, border_color=CARD_B)
+        self._search_entry.pack(side="right")
+
+        # ── Line 2a: Protocol controls (shown when view = "protocols") ───────
         self._proto_ctrl = ctk.CTkFrame(hdr, fg_color="transparent")
-        self._proto_ctrl.grid(row=0, column=2, padx=(14, 0))
+        # packed/forgotten by _set_view — NOT packed here
         btn(self._proto_ctrl, "+ New Protocol", self._open_create_menu,
             width=145).pack(side="left", padx=(0, 6))
         btn(self._proto_ctrl, "Import Protocol", self._open_import_menu,
@@ -1484,9 +1491,9 @@ class LibraryPage(PageBase):
             color=("#e2e8f0","#334155"), text_color=T1,
             width=58, height=30, size=11).pack(side="left", padx=3)
 
-        # ── Template-mode controls (shown in "templates" view) ───────────────
+        # ── Line 2b: Template controls (shown when view = "templates") ───────
         self._tmpl_ctrl = ctk.CTkFrame(hdr, fg_color="transparent")
-        self._tmpl_ctrl.grid(row=0, column=2, padx=(14, 0))
+        # packed/forgotten by _set_view — NOT packed here
         self._tmpl_filter_menu = ctk.CTkOptionMenu(
             self._tmpl_ctrl, variable=self._tmpl_cat_var,
             values=["All Categories"],
@@ -1494,16 +1501,9 @@ class LibraryPage(PageBase):
             width=175, height=32, font=(FONT, 12), corner_radius=R_SM)
         self._tmpl_filter_menu.pack(side="left", padx=(0, 6))
 
-        # ── Search (always visible) ──────────────────────────────────────────
-        self._search_entry = ctk.CTkEntry(
-            hdr, placeholder_text="🔍  Search...",
-            textvariable=self._search_var, font=(FONT, 13),
-            height=34, width=240, corner_radius=R_XL, border_color=CARD_B)
-        self._search_entry.grid(row=0, column=3, padx=(8, 0), sticky="e")
-
         # ── Scrollable content area ──────────────────────────────────────────
         self.scroll = ScrollFrame(self)
-        self.scroll.grid(row=1, column=0, sticky="nsew", padx=28, pady=(8, 28))
+        self.scroll.grid(row=1, column=0, sticky="nsew", padx=28, pady=(10, 28))
         self.scroll.grid_columnconfigure(0, weight=1)
 
         # Apply initial toggle state
@@ -1517,16 +1517,16 @@ class LibraryPage(PageBase):
                 fg_color=self._TOGGLE_ON, text_color=("#fff", "#fff"))
             self._btn_templates.configure(
                 fg_color=self._TOGGLE_OFF, text_color=self._TOGGLE_OFF_TXT)
-            self._proto_ctrl.grid()
-            self._tmpl_ctrl.grid_remove()
+            self._tmpl_ctrl.pack_forget()
+            self._proto_ctrl.pack(fill="x", pady=(6, 0))
             self._search_entry.configure(placeholder_text="🔍  Search protocols...")
         else:
             self._btn_templates.configure(
                 fg_color=self._TOGGLE_ON, text_color=("#fff", "#fff"))
             self._btn_protos.configure(
                 fg_color=self._TOGGLE_OFF, text_color=self._TOGGLE_OFF_TXT)
-            self._tmpl_ctrl.grid()
-            self._proto_ctrl.grid_remove()
+            self._proto_ctrl.pack_forget()
+            self._tmpl_ctrl.pack(fill="x", pady=(6, 0))
             self._search_entry.configure(placeholder_text="🔍  Search templates...")
         self._render_list()
 
@@ -1565,6 +1565,10 @@ class LibraryPage(PageBase):
     def _render_list(self):
         for w in self.scroll.winfo_children():
             w.destroy()
+        try:
+            self.scroll._parent_canvas.yview_moveto(0)
+        except Exception:
+            pass
         if self._view_mode == "templates":
             self._render_templates()
         else:
