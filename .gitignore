@@ -31,6 +31,18 @@ MANIFEST
 #   before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# Keep the BenchFlow build spec — it's needed to reproduce the .app bundle
+!BenchFlow.spec
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# App icon build artefacts (keep iconset source, skip generated)
+AppIcon.iconset/Icon-*.png
 
 # Installer logs
 pip-log.txt
