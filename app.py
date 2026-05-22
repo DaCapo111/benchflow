@@ -1616,7 +1616,9 @@ class LibraryPage(PageBase):
             label(tb, tag, size=10, color=ACC).pack(padx=7, pady=2)
 
         if p.get("description"):
-            label(left, p["description"][:80], size=12,
+            _desc = p["description"]
+            _desc_short = (_desc[:80] + "…") if len(_desc) > 80 else _desc
+            label(left, _desc_short, size=12,
                   color=T2).pack(anchor="w", pady=(2, 0))
 
         steps = p.get("steps", [])
@@ -2157,7 +2159,9 @@ class FlowchartPage(PageBase):
         hsb.grid(row=1, column=0, sticky="ew")
         self.canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
         self.canvas.bind("<Button-1>", self._on_canvas_click)
-        self.canvas.bind("<MouseWheel>", lambda e: self.canvas.yview_scroll(-1*(1 if e.delta>0 else -1), "units"))
+        self.canvas.bind("<MouseWheel>", self._fc_wheel)
+        self.canvas.bind("<Button-4>", lambda e: self.canvas.yview_scroll(-3, "units"))
+        self.canvas.bind("<Button-5>", lambda e: self.canvas.yview_scroll(3, "units"))
 
         # Detail panel
         self.detail_frame = card_frame(main)
@@ -2168,6 +2172,15 @@ class FlowchartPage(PageBase):
         main.grid_columnconfigure(1, minsize=260, weight=0)
         label(self.detail_frame, "Select a step", size=13, color=T3).grid(row=0, column=0, pady=40)
         self._node_ids = {}  # canvas item id → step
+
+    def _fc_wheel(self, event):
+        """Proper trackpad/mouse-wheel handler for the flowchart canvas."""
+        delta = getattr(event, "delta", 0)
+        if abs(delta) >= 120:
+            units = int(-delta / 120) * 3
+        else:
+            units = int(-delta / 3) or (-1 if delta > 0 else 1)
+        self.canvas.yview_scroll(units, "units")
 
     def load(self, protocol):
         self.protocol = protocol
@@ -2188,7 +2201,7 @@ class FlowchartPage(PageBase):
                 font=(FONT, 14), fill="#94a3b8", anchor="center")
             return
 
-        NODE_W, NODE_H = 220, 90
+        NODE_W, NODE_H = 220, 96   # extra height for potential 2-line titles
         GAP = 40
         X_CENTER = 300
         total_h = len(steps) * (NODE_H + GAP) + GAP
@@ -2226,19 +2239,24 @@ class FlowchartPage(PageBase):
             # Step number
             self.canvas.create_text(x+NODE_W-8, y+17, text=f"#{i+1}", anchor="e",
                                      font=(FONT, 10), fill="#94a3b8", tags=f"node_{step['id']}")
-            # Title
+            # Title — use canvas width parameter so tk wraps long titles
+            # Safety cap at 64 chars to avoid extreme overflow in very tall nodes
             title = step.get("title") or "Untitled"
-            if len(title) > 26: title = title[:26] + "…"
-            self.canvas.create_text(X_CENTER, y+45, text=title, anchor="center",
-                                     font=(FONT, 12, "bold"), fill="#0f172a", tags=f"node_{step['id']}")
-            # Time
+            if len(title) > 64: title = title[:64] + "…"
+            self.canvas.create_text(X_CENTER, y+46, text=title, anchor="center",
+                                     font=(FONT, 12, "bold"), fill="#0f172a",
+                                     width=NODE_W-24,
+                                     tags=f"node_{step['id']}")
+            # Time / conditions row (nudged down to y+78 to clear 2-line title)
             total_m = step.get("handsOnMinutes",0)+step.get("waitMinutes",0)+step.get("bufferMinutes",0)
             info = fmt_mins(total_m)
             if step.get("temperature"): info += f"  🌡 {step['temperature']}"
             if step.get("centrifugeCondition"): info += f"  🔄 {step['centrifugeCondition']}"
             if step.get("shakingRotation"): info += f"  ↻ {step['shakingRotation']}"
-            self.canvas.create_text(X_CENTER, y+68, text=info, anchor="center",
-                                     font=(FONT, 10), fill="#64748b", tags=f"node_{step['id']}")
+            self.canvas.create_text(X_CENTER, y+80, text=info, anchor="center",
+                                     font=(FONT, 10), fill="#64748b",
+                                     width=NODE_W-24,
+                                     tags=f"node_{step['id']}")
 
             self._node_ids[rid] = step
             for tid in self.canvas.find_withtag(f"node_{step['id']}"):
@@ -2614,7 +2632,8 @@ class RunPage(PageBase):
               color=("#fff","#fff")).place(relx=.5, rely=.5, anchor="center")
         m = (step.get("handsOnMinutes", 0) + step.get("waitMinutes", 0) +
              step.get("bufferMinutes", 0))
-        txt = f"{idx+1}. {(step.get('title') or 'Untitled')[:18]}"
+        _st = step.get('title') or 'Untitled'
+        txt = f"{idx+1}. {(_st[:22] + '…') if len(_st) > 22 else _st}"
         lbl = label(row, txt, size=10, color=T1)
         lbl.pack(side="left", pady=6)
         lbl.bind("<Button-1>", lambda e, i=idx: self._scroll_to_step(i))
@@ -3849,16 +3868,41 @@ class RunPage(PageBase):
                 "checklist": [], "notes": "", "warnings": "", "substeps": [],
                 "tempBlock": True, "addedAt": now_ts(),
             }
+            _temp_secs = int(data["time_mins"] * 60)
             new_state = {
-                "status": self.ST_IDLE,
-                "timer_secs": int(data["time_mins"] * 60),
-                "original_secs": int(data["time_mins"] * 60),
-                "adjusted_total_secs": int(data["time_mins"] * 60),
-                "elapsed_secs": 0,
-                "timer_secs_at_start": int(data["time_mins"] * 60),
-                "adjusted": False, "notes": "", "timer_job": None,
-                "timer_lbl": None, "status_dot": None, "prog_var": None,
-                "btn_start": None, "card": None, "is_temp": True,
+                "status":               self.ST_IDLE,
+                "timer_secs":           float(_temp_secs),
+                "original_secs":        _temp_secs,
+                "adjusted_total_secs":  _temp_secs,
+                "elapsed_secs":         0,
+                "timer_secs_at_start":  _temp_secs,
+                "adjusted":             False,
+                "notes":                "",
+                "timer_job":            None,
+                "timer_lbl":            None,
+                "status_dot":           None,
+                "prog_var":             None,
+                "btn_start":            None,
+                "card":                 None,
+                "is_temp":              True,
+                # Wall-clock anchors
+                "start_mono":           None,
+                "start_remaining":      float(_temp_secs),
+                # Hands-on stopwatch
+                "ho_elapsed_secs":      0,
+                "ho_timer_job":         None,
+                "ho_timer_lbl":         None,
+                "ho_btn":               None,
+                "ho_status":            "idle",
+                "ho_start_mono":        None,
+                "ho_start_elapsed":     0,
+                # Undo-complete state
+                "_pre_complete_status": self.ST_IDLE,
+                "_undo_job":            None,
+                "_ctrl_norm":           None,
+                "_ctrl_done":           None,
+                "_undo_lbl":            None,
+                "_ctrl_container":      None,
             }
             steps = list(self.protocol.get("steps", []))
             pos   = data.get("position", "end")
@@ -4227,7 +4271,7 @@ class HistoryPage(PageBase):
             obs_f.pack(fill="x", padx=16, pady=(4, 10))
             label(obs_f, "Observations", size=10, color=("#15803d","#4ade80"),
                   weight="bold").pack(anchor="w", padx=12, pady=(6, 2))
-            label(obs_f, obs, size=12, color=T1).pack(
+            label(obs_f, obs, size=12, color=T1, wraplength=640).pack(
                 anchor="w", padx=12, pady=(0, 8))
         else:
             ctk.CTkFrame(card, height=10, fg_color="transparent").pack()
