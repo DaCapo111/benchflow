@@ -16,12 +16,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # ── Config ───────────────────────────────────────────────────────────────────
-VERSION="1.0.0"
+# Read version from VERSION file (fallback to 0.1.0)
+VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "0.1.0")
 APP_NAME="BenchFlow"
 SPEC_FILE="BenchFlow.spec"
 DIST_DIR="dist/mac"
 RELEASES_DIR="releases"
-DMG_NAME="${APP_NAME}-${VERSION}-mac.dmg"
+DMG_NAME="${APP_NAME}-v${VERSION}-macOS.dmg"
 
 CREATE_DMG=true
 DO_CLEAN=true
@@ -99,7 +100,7 @@ if $CREATE_DMG; then
   ln -sf /Applications "${TMP_DIR}/Applications"
 
   hdiutil create \
-    -volname "$APP_NAME" \
+    -volname "${APP_NAME} ${VERSION}" \
     -srcfolder "$TMP_DIR" \
     -ov -format UDZO \
     "$DMG_PATH" \

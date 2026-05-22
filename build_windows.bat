@@ -2,7 +2,7 @@
 :: ─────────────────────────────────────────────────────────────────────────────
 :: BenchFlow Windows build script
 :: Produces:  dist\windows\BenchFlow\BenchFlow.exe
-::            releases\BenchFlow-1.0.0-windows.zip
+::            releases\BenchFlow-v<version>-Windows.zip
 ::
 :: Usage:
 ::   build_windows.bat
@@ -10,12 +10,17 @@
 :: ─────────────────────────────────────────────────────────────────────────────
 setlocal enabledelayedexpansion
 
-set VERSION=1.0.0
+:: Read version from VERSION file (fallback to 0.1.0)
+set VERSION=0.1.0
+if exist VERSION (set /p VERSION=<VERSION)
+:: Trim whitespace
+for /f "tokens=* delims= " %%a in ("%VERSION%") do set VERSION=%%a
+
 set APP_NAME=BenchFlow
 set SPEC_FILE=BenchFlow_windows.spec
 set DIST_DIR=dist\windows
 set RELEASES_DIR=releases
-set ZIP_NAME=%APP_NAME%-%VERSION%-windows.zip
+set ZIP_NAME=%APP_NAME%-v%VERSION%-Windows.zip
 
 set DO_CLEAN=1
 for %%A in (%*) do (

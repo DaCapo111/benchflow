@@ -47,16 +47,32 @@ AppIcon.iconset/Icon-*.png
 AppIcon.ico
 
 # ── Build & release artefacts ──────────────────────────────────────────────
-# Compiled/packaged outputs must not be committed (they are large binaries).
-# Use GitHub Releases or the local releases/ folder for distribution.
+# Large compiled outputs — never commit these; publish via GitHub Releases.
 dist/
 build/
 
-# releases/ staging folder — keep the README, ignore the binary files
+# Binary installer/archive formats (anywhere in repo)
+*.dmg
+*.pkg
+*.msi
+*.exe
+*.app
+
+# ZIP archives produced by build scripts
+# (keep source ZIPs like assets if any, but not build outputs)
+# If you need to track a specific zip, use !filename.zip
+*.zip
+
+# Restore: keep source files that match these extensions
+!AppIcon.icns        # macOS icon source (not an installer)
+
+# releases/ staging folder — keep docs, ignore binaries
 releases/*.dmg
 releases/*.zip
 releases/*.exe
 releases/*.app
+releases/*.pkg
+releases/*.msi
 
 # Installer logs
 pip-log.txt

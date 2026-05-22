@@ -9,7 +9,7 @@ Usage:
   python3 build.py --all          # all platforms (skips unsupported)
   python3 build.py --no-clean     # skip cleaning previous artifacts
   python3 build.py --no-dmg       # skip DMG creation on macOS
-  python3 build.py --version 1.2  # override version string
+  python3 build.py --version 0.2  # override version (default: reads VERSION file)
   python3 build.py --clean        # clean only, do not build
 """
 
@@ -23,8 +23,14 @@ import tempfile
 from pathlib import Path
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-ROOT    = Path(__file__).parent.resolve()
-VERSION = "1.0.0"
+ROOT = Path(__file__).parent.resolve()
+
+def _read_version() -> str:
+    """Read version from VERSION file, fallback to 0.1.0."""
+    v = ROOT / "VERSION"
+    return v.read_text().strip() if v.exists() else "0.1.0"
+
+VERSION = _read_version()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -138,14 +144,14 @@ def build_mac(version: str, create_dmg: bool = True) -> bool:
         return True
 
     step(2, 3, "Creating DMG…")
-    dmg_name = f"BenchFlow-{version}-mac.dmg"
+    dmg_name = f"BenchFlow-v{version}-macOS.dmg"
     dmg_path = dist_path / dmg_name
     try:
         tmp = Path(tempfile.mkdtemp())
         shutil.copytree(app_path, tmp / "BenchFlow.app")
         (tmp / "Applications").symlink_to("/Applications")
         run(["hdiutil", "create",
-             "-volname", "BenchFlow",
+             "-volname", f"BenchFlow {version}",
              "-srcfolder", tmp,
              "-ov", "-format", "UDZO",
              dmg_path],
@@ -192,7 +198,7 @@ def build_windows(version: str) -> bool:
     ok(f"BenchFlow.exe  ({human_size(exe_path)})")
 
     step(2, 3, "Creating ZIP for distribution…")
-    zip_name = f"BenchFlow-{version}-windows"
+    zip_name = f"BenchFlow-v{version}-Windows"
     zip_path = dist_path / zip_name
     shutil.make_archive(str(zip_path), "zip", dist_path / "BenchFlow")
     final_zip = Path(str(zip_path) + ".zip")
@@ -220,11 +226,12 @@ def main() -> None:
     parser.add_argument("--clean",     action="store_true", help="Clean only, no build")
     parser.add_argument("--no-clean",  action="store_true", help="Skip clean step")
     parser.add_argument("--no-dmg",    action="store_true", help="Skip DMG creation")
-    parser.add_argument("--version",   default=VERSION,     help=f"Version string (default {VERSION})")
+    parser.add_argument("--version",   default=None,
+                        help=f"Version override (default: reads VERSION file, currently {VERSION})")
     args = parser.parse_args()
 
     os.chdir(ROOT)
-    ver = args.version
+    ver = args.version or _read_version()
 
     if args.clean:
         clean(); return
