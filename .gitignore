@@ -31,8 +31,9 @@ MANIFEST
 #   before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-# Keep the BenchFlow build spec — it's needed to reproduce the .app bundle
+# Keep the BenchFlow build specs — needed to reproduce the bundles
 !BenchFlow.spec
+!BenchFlow_windows.spec
 
 # macOS
 .DS_Store
@@ -41,8 +42,21 @@ MANIFEST
 .Spotlight-V100
 .Trashes
 
-# App icon build artefacts (keep iconset source, skip generated)
+# App icon build artefacts (keep iconset source; generated ICO is transient)
 AppIcon.iconset/Icon-*.png
+AppIcon.ico
+
+# ── Build & release artefacts ──────────────────────────────────────────────
+# Compiled/packaged outputs must not be committed (they are large binaries).
+# Use GitHub Releases or the local releases/ folder for distribution.
+dist/
+build/
+
+# releases/ staging folder — keep the README, ignore the binary files
+releases/*.dmg
+releases/*.zip
+releases/*.exe
+releases/*.app
 
 # Installer logs
 pip-log.txt

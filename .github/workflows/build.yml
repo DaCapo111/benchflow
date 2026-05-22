@@ -1,0 +1,187 @@
+name: Build BenchFlow
+
+# Triggers:
+#   • Every push to main  → build artifacts (no release)
+#   • Every tag v*.*.*    → build artifacts + create GitHub Release
+#   • PRs to main         → build check only (no upload)
+on:
+  push:
+    branches: [main]
+    tags:     ['v*.*.*']
+  pull_request:
+    branches: [main]
+
+# One concurrent run per branch; cancel older in-progress runs
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  build-macos:
+    name: 🍎 macOS build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build BenchFlow.app
+        run: |
+          mkdir -p dist/mac
+          python -m PyInstaller --noconfirm \
+            --distpath dist/mac \
+            --workpath build \
+            BenchFlow.spec
+
+      - name: Verify .app exists
+        run: |
+          ls -lh dist/mac/
+          test -d dist/mac/BenchFlow.app && echo "✓ BenchFlow.app OK"
+
+      - name: Create DMG
+        run: |
+          VERSION=$(python -c "
+          import re, pathlib
+          m = re.search(r\"'CFBundleShortVersionString':\s*'([^']+)'\", pathlib.Path('BenchFlow.spec').read_text())
+          print(m.group(1) if m else '1.0.0')
+          ")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          DMG="dist/mac/BenchFlow-${VERSION}-mac.dmg"
+
+          TMP=$(mktemp -d)
+          cp -R dist/mac/BenchFlow.app "$TMP/"
+          ln -sf /Applications "$TMP/Applications"
+          hdiutil create -volname "BenchFlow" \
+            -srcfolder "$TMP" \
+            -ov -format UDZO \
+            "$DMG"
+          rm -rf "$TMP"
+
+          ls -lh dist/mac/
+          echo "DMG_PATH=$DMG" >> $GITHUB_ENV
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BenchFlow-macOS-${{ github.sha }}
+          path: |
+            dist/mac/BenchFlow-*-mac.dmg
+            dist/mac/BenchFlow.app
+          retention-days: 30
+          if-no-files-found: error
+
+  # ────────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: 🪟 Windows build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate AppIcon.ico
+        run: |
+          python -c "
+          from PIL import Image
+          img = Image.open('AppIcon.icns')
+          img.save('AppIcon.ico', format='ICO',
+                   sizes=[(256,256),(128,128),(64,64),(32,32),(16,16)])
+          print('AppIcon.ico created')
+          "
+
+      - name: Build BenchFlow.exe
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\windows | Out-Null
+          python -m PyInstaller --noconfirm `
+            --distpath dist\windows `
+            --workpath build `
+            BenchFlow_windows.spec
+        shell: pwsh
+
+      - name: Verify .exe exists
+        run: |
+          Get-ChildItem dist\windows\ -Recurse | Select-Object FullName, Length
+          Test-Path "dist\windows\BenchFlow\BenchFlow.exe" -PathType Leaf
+        shell: pwsh
+
+      - name: Create ZIP
+        run: |
+          $VERSION = python -c "
+          import re, pathlib
+          m = re.search(r`"'CFBundleShortVersionString':\s*'([^']+)'`", pathlib.Path('BenchFlow.spec').read_text())
+          print(m.group(1) if m else '1.0.0')
+          "
+          echo "VERSION=$VERSION" >> $env:GITHUB_ENV
+          $ZIP = "dist\windows\BenchFlow-$VERSION-windows.zip"
+          Compress-Archive -Path "dist\windows\BenchFlow\*" -DestinationPath $ZIP -Force
+          Get-ChildItem dist\windows\
+          echo "ZIP_PATH=$ZIP" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BenchFlow-Windows-${{ github.sha }}
+          path: dist\windows\BenchFlow-*-windows.zip
+          retention-days: 30
+          if-no-files-found: error
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Creates a GitHub Release only when a version tag (v1.2.3) is pushed.
+  # Downloads the artifacts from both build jobs and attaches them.
+  release:
+    name: 🚀 GitHub Release
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write   # needed to create the release
+
+    steps:
+      - name: Checkout (for release notes)
+        uses: actions/checkout@v4
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BenchFlow-macOS-${{ github.sha }}
+          path: release-assets/mac/
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BenchFlow-Windows-${{ github.sha }}
+          path: release-assets/windows/
+
+      - name: List release assets
+        run: find release-assets/ -type f | sort
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "BenchFlow ${{ github.ref_name }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            release-assets/mac/*.dmg
+            release-assets/windows/*.zip
