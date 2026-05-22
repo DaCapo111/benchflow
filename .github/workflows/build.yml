@@ -76,15 +76,31 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           DMG="dist/mac/BenchFlow-v${VERSION}-macOS.dmg"
-          TMP=$(mktemp -d)
-          cp -R dist/mac/BenchFlow.app "$TMP/"
-          ln -sf /Applications "$TMP/Applications"
+
+          # 1. Give the OS a moment to release any file handles on the freshly
+          #    built .app before we try to image it.
+          sleep 5
+
+          # 2. Stage into a dedicated temp folder (avoids "Resource busy" on the
+          #    live dist/mac/ directory that PyInstaller may still have open).
+          rm -rf release_temp
+          mkdir -p release_temp
+          cp -R dist/mac/BenchFlow.app release_temp/
+
+          # 3. Strip Finder / quarantine extended attributes that can cause
+          #    hdiutil to fail with "Resource busy" or metadata errors.
+          xattr -cr release_temp/BenchFlow.app || true
+
+          # 4. Create the DMG from the clean staging folder.
           hdiutil create \
-            -volname "BenchFlow $VERSION" \
-            -srcfolder "$TMP" \
+            -volname "BenchFlow" \
+            -srcfolder release_temp \
             -ov -format UDZO \
             "$DMG"
-          rm -rf "$TMP"
+
+          # 5. Clean up staging folder.
+          rm -rf release_temp
+
           echo "DMG_PATH=$DMG" >> $GITHUB_ENV
           echo "DMG_NAME=BenchFlow-v${VERSION}-macOS.dmg" >> $GITHUB_ENV
           echo "✓ DMG: $(du -sh $DMG | cut -f1)"
