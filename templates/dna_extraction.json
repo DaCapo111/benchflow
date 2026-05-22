@@ -1,0 +1,148 @@
+{
+  "templateId": "dna_extraction",
+  "name": "DNA Extraction",
+  "category": "Molecular Biology",
+  "description": "Silica column-based genomic DNA extraction from cells or tissue. Compatible with commercial kits such as Qiagen DNeasy, Thermo Fisher PureLink, and equivalents. Adjust lysis conditions based on sample type.",
+  "tags": ["DNA", "extraction", "column", "genomic DNA", "gDNA"],
+  "source_note": "General educational template for silica-membrane column-based DNA extraction.",
+  "source_reference_url": "",
+  "steps": [
+    {
+      "order": 0,
+      "title": "Sample preparation and lysis",
+      "type": "lysis",
+      "description": "Pellet cells by centrifugation (or use fresh tissue ~25 mg). Resuspend in lysis buffer with proteinase K. Incubate at 56°C until complete lysis (tissue requires longer incubation). Vortex periodically.",
+      "reagents": [
+        {"name": "Cell pellet or tissue sample", "amount": "≤5×10⁶ cells or ≤25 mg tissue", "unit": ""},
+        {"name": "Lysis buffer (Buffer AL or equivalent)", "amount": "200", "unit": "µL"},
+        {"name": "Proteinase K (20 mg/mL)", "amount": "20", "unit": "µL"}
+      ],
+      "equipment": ["Heat block or water bath at 56°C", "Microcentrifuge tubes (1.5 mL)", "Vortex mixer"],
+      "handsOnMinutes": 10,
+      "waitMinutes": 30,
+      "bufferMinutes": 10,
+      "temperature": "56°C",
+      "centrifugeCondition": "",
+      "shakingRotation": "Vortex every 10 min",
+      "checklist": [],
+      "notes": "Tissue samples may require longer lysis (up to 3 h or overnight at 56°C). Cell pellets typically lyse within 30 min.",
+      "warnings": "Proteinase K is an irritant. Wear gloves.",
+      "substeps": []
+    },
+    {
+      "order": 1,
+      "title": "Add ethanol to lysate",
+      "type": "reagent_addition",
+      "description": "Briefly centrifuge to remove debris. Transfer lysate to a clean tube. Add 96–100% ethanol to the cleared lysate and mix thoroughly by pulse-vortexing.",
+      "reagents": [
+        {"name": "96–100% ethanol", "amount": "200", "unit": "µL"}
+      ],
+      "equipment": ["Vortex mixer", "Microcentrifuge"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 0,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "Briefly spin 6000 × g to pellet debris",
+      "shakingRotation": "Pulse-vortex 15 s",
+      "checklist": [],
+      "notes": "A white precipitate may form upon ethanol addition — this is normal. Mix by pipetting if needed.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 2,
+      "title": "Bind DNA to spin column",
+      "type": "transfer",
+      "description": "Transfer the full lysate+ethanol mixture to the spin column (including any precipitate). Centrifuge to bind DNA to the silica membrane. Discard flow-through.",
+      "reagents": [],
+      "equipment": ["Spin column with collection tube", "Microcentrifuge"],
+      "handsOnMinutes": 2,
+      "waitMinutes": 1,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "6000 × g, 1 min",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "If volume > column capacity, repeat centrifuge with remaining lysate.",
+      "substeps": []
+    },
+    {
+      "order": 3,
+      "title": "Wash with Buffer AW1 (or equivalent wash buffer 1)",
+      "type": "wash",
+      "description": "Add the first wash buffer to the column and centrifuge. Discard flow-through and collection tube.",
+      "reagents": [
+        {"name": "Wash Buffer 1 (AW1 or equivalent)", "amount": "500", "unit": "µL"}
+      ],
+      "equipment": ["Microcentrifuge"],
+      "handsOnMinutes": 2,
+      "waitMinutes": 1,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "6000 × g, 1 min",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 4,
+      "title": "Wash with Buffer AW2 (or equivalent wash buffer 2)",
+      "type": "wash",
+      "description": "Add the second wash buffer (ethanol-containing) to the column and centrifuge. Discard flow-through.",
+      "reagents": [
+        {"name": "Wash Buffer 2 (AW2 or equivalent)", "amount": "500", "unit": "µL"}
+      ],
+      "equipment": ["Microcentrifuge"],
+      "handsOnMinutes": 2,
+      "waitMinutes": 2,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "20,000 × g, 3 min",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "This high-speed spin fully removes residual ethanol.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 5,
+      "title": "Elute DNA",
+      "type": "transfer",
+      "description": "Transfer column to a clean 1.5 mL elution tube. Add pre-warmed elution buffer (or TE/nuclease-free water) directly onto the silica membrane. Incubate briefly, then centrifuge to elute DNA.",
+      "reagents": [
+        {"name": "Elution buffer (Buffer EB, TE, or nuclease-free water)", "amount": "50–100", "unit": "µL", "notes": "Pre-warm to 70°C for higher yield"}
+      ],
+      "equipment": ["Microcentrifuge", "Heat block (optional, 70°C)"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 2,
+      "bufferMinutes": 0,
+      "temperature": "RT or 70°C for elution buffer",
+      "centrifugeCondition": "6000 × g, 1 min",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Eluting with smaller volume (50 µL) gives higher concentration. Eluting twice with 50 µL gives higher total yield.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 6,
+      "title": "Quantify and assess DNA quality",
+      "type": "measurement",
+      "description": "Measure DNA concentration and purity using a spectrophotometer (NanoDrop or equivalent). Check A260/A280 ratio (expected ~1.8 for pure DNA) and A260/A230 (expected 2.0–2.2).",
+      "reagents": [],
+      "equipment": ["NanoDrop or spectrophotometer"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 0,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Low A260/A280 (<1.7) indicates protein contamination. Low A260/A230 (<1.5) indicates solvent/salt contamination.",
+      "warnings": "",
+      "substeps": []
+    }
+  ]
+}

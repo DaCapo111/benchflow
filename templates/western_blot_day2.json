@@ -1,0 +1,148 @@
+{
+  "templateId": "western_blot_day2",
+  "name": "Western Blot – Day 2",
+  "category": "Protein Biology",
+  "description": "Day 2 of Western blotting: wash membrane, secondary antibody incubation, washing, ECL detection, and imaging. Continue from Day 1 overnight primary antibody incubation.",
+  "tags": ["Western blot", "WB", "ECL", "antibody", "imaging", "Day 2"],
+  "source_note": "General educational template for Western blot detection and imaging.",
+  "source_reference_url": "",
+  "steps": [
+    {
+      "order": 0,
+      "title": "Wash membrane after primary antibody",
+      "type": "wash",
+      "description": "Remove primary antibody solution (save for reuse if desired). Wash membrane 3 times with TBST (or PBST) on a rocker. Each wash: 5–10 min.",
+      "reagents": [
+        {"name": "TBST (Tris-buffered saline + 0.1% Tween-20)", "amount": "15", "unit": "mL per wash"}
+      ],
+      "equipment": ["Rocker/orbital shaker", "Container"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 30,
+      "bufferMinutes": 5,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "Three washes × 10 min each. Thorough washing reduces background signal.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 1,
+      "title": "Secondary antibody incubation",
+      "type": "incubation",
+      "description": "Dilute HRP-conjugated secondary antibody in blocking buffer (5% milk or 5% BSA/TBST). Incubate membrane on rocker at room temperature.",
+      "reagents": [
+        {"name": "HRP-conjugated secondary antibody (anti-mouse, anti-rabbit, etc.)", "amount": "per manufacturer", "unit": "", "notes": "Typical: 1:2,000–1:10,000 in blocking buffer"},
+        {"name": "5% milk or BSA in TBST blocking buffer", "amount": "10", "unit": "mL"}
+      ],
+      "equipment": ["Rocker/orbital shaker"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 60,
+      "bufferMinutes": 5,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "Secondary antibody must match the species of the primary antibody host (e.g., anti-rabbit secondary for rabbit primary antibody).",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 2,
+      "title": "Wash membrane after secondary antibody",
+      "type": "wash",
+      "description": "Remove secondary antibody. Wash membrane 3–4 times with TBST. Each wash: 5–10 min. The more thorough the washing, the lower the background.",
+      "reagents": [
+        {"name": "TBST", "amount": "15", "unit": "mL per wash"}
+      ],
+      "equipment": ["Rocker/orbital shaker"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 40,
+      "bufferMinutes": 5,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "Add 1 wash with TBS (without Tween) at the end to help remove detergent.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 3,
+      "title": "ECL substrate detection",
+      "type": "imaging",
+      "description": "Mix ECL reagents A and B (equal volumes). Remove excess TBST from membrane (blot edge). Apply ECL mixture evenly to membrane. Incubate briefly per kit instructions (30 s to 5 min).",
+      "reagents": [
+        {"name": "ECL detection reagent (Luminol/Peroxide, e.g., SuperSignal, Clarity, Amersham)", "amount": "1–2", "unit": "mL", "notes": "Mix components immediately before use"}
+      ],
+      "equipment": ["Chemiluminescence imaging system or X-ray film + darkroom"],
+      "handsOnMinutes": 10,
+      "waitMinutes": 5,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Incubation time with ECL depends on antibody affinity and protein expression level. Start with minimum time and increase if signal is weak.",
+      "warnings": "Protect from light once ECL is added.",
+      "substeps": []
+    },
+    {
+      "order": 4,
+      "title": "Image membrane",
+      "type": "imaging",
+      "description": "Image using a chemiluminescence imager (ChemiDoc, Azure, G:BOX, etc.) or X-ray film exposure. Capture multiple exposures (short and long) to accommodate different signal intensities.",
+      "reagents": [],
+      "equipment": ["Chemiluminescence imaging system or X-ray film/cassette", "Image capture software"],
+      "handsOnMinutes": 15,
+      "waitMinutes": 0,
+      "bufferMinutes": 5,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Save raw images. Adjust exposure to avoid saturation. Both pre-stained ladder and bands of interest should be visible.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 5,
+      "title": "Strip membrane for re-probing (optional)",
+      "type": "wash",
+      "description": "If re-probing with a different antibody is needed, strip the membrane using a commercial stripping buffer or mild stripping solution. Wash thoroughly afterwards and re-block before applying new primary antibody.",
+      "reagents": [
+        {"name": "Stripping buffer (e.g., Restore, Mild Stripping Buffer)", "amount": "10–20", "unit": "mL"}
+      ],
+      "equipment": ["Rocker/orbital shaker", "Container"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 20,
+      "bufferMinutes": 5,
+      "temperature": "37°C (or RT per kit)",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "After stripping: wash 2× TBST 5 min, then re-block and probe with new antibody. Multiple rounds of stripping may reduce signal.",
+      "warnings": "Some stripping buffers contain β-mercaptoethanol or SDS. Work in fume hood if applicable.",
+      "substeps": []
+    },
+    {
+      "order": 6,
+      "title": "Store or process membrane",
+      "type": "storage",
+      "description": "If not stripping, store membrane in TBST at 4°C short-term, or allow to dry between filter paper for longer storage. Record band positions relative to ladder for molecular weight determination.",
+      "reagents": [],
+      "equipment": [],
+      "handsOnMinutes": 3,
+      "waitMinutes": 0,
+      "bufferMinutes": 0,
+      "temperature": "4°C",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Annotate and archive images with date, antibody details, and exposure times.",
+      "warnings": "",
+      "substeps": []
+    }
+  ]
+}

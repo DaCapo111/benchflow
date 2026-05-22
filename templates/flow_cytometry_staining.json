@@ -1,0 +1,191 @@
+{
+  "templateId": "flow_cytometry_staining",
+  "name": "Flow Cytometry Staining",
+  "category": "Immunology",
+  "description": "Surface and intracellular marker staining protocol for flow cytometry analysis. Includes live/dead discrimination, Fc blocking, surface staining, and optional fixation. Adjust antibody panels and gating strategy to your experiment.",
+  "tags": ["flow cytometry", "FACS", "staining", "antibody", "immunophenotyping"],
+  "source_note": "General educational template for multi-color flow cytometry staining.",
+  "source_reference_url": "",
+  "steps": [
+    {
+      "order": 0,
+      "title": "Prepare single-cell suspension",
+      "type": "preparation",
+      "description": "Prepare single-cell suspensions from tissues (mechanical dissociation, enzymatic digestion) or harvest cultured cells. Filter through 40–70 µm cell strainer to remove clumps. Transfer to FACS tubes or wells in a 96-well V-bottom plate.",
+      "reagents": [
+        {"name": "FACS buffer (PBS + 2% FBS + 0.1% sodium azide)", "amount": "as needed", "unit": "mL"},
+        {"name": "40–70 µm cell strainer", "amount": "1", "unit": "per sample"}
+      ],
+      "equipment": ["Cell strainer (40–70 µm)", "FACS tubes (5 mL polystyrene)", "or 96-well V-bottom plate"],
+      "handsOnMinutes": 15,
+      "waitMinutes": 0,
+      "bufferMinutes": 5,
+      "temperature": "On ice",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Keep cells on ice throughout. Work quickly. Keep cell count 1–5×10⁶ per sample.",
+      "warnings": "If using sodium azide in FACS buffer: toxic — wear gloves; azide also inhibits intracellular signaling.",
+      "substeps": []
+    },
+    {
+      "order": 1,
+      "title": "Count and pellet cells",
+      "type": "centrifuge",
+      "description": "Count cells if needed. Centrifuge to pellet. Aspirate/remove supernatant.",
+      "reagents": [],
+      "equipment": ["Centrifuge with plate/tube adapters"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 4,
+      "bufferMinutes": 0,
+      "temperature": "4°C",
+      "centrifugeCondition": "400 × g, 4 min, 4°C",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Adjust cell count to 1–5×10⁶ cells per staining reaction.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 2,
+      "title": "Viability staining",
+      "type": "staining",
+      "description": "Stain with a viability dye (e.g., LIVE/DEAD fixable dyes or propidium iodide) to discriminate live from dead cells in the analysis. Apply per manufacturer's instructions in PBS without serum.",
+      "reagents": [
+        {"name": "Viability dye (e.g., LIVE/DEAD Fixable Aqua or PI)", "amount": "per kit", "unit": "", "notes": "Dilute in PBS without serum for fixable dyes"},
+        {"name": "PBS (without serum)", "amount": "100", "unit": "µL per sample"}
+      ],
+      "equipment": [],
+      "handsOnMinutes": 3,
+      "waitMinutes": 20,
+      "bufferMinutes": 5,
+      "temperature": "4°C (or RT per kit)",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Serum in the buffer will quench fixable viability dyes. Wash once with PBS before adding viability dye.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 3,
+      "title": "Wash with FACS buffer",
+      "type": "wash",
+      "description": "Add 2–3 mL FACS buffer. Centrifuge and discard supernatant.",
+      "reagents": [
+        {"name": "FACS buffer", "amount": "2–3", "unit": "mL per sample"}
+      ],
+      "equipment": ["Centrifuge"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 4,
+      "bufferMinutes": 0,
+      "temperature": "4°C",
+      "centrifugeCondition": "400 × g, 4 min, 4°C",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 4,
+      "title": "Fc receptor blocking",
+      "type": "blocking",
+      "description": "Block Fc receptors to reduce non-specific antibody binding. Use anti-CD16/32 (mouse) or human TruStain FcX. Incubate on ice.",
+      "reagents": [
+        {"name": "Fc block (e.g., anti-CD16/32 or TruStain FcX)", "amount": "1", "unit": "µL per 100 µL sample", "notes": "Per manufacturer's recommendation"}
+      ],
+      "equipment": [],
+      "handsOnMinutes": 2,
+      "waitMinutes": 15,
+      "bufferMinutes": 0,
+      "temperature": "4°C / on ice",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Skip Fc blocking step only if no Fc receptor-expressing cells are present. For mouse cells: anti-CD16/32 (clone 93 or 2.4G2). For human cells: human serum or TruStain FcX.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 5,
+      "title": "Surface antibody staining",
+      "type": "staining",
+      "description": "Add the antibody cocktail (pre-mixed in FACS buffer) directly to cells without washing. Incubate in the dark on ice. Include single-color controls and FMO controls for setting gates.",
+      "reagents": [
+        {"name": "Surface antibody panel (pre-titrated antibodies in FACS buffer)", "amount": "50–100", "unit": "µL per sample"}
+      ],
+      "equipment": ["Light-protected box or foil"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 30,
+      "bufferMinutes": 5,
+      "temperature": "4°C, in the dark",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Titrate antibodies beforehand to determine optimal concentration. Incubation can be extended to 45 min for difficult antibody-antigen pairs.",
+      "warnings": "Keep samples protected from light throughout staining.",
+      "substeps": []
+    },
+    {
+      "order": 6,
+      "title": "Wash to remove unbound antibody",
+      "type": "wash",
+      "description": "Add 2–3 mL FACS buffer to each sample. Centrifuge and aspirate supernatant. Repeat wash once for cleaner staining.",
+      "reagents": [
+        {"name": "FACS buffer", "amount": "2–3", "unit": "mL per sample"}
+      ],
+      "equipment": ["Centrifuge"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 8,
+      "bufferMinutes": 0,
+      "temperature": "4°C",
+      "centrifugeCondition": "400 × g, 4 min, 4°C",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Two washes recommended to reduce background.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 7,
+      "title": "Fix cells (optional, for surface-only panel)",
+      "type": "preparation",
+      "description": "If fixing cells for later acquisition or biosafety requirements, resuspend in fixation buffer (1–4% paraformaldehyde in PBS, or commercial fixative). Incubate and wash. Fixed cells can be stored at 4°C up to 1 week.",
+      "reagents": [
+        {"name": "Fixation buffer (e.g., 2% PFA in PBS, or BD Cytofix)", "amount": "200–500", "unit": "µL per sample"}
+      ],
+      "equipment": [],
+      "handsOnMinutes": 3,
+      "waitMinutes": 20,
+      "bufferMinutes": 5,
+      "temperature": "4°C",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Skip this step for unfixed live-cell analysis. Fixed cells must be analyzed by flow cytometry within 24–72 h.",
+      "warnings": "Paraformaldehyde is toxic and a potential carcinogen. Handle in fume hood. Dispose per institutional guidelines.",
+      "substeps": []
+    },
+    {
+      "order": 8,
+      "title": "Resuspend and acquire on flow cytometer",
+      "type": "measurement",
+      "description": "Resuspend cells in an appropriate volume of FACS buffer (300–500 µL per tube). Acquire samples on the flow cytometer. Start with unstained and single-color controls for instrument setup.",
+      "reagents": [
+        {"name": "FACS buffer", "amount": "300–500", "unit": "µL per sample"}
+      ],
+      "equipment": ["Flow cytometer", "FACS tubes (if using plate, transfer or use plate reader head)"],
+      "handsOnMinutes": 30,
+      "waitMinutes": 0,
+      "bufferMinutes": 10,
+      "temperature": "4°C (keep on ice until acquisition)",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Acquire unstained → single colors → FMO controls → experimental samples. Record instrument settings. Collect ≥10,000 events per sample (more for rare populations).",
+      "warnings": "If unfixed: acquire as soon as possible. Cell viability decreases over time.",
+      "substeps": []
+    }
+  ]
+}

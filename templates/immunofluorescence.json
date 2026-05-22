@@ -1,0 +1,250 @@
+{
+  "templateId": "immunofluorescence",
+  "name": "Immunofluorescence Staining",
+  "category": "Immunology",
+  "description": "Immunofluorescence (IF) staining of cells on coverslips for confocal or widefield fluorescence microscopy. Detects protein localization. Adjust antibody concentrations and permeabilization based on target.",
+  "tags": ["immunofluorescence", "IF", "confocal", "antibody", "microscopy", "staining"],
+  "source_note": "General educational template for indirect immunofluorescence on adherent cells.",
+  "source_reference_url": "",
+  "steps": [
+    {
+      "order": 0,
+      "title": "Wash cells with PBS",
+      "type": "wash",
+      "description": "Aspirate culture medium from cells grown on coverslips in well plates. Wash twice with room-temperature PBS to remove serum.",
+      "reagents": [
+        {"name": "PBS (1×)", "amount": "0.5–1", "unit": "mL per well"}
+      ],
+      "equipment": ["Well plates (e.g., 12-well or 24-well)", "Aspiration"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 2,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "Cells should be 60–80% confluent on coverslips.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 1,
+      "title": "Fix cells",
+      "type": "preparation",
+      "description": "Fix cells with 4% paraformaldehyde (PFA) in PBS. Incubate at room temperature. Fixation preserves cellular morphology and antigen epitopes.",
+      "reagents": [
+        {"name": "4% paraformaldehyde (PFA) in PBS", "amount": "0.5", "unit": "mL per well"}
+      ],
+      "equipment": ["Fume hood"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 20,
+      "bufferMinutes": 5,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Methanol fixation (−20°C, 10 min) can also be used — it simultaneously permeabilizes. PFA is preferred for preserving cell structure. For many nuclear antigens, methanol fixation works well.",
+      "warnings": "PFA is toxic and a potential carcinogen. Work in fume hood. Dispose as chemical waste.",
+      "substeps": []
+    },
+    {
+      "order": 2,
+      "title": "Wash with PBS",
+      "type": "wash",
+      "description": "Wash cells 3 times with PBS to remove fixative. Allow 5 min per wash.",
+      "reagents": [
+        {"name": "PBS (1×)", "amount": "0.5–1", "unit": "mL per well per wash"}
+      ],
+      "equipment": [],
+      "handsOnMinutes": 3,
+      "waitMinutes": 10,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 3,
+      "title": "Permeabilize cells (for intracellular targets)",
+      "type": "reagent_addition",
+      "description": "Permeabilize cell membranes with 0.1–0.2% Triton X-100 or 0.1% saponin in PBS. Incubate briefly. Skip for surface-only staining.",
+      "reagents": [
+        {"name": "0.1–0.2% Triton X-100 in PBS", "amount": "0.5", "unit": "mL per well"}
+      ],
+      "equipment": [],
+      "handsOnMinutes": 2,
+      "waitMinutes": 10,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Triton X-100 permeabilizes all membranes. For nuclear staining: 0.5% Triton for 5 min. For mitochondrial markers: 0.1% for 10 min.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 4,
+      "title": "Blocking",
+      "type": "blocking",
+      "description": "Block non-specific binding with 5–10% normal serum (from the same species as secondary antibody) or 1–5% BSA in PBST. Incubate on a gentle rocker.",
+      "reagents": [
+        {"name": "Blocking buffer (5% normal goat serum or 3% BSA in PBS + 0.1% Triton X-100)", "amount": "0.5", "unit": "mL per well"}
+      ],
+      "equipment": ["Orbital rocker"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 60,
+      "bufferMinutes": 10,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "Use serum from the same species as secondary antibody. Blocking at 4°C overnight also works.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 5,
+      "title": "Primary antibody incubation",
+      "type": "incubation",
+      "description": "Remove blocking buffer (do not wash). Apply primary antibody diluted in blocking buffer. Incubate in a humidified chamber to prevent drying. Can incubate at RT for 2 h or 4°C overnight.",
+      "reagents": [
+        {"name": "Primary antibody in blocking buffer", "amount": "100–200", "unit": "µL per coverslip/well", "notes": "Typical dilution: 1:100–1:1000 — determine by titration"}
+      ],
+      "equipment": ["Humidified chamber (or Parafilm-covered box with wet paper towel)", "Parafilm (optional)"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 120,
+      "bufferMinutes": 10,
+      "temperature": "RT or 4°C overnight",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking (RT) or static (4°C)",
+      "checklist": [],
+      "notes": "Keep coverslips/wells covered and protected from drying. Overnight 4°C incubation usually gives lower background and stronger signal.",
+      "warnings": "Drying of the coverslip will cause autofluorescence and background.",
+      "substeps": []
+    },
+    {
+      "order": 6,
+      "title": "Wash off primary antibody",
+      "type": "wash",
+      "description": "Wash 3 times with PBST (PBS + 0.05% Tween-20) to remove unbound primary antibody. Each wash: 5 min on rocker.",
+      "reagents": [
+        {"name": "PBST (PBS + 0.05% Tween-20)", "amount": "0.5–1", "unit": "mL per well per wash"}
+      ],
+      "equipment": ["Orbital rocker"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 15,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 7,
+      "title": "Secondary antibody incubation",
+      "type": "incubation",
+      "description": "Apply fluorophore-conjugated secondary antibody diluted in blocking buffer. Protect from light. Incubate on rocker.",
+      "reagents": [
+        {"name": "Fluorescent secondary antibody (e.g., Alexa Fluor 488 anti-rabbit, Cy3 anti-mouse)", "amount": "100–200", "unit": "µL per well", "notes": "Typical: 1:500–1:2000 in blocking buffer"}
+      ],
+      "equipment": ["Light-protected box or foil cover"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 60,
+      "bufferMinutes": 10,
+      "temperature": "RT, in the dark",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "Secondary antibody must match the host species of primary antibody (e.g., if primary is from rabbit, use anti-rabbit secondary). Keep in dark throughout.",
+      "warnings": "Fluorophores photobleach — protect from light from this step onwards.",
+      "substeps": []
+    },
+    {
+      "order": 8,
+      "title": "Wash off secondary antibody",
+      "type": "wash",
+      "description": "Wash 3 times with PBST, protecting from light. Each wash: 5 min on rocker.",
+      "reagents": [
+        {"name": "PBST", "amount": "0.5–1", "unit": "mL per well per wash"}
+      ],
+      "equipment": ["Orbital rocker", "Foil cover"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 15,
+      "bufferMinutes": 0,
+      "temperature": "RT, in the dark",
+      "centrifugeCondition": "",
+      "shakingRotation": "Gentle rocking",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 9,
+      "title": "Nuclear stain (DAPI or Hoechst)",
+      "type": "staining",
+      "description": "Stain nuclei with DAPI or Hoechst 33342 diluted in PBS. Incubate briefly, then wash once with PBS.",
+      "reagents": [
+        {"name": "DAPI (1 mg/mL stock)", "amount": "0.1–1", "unit": "µL per mL PBS", "notes": "Final: 0.1–1 µg/mL"},
+        {"name": "PBS", "amount": "0.5", "unit": "mL per well"}
+      ],
+      "equipment": [],
+      "handsOnMinutes": 3,
+      "waitMinutes": 10,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "DAPI: excitation ~360 nm, emission ~460 nm (blue). Hoechst: excitation ~350 nm, emission ~460 nm.",
+      "warnings": "DAPI is a potential mutagen. Handle with gloves.",
+      "substeps": []
+    },
+    {
+      "order": 10,
+      "title": "Mount coverslip",
+      "type": "preparation",
+      "description": "Rinse coverslips once more with PBS. Remove excess moisture by touching the edge to tissue. Mount on glass slide using anti-fade mounting medium. Seal edges with clear nail polish after medium cures.",
+      "reagents": [
+        {"name": "Anti-fade mounting medium (e.g., ProLong Gold, Fluoromount-G)", "amount": "5–10", "unit": "µL per coverslip"}
+      ],
+      "equipment": ["Glass slides", "Fine-tip forceps", "Clear nail polish (for sealing)"],
+      "handsOnMinutes": 8,
+      "waitMinutes": 30,
+      "bufferMinutes": 5,
+      "temperature": "RT (cure), then 4°C dark",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Avoid air bubbles. Invert coverslip onto slide gently. Let cure at RT in the dark for 30 min to overnight before sealing.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 11,
+      "title": "Image by fluorescence microscopy",
+      "type": "imaging",
+      "description": "Acquire images on a confocal or widefield fluorescence microscope using appropriate filter sets. Adjust laser/lamp intensity and exposure to minimize photobleaching.",
+      "reagents": [],
+      "equipment": ["Fluorescence microscope (confocal or widefield)", "Immersion oil (for oil objective)"],
+      "handsOnMinutes": 45,
+      "waitMinutes": 0,
+      "bufferMinutes": 15,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Include negative controls (no primary antibody). Acquire all channels at same settings for consistent quantification.",
+      "warnings": "",
+      "substeps": []
+    }
+  ]
+}

@@ -1,0 +1,272 @@
+{
+  "templateId": "elisa",
+  "name": "ELISA",
+  "category": "Immunology",
+  "description": "Sandwich ELISA for quantitative detection of a target protein (antigen) in samples. Day 1: coat plate and block. Day 2 (or same day): add samples, detection antibody, enzyme-substrate development, and read. Adjust all antibody concentrations per kit or titration.",
+  "tags": ["ELISA", "sandwich ELISA", "cytokine", "protein detection", "colorimetric"],
+  "source_note": "General educational template for sandwich ELISA protocol.",
+  "source_reference_url": "",
+  "steps": [
+    {
+      "order": 0,
+      "title": "Coat plate with capture antibody (overnight)",
+      "type": "reagent_addition",
+      "description": "Dilute capture antibody in coating buffer (e.g., PBS or carbonate-bicarbonate buffer pH 9.6). Add 100 µL per well to a 96-well high-binding ELISA plate. Seal and incubate overnight at 4°C.",
+      "reagents": [
+        {"name": "Capture antibody", "amount": "100", "unit": "µL per well", "notes": "Dilute per manufacturer recommendation (often 1–4 µg/mL)"},
+        {"name": "Coating buffer (PBS or carbonate buffer pH 9.6)", "amount": "as needed", "unit": "mL"}
+      ],
+      "equipment": ["96-well high-binding ELISA plate (flat bottom)", "Plate sealer/adhesive film", "4°C refrigerator"],
+      "handsOnMinutes": 8,
+      "waitMinutes": 720,
+      "bufferMinutes": 0,
+      "temperature": "4°C overnight",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Alternatively, coat for 2 h at 37°C. Ensure complete coverage of all wells.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 1,
+      "title": "Wash plate",
+      "type": "wash",
+      "description": "Remove coating solution. Wash plate 3 times with PBST (PBS + 0.05% Tween-20). After last wash, invert and tap plate firmly on absorbent paper to remove residual liquid.",
+      "reagents": [
+        {"name": "PBST (PBS + 0.05% Tween-20)", "amount": "300", "unit": "µL per well per wash"}
+      ],
+      "equipment": ["Multichannel pipette or plate washer"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 5,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Soak each wash for ~1 min. Proper washing is the most critical step for low background.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 2,
+      "title": "Block non-specific binding",
+      "type": "blocking",
+      "description": "Add blocking buffer (e.g., 1–5% BSA or 1–3% non-fat milk in PBS) to all wells. Incubate to reduce non-specific binding.",
+      "reagents": [
+        {"name": "Blocking buffer (1–3% BSA or non-fat milk in PBS)", "amount": "200–300", "unit": "µL per well"}
+      ],
+      "equipment": ["Plate sealer", "Orbital plate shaker or incubator"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 60,
+      "bufferMinutes": 10,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "100–150 rpm",
+      "checklist": [],
+      "notes": "Some kits use a proprietary blocking buffer — follow kit instructions. Longer blocking (2 h) may give lower background.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 3,
+      "title": "Wash plate",
+      "type": "wash",
+      "description": "Remove blocking buffer. Wash plate 3–5 times with PBST. Tap dry.",
+      "reagents": [
+        {"name": "PBST", "amount": "300", "unit": "µL per well per wash"}
+      ],
+      "equipment": ["Multichannel pipette or plate washer"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 5,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 4,
+      "title": "Add standards and samples",
+      "type": "pipetting",
+      "description": "Prepare standard curve by serial dilution of recombinant standard protein. Add standards and unknown samples (100 µL per well) in duplicate or triplicate. Include blank (diluent only) and positive control wells.",
+      "reagents": [
+        {"name": "Standard protein for serial dilution (from kit or prepared)", "amount": "100", "unit": "µL per well"},
+        {"name": "Sample diluent (assay buffer)", "amount": "as needed", "unit": "mL"},
+        {"name": "Test samples (serum, plasma, cell supernatant, etc.)", "amount": "100", "unit": "µL per well"}
+      ],
+      "equipment": ["Multichannel pipette", "Plate sealer"],
+      "handsOnMinutes": 15,
+      "waitMinutes": 120,
+      "bufferMinutes": 10,
+      "temperature": "RT or 4°C (per kit)",
+      "centrifugeCondition": "",
+      "shakingRotation": "100–150 rpm",
+      "checklist": [],
+      "notes": "Dilute samples in assay buffer to fall within the standard curve range. Typical standard curve: 5–7 point 2-fold dilutions.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 5,
+      "title": "Wash plate",
+      "type": "wash",
+      "description": "Remove samples. Wash plate 3–5 times with PBST. Tap dry.",
+      "reagents": [
+        {"name": "PBST", "amount": "300", "unit": "µL per well per wash"}
+      ],
+      "equipment": ["Multichannel pipette or plate washer"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 5,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 6,
+      "title": "Add detection antibody",
+      "type": "staining",
+      "description": "Add biotinylated or enzyme-conjugated detection antibody diluted in assay buffer. Incubate with shaking.",
+      "reagents": [
+        {"name": "Detection antibody (biotinylated or HRP-conjugated)", "amount": "100", "unit": "µL per well", "notes": "Per kit recommendation"}
+      ],
+      "equipment": ["Plate sealer", "Plate shaker"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 60,
+      "bufferMinutes": 5,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "100–150 rpm",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 7,
+      "title": "Wash plate",
+      "type": "wash",
+      "description": "Wash plate 3–5 times with PBST. Tap dry.",
+      "reagents": [
+        {"name": "PBST", "amount": "300", "unit": "µL per well per wash"}
+      ],
+      "equipment": ["Multichannel pipette or plate washer"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 5,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 8,
+      "title": "Add Streptavidin-HRP (if using biotinylated detection antibody)",
+      "type": "reagent_addition",
+      "description": "Dilute Streptavidin-HRP in assay buffer. Add to each well. Incubate with shaking. Skip this step if the detection antibody is directly HRP-conjugated.",
+      "reagents": [
+        {"name": "Streptavidin-HRP (or Avidin-HRP)", "amount": "100", "unit": "µL per well", "notes": "Dilute per kit instruction"}
+      ],
+      "equipment": ["Plate sealer", "Plate shaker"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 30,
+      "bufferMinutes": 5,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "100–150 rpm",
+      "checklist": [],
+      "notes": "Skip if detection antibody is already enzyme-conjugated.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 9,
+      "title": "Wash plate",
+      "type": "wash",
+      "description": "Wash plate 5 times with PBST. Tap dry completely.",
+      "reagents": [
+        {"name": "PBST", "amount": "300", "unit": "µL per well per wash"}
+      ],
+      "equipment": ["Multichannel pipette or plate washer"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 5,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "More washes before substrate development = lower background.",
+      "warnings": "",
+      "substeps": []
+    },
+    {
+      "order": 10,
+      "title": "Add TMB substrate and develop",
+      "type": "reagent_addition",
+      "description": "Add TMB (3,3',5,5'-tetramethylbenzidine) substrate solution to each well. Incubate in the dark at RT until desired color development (blue) in standards.",
+      "reagents": [
+        {"name": "TMB substrate solution", "amount": "100", "unit": "µL per well"}
+      ],
+      "equipment": ["Light-protected environment"],
+      "handsOnMinutes": 3,
+      "waitMinutes": 15,
+      "bufferMinutes": 5,
+      "temperature": "RT, in the dark",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Monitor color development visually. High-concentration samples will turn deep blue. Stop reaction when highest standard is dark blue and blank is clear.",
+      "warnings": "Do not touch the bottom of the plate — fingerprints interfere with optical reading.",
+      "substeps": []
+    },
+    {
+      "order": 11,
+      "title": "Add stop solution and read plate",
+      "type": "measurement",
+      "description": "Add stop solution (2N H₂SO₄ or per kit) to each well in the same order as TMB was added. Solution turns from blue to yellow. Immediately read absorbance at 450 nm (with 570 nm reference wavelength).",
+      "reagents": [
+        {"name": "Stop solution (2N H₂SO₄ or 1N H₃PO₄)", "amount": "50–100", "unit": "µL per well"}
+      ],
+      "equipment": ["Microplate reader (450 nm / 570 nm)"],
+      "handsOnMinutes": 5,
+      "waitMinutes": 0,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "Tap plate gently to mix",
+      "checklist": [],
+      "notes": "Read within 30 min of adding stop solution. Use 450 nm as primary and 570 nm as reference wavelength to correct for optical imperfections.",
+      "warnings": "H₂SO₄ is corrosive — wear gloves.",
+      "substeps": []
+    },
+    {
+      "order": 12,
+      "title": "Calculate results",
+      "type": "measurement",
+      "description": "Plot standard curve (4-parameter logistic or linear fit). Calculate unknown sample concentrations from interpolation. Account for any dilution factors.",
+      "reagents": [],
+      "equipment": ["Spreadsheet software or ELISA analysis software"],
+      "handsOnMinutes": 15,
+      "waitMinutes": 0,
+      "bufferMinutes": 0,
+      "temperature": "RT",
+      "centrifugeCondition": "",
+      "shakingRotation": "",
+      "checklist": [],
+      "notes": "Subtract blank (0 standard) OD from all values. R² of standard curve should be >0.99. Samples outside curve range need re-assay with adjusted dilutions.",
+      "warnings": "",
+      "substeps": []
+    }
+  ]
+}

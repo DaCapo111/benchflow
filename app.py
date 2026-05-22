@@ -32,6 +32,8 @@ RUNS_FILE       = APP_DIR / "runs.json"
 CATEGORIES_FILE = APP_DIR / "categories.json"
 TAGS_FILE       = APP_DIR / "tags.json"
 SCHEDULE_FILE   = APP_DIR / "schedule.json"
+# Built-in protocol templates directory (ships alongside app.py)
+TEMPLATES_DIR   = Path(__file__).parent / "templates"
 
 # ─── Palette ──────────────────────────────────────────────────────────────────
 # (light, dark)
@@ -372,6 +374,23 @@ def load_schedule():
 
 def save_schedule(experiments):
     SCHEDULE_FILE.write_text(json.dumps(experiments, ensure_ascii=False, indent=2))
+
+def load_templates():
+    """Return all built-in templates from TEMPLATES_DIR, sorted by category then name.
+    Each template is a dict loaded straight from a .json file in that folder.
+    Returns an empty list if the folder doesn't exist (safe for packaged builds)."""
+    if not TEMPLATES_DIR.exists():
+        return []
+    templates = []
+    for f in sorted(TEMPLATES_DIR.glob("*.json")):
+        try:
+            t = json.loads(f.read_text(encoding="utf-8"))
+            if isinstance(t, dict) and t.get("name"):
+                templates.append(t)
+        except Exception:
+            pass
+    templates.sort(key=lambda t: (t.get("category", ""), t.get("name", "")))
+    return templates
 
 def _step_sched_cat(stype):
     """Map step type → schedule display category (hands_on/waiting/machine/note)."""
@@ -1398,54 +1417,138 @@ class DashboardPage(PageBase):
 
 # ─── Library ──────────────────────────────────────────────────────────────────
 class LibraryPage(PageBase):
+    # ── Colours used for the two different view-mode toggle buttons ──────────
+    _TOGGLE_ON  = ACC                           # active tab colour
+    _TOGGLE_OFF = ("#e2e8f0", "#334155")        # inactive tab colour
+    _TOGGLE_OFF_TXT = T1
+
     def __init__(self, parent, app):
         super().__init__(parent, app)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
-        self._search_var = ctk.StringVar()
+        self._search_var   = ctk.StringVar()
         self._search_var.trace_add("write", lambda *_: self._render_list())
-        self._filter_var = ctk.StringVar(value="All Categories")
+        self._filter_var   = ctk.StringVar(value="All Categories")
+        self._tmpl_cat_var = ctk.StringVar(value="All Categories")
+        self._view_mode    = "protocols"   # "protocols" | "templates"
         self._build()
 
+    # ── Build ─────────────────────────────────────────────────────────────────
     def _build(self):
         hdr = ctk.CTkFrame(self, fg_color="transparent")
-        hdr.grid(row=0, column=0, sticky="ew", padx=28, pady=(28,8))
-        hdr.grid_columnconfigure(6, weight=1)
-        label(hdr, "Protocol Library", size=24, weight="bold").grid(row=0, column=0, sticky="w")
+        hdr.grid(row=0, column=0, sticky="ew", padx=28, pady=(28, 8))
+        hdr.grid_columnconfigure(3, weight=1)   # spacer before search
 
-        btn(hdr, "+ New Protocol", self._open_create_menu, width=145).grid(row=0, column=1, padx=(18, 6))
-        btn(hdr, "Import Protocol", self._open_import_menu,
-            color=("#e2e8f0","#334155"), text_color=T1, width=140).grid(row=0, column=2, padx=6)
+        # Title
+        label(hdr, "Protocol Library", size=24, weight="bold").grid(
+            row=0, column=0, sticky="w")
 
+        # ── View-mode toggle ─────────────────────────────────────────────────
+        tog = ctk.CTkFrame(hdr, fg_color="transparent")
+        tog.grid(row=0, column=1, padx=(18, 0))
+        self._btn_protos = ctk.CTkButton(
+            tog, text="My Protocols", font=(FONT, 12, "bold"),
+            width=118, height=32, corner_radius=R_SM,
+            command=lambda: self._set_view("protocols"))
+        self._btn_protos.pack(side="left", padx=(0, 2))
+        self._btn_templates = ctk.CTkButton(
+            tog, text="Templates", font=(FONT, 12, "bold"),
+            width=95, height=32, corner_radius=R_SM,
+            command=lambda: self._set_view("templates"))
+        self._btn_templates.pack(side="left")
+
+        # ── Protocol-mode controls (shown in "protocols" view) ───────────────
+        self._proto_ctrl = ctk.CTkFrame(hdr, fg_color="transparent")
+        self._proto_ctrl.grid(row=0, column=2, padx=(14, 0))
+        btn(self._proto_ctrl, "+ New Protocol", self._open_create_menu,
+            width=145).pack(side="left", padx=(0, 6))
+        btn(self._proto_ctrl, "Import Protocol", self._open_import_menu,
+            color=("#e2e8f0","#334155"), text_color=T1, width=140).pack(side="left", padx=6)
         self._filter_menu = ctk.CTkOptionMenu(
-            hdr, variable=self._filter_var, values=["All Categories"],
-            command=lambda _: self._render_list(), width=150, height=36,
-            font=(FONT, 12), corner_radius=R_SM)
-        self._filter_menu.grid(row=0, column=3, padx=(14, 6))
-        btn(hdr, "Manage", lambda: TermManagerDialog(self.app, self.app, "categories"),
-            color=("#e2e8f0","#334155"), text_color=T1, width=85, height=32, size=11).grid(row=0, column=4, padx=4)
-        btn(hdr, "Tags", lambda: TermManagerDialog(self.app, self.app, "tags"),
-            color=("#e2e8f0","#334155"), text_color=T1, width=62, height=32, size=11).grid(row=0, column=5, padx=4)
+            self._proto_ctrl, variable=self._filter_var,
+            values=["All Categories"],
+            command=lambda _: self._render_list(),
+            width=148, height=32, font=(FONT, 12), corner_radius=R_SM)
+        self._filter_menu.pack(side="left", padx=(12, 4))
+        btn(self._proto_ctrl, "Manage",
+            lambda: TermManagerDialog(self.app, self.app, "categories"),
+            color=("#e2e8f0","#334155"), text_color=T1,
+            width=82, height=30, size=11).pack(side="left", padx=3)
+        btn(self._proto_ctrl, "Tags",
+            lambda: TermManagerDialog(self.app, self.app, "tags"),
+            color=("#e2e8f0","#334155"), text_color=T1,
+            width=58, height=30, size=11).pack(side="left", padx=3)
 
-        search_e = ctk.CTkEntry(hdr, placeholder_text="🔍  Search protocols...",
-                                textvariable=self._search_var, font=(FONT,13), height=36,
-                                width=260, corner_radius=R_XL, border_color=CARD_B)
-        search_e.grid(row=0, column=6, padx=(6, 0), sticky="e")
+        # ── Template-mode controls (shown in "templates" view) ───────────────
+        self._tmpl_ctrl = ctk.CTkFrame(hdr, fg_color="transparent")
+        self._tmpl_ctrl.grid(row=0, column=2, padx=(14, 0))
+        self._tmpl_filter_menu = ctk.CTkOptionMenu(
+            self._tmpl_ctrl, variable=self._tmpl_cat_var,
+            values=["All Categories"],
+            command=lambda _: self._render_list(),
+            width=175, height=32, font=(FONT, 12), corner_radius=R_SM)
+        self._tmpl_filter_menu.pack(side="left", padx=(0, 6))
 
+        # ── Search (always visible) ──────────────────────────────────────────
+        self._search_entry = ctk.CTkEntry(
+            hdr, placeholder_text="🔍  Search...",
+            textvariable=self._search_var, font=(FONT, 13),
+            height=34, width=240, corner_radius=R_XL, border_color=CARD_B)
+        self._search_entry.grid(row=0, column=3, padx=(8, 0), sticky="e")
+
+        # ── Scrollable content area ──────────────────────────────────────────
         self.scroll = ScrollFrame(self)
-        self.scroll.grid(row=1, column=0, sticky="nsew", padx=28, pady=(8,28))
+        self.scroll.grid(row=1, column=0, sticky="nsew", padx=28, pady=(8, 28))
         self.scroll.grid_columnconfigure(0, weight=1)
 
+        # Apply initial toggle state
+        self._set_view("protocols")
+
+    # ── View-mode switch ──────────────────────────────────────────────────────
+    def _set_view(self, mode):
+        self._view_mode = mode
+        if mode == "protocols":
+            self._btn_protos.configure(
+                fg_color=self._TOGGLE_ON, text_color=("#fff", "#fff"))
+            self._btn_templates.configure(
+                fg_color=self._TOGGLE_OFF, text_color=self._TOGGLE_OFF_TXT)
+            self._proto_ctrl.grid()
+            self._tmpl_ctrl.grid_remove()
+            self._search_entry.configure(placeholder_text="🔍  Search protocols...")
+        else:
+            self._btn_templates.configure(
+                fg_color=self._TOGGLE_ON, text_color=("#fff", "#fff"))
+            self._btn_protos.configure(
+                fg_color=self._TOGGLE_OFF, text_color=self._TOGGLE_OFF_TXT)
+            self._tmpl_ctrl.grid()
+            self._proto_ctrl.grid_remove()
+            self._search_entry.configure(placeholder_text="🔍  Search templates...")
+        self._render_list()
+
+    # ── Refresh ───────────────────────────────────────────────────────────────
     def refresh(self):
         self._refresh_filters()
         self._render_list()
 
     def _refresh_filters(self):
-        cats = sorted({*self.app.categories, *(p.get("category", "").strip() for p in self.app.protocols if p.get("category", "").strip())})
+        # Protocol category filter
+        cats = sorted({
+            *self.app.categories,
+            *(p.get("category","").strip()
+              for p in self.app.protocols if p.get("category","").strip())
+        })
         values = ["All Categories"] + cats
         self._filter_menu.configure(values=values)
         if self._filter_var.get() not in values:
             self._filter_var.set("All Categories")
+
+        # Template category filter
+        tcats = sorted({t.get("category","") for t in self.app.templates
+                        if t.get("category","")})
+        tvalues = ["All Categories"] + tcats
+        self._tmpl_filter_menu.configure(values=tvalues)
+        if self._tmpl_cat_var.get() not in tvalues:
+            self._tmpl_cat_var.set("All Categories")
 
     def _open_create_menu(self):
         self.app.open_create_protocol("full")
@@ -1453,25 +1556,36 @@ class LibraryPage(PageBase):
     def _open_import_menu(self):
         self.app.open_create_protocol("import")
 
+    # ── Render dispatcher ─────────────────────────────────────────────────────
     def _render_list(self):
-        for w in self.scroll.winfo_children(): w.destroy()
-        q = self._search_var.get().lower()
+        for w in self.scroll.winfo_children():
+            w.destroy()
+        if self._view_mode == "templates":
+            self._render_templates()
+        else:
+            self._render_protocols()
+
+    # ── My Protocols section ──────────────────────────────────────────────────
+    def _render_protocols(self):
+        q   = self._search_var.get().lower()
         cat = self._filter_var.get()
         protocols = [p for p in self.app.protocols
                      if q in p.get("name","").lower()
                      or q in p.get("category","").lower()
-                     or q in " ".join(p.get("tags", [])).lower()]
+                     or q in " ".join(p.get("tags",[])).lower()]
         if cat != "All Categories":
-            protocols = [p for p in protocols if p.get("category", "").strip() == cat]
+            protocols = [p for p in protocols
+                         if p.get("category","").strip() == cat]
         if not protocols:
-            label(self.scroll, "No protocols found", size=14, color=T3).grid(row=0, column=0, pady=60)
+            label(self.scroll, "No protocols found", size=14,
+                  color=T3).grid(row=0, column=0, pady=60)
             return
         for i, p in enumerate(protocols):
             self._proto_card(p, i)
 
     def _proto_card(self, p, row_idx):
         card = card_frame(self.scroll)
-        card.grid(row=row_idx, column=0, sticky="ew", pady=(0,8))
+        card.grid(row=row_idx, column=0, sticky="ew", pady=(0, 8))
         card.grid_columnconfigure(0, weight=1)
 
         inner = ctk.CTkFrame(card, fg_color="transparent")
@@ -1483,42 +1597,49 @@ class LibraryPage(PageBase):
 
         name_row = ctk.CTkFrame(left, fg_color="transparent")
         name_row.pack(fill="x", anchor="w")
-        label(name_row, p.get("name") or "Untitled", size=15, weight="bold").pack(side="left")
+        label(name_row, p.get("name") or "Untitled",
+              size=15, weight="bold").pack(side="left")
         if p.get("category"):
-            badge = ctk.CTkFrame(name_row, fg_color=("#e2e8f0","#334155"), corner_radius=R_SM)
+            badge = ctk.CTkFrame(name_row,
+                                 fg_color=("#e2e8f0","#334155"), corner_radius=R_SM)
             badge.pack(side="left", padx=8)
             label(badge, p["category"], size=11, color=T2).pack(padx=8, pady=2)
         for tag in p.get("tags", [])[:3]:
-            tag_badge = ctk.CTkFrame(name_row, fg_color=("#dbeafe","#1e3a5f"), corner_radius=R_SM)
-            tag_badge.pack(side="left", padx=(0, 6))
-            label(tag_badge, tag, size=10, color=ACC).pack(padx=7, pady=2)
+            tb = ctk.CTkFrame(name_row,
+                              fg_color=("#dbeafe","#1e3a5f"), corner_radius=R_SM)
+            tb.pack(side="left", padx=(0, 6))
+            label(tb, tag, size=10, color=ACC).pack(padx=7, pady=2)
 
         if p.get("description"):
-            label(left, p["description"][:80], size=12, color=T2).pack(anchor="w", pady=(2,0))
+            label(left, p["description"][:80], size=12,
+                  color=T2).pack(anchor="w", pady=(2, 0))
 
         steps = p.get("steps", [])
-        ho = sum(s.get("handsOnMinutes",0) for s in steps)
-        wt = sum(s.get("waitMinutes",0) for s in steps)
-        meta = f"{len(steps)} steps  ·  Total: {fmt_mins(total_mins(steps))}  ·  Hands-on: {fmt_mins(ho)}  ·  Wait: {fmt_mins(wt)}  ·  {fmt_date(p['updatedAt'])}"
-        label(left, meta, size=11, color=T3).pack(anchor="w", pady=(4,0))
+        ho = sum(s.get("handsOnMinutes", 0) for s in steps)
+        wt = sum(s.get("waitMinutes", 0) for s in steps)
+        meta = (f"{len(steps)} steps  ·  Total: {fmt_mins(total_mins(steps))}"
+                f"  ·  Hands-on: {fmt_mins(ho)}  ·  Wait: {fmt_mins(wt)}"
+                f"  ·  {fmt_date(p['updatedAt'])}")
+        label(left, meta, size=11, color=T3).pack(anchor="w", pady=(4, 0))
 
         actions = ctk.CTkFrame(inner, fg_color="transparent")
         actions.grid(row=0, column=1, sticky="e")
 
-        def start(pid=p["id"]): self.app.start_run(pid)
-        def edit(pid=p["id"]): self.app.open_editor(pid)
-        def flow(pid=p["id"]): self.app.open_flowchart(pid)
-        def dup(pid=p["id"]): self._dup(pid)
+        def start(pid=p["id"]):  self.app.start_run(pid)
+        def edit(pid=p["id"]):   self.app.open_editor(pid)
+        def flow(pid=p["id"]):   self.app.open_flowchart(pid)
+        def dup(pid=p["id"]):    self._dup(pid)
         def delete(pid=p["id"]): self._delete(pid)
 
         for txt, cmd, col in [
-            ("▶  Run", start, GREEN),
-            ("⎇  Flow", flow, ("#7c3aed","#7c3aed")),
-            ("✎  Edit", edit, ACC),
-            ("⧉  Copy", dup, ("#64748b","#475569")),
-            ("✕  Del", delete, DANGER),
+            ("▶  Run",  start,  GREEN),
+            ("⎇  Flow", flow,   ("#7c3aed","#7c3aed")),
+            ("✎  Edit", edit,   ACC),
+            ("⧉  Copy", dup,    ("#64748b","#475569")),
+            ("✕  Del",  delete, DANGER),
         ]:
-            btn(actions, txt, cmd, color=col, width=80, height=30, size=12).pack(side="left", padx=3)
+            btn(actions, txt, cmd, color=col,
+                width=80, height=30, size=12).pack(side="left", padx=3)
 
     def _dup(self, pid):
         protocols = self.app.protocols
@@ -1537,10 +1658,174 @@ class LibraryPage(PageBase):
         self.refresh()
 
     def _delete(self, pid):
-        if not messagebox.askyesno("Delete Protocol", "Delete this protocol? This cannot be undone."): return
+        if not messagebox.askyesno(
+                "Delete Protocol",
+                "Delete this protocol? This cannot be undone."): return
         self.app.protocols = [p for p in self.app.protocols if p["id"] != pid]
         save_protocols(self.app.protocols)
         self.refresh()
+
+    # ── Built-in Templates section ────────────────────────────────────────────
+    def _render_templates(self):
+        # Disclaimer banner
+        disc = ctk.CTkFrame(
+            self.scroll,
+            fg_color=("#fef9c3", "#1c1917"),
+            corner_radius=R_LG,
+            border_width=1,
+            border_color=("#fde68a", "#78350f"))
+        disc.grid(row=0, column=0, sticky="ew", pady=(0, 14))
+        label(disc,
+              "ℹ  These templates are general starting points. "
+              "Please adjust conditions according to your lab, reagent, instrument, and protocol requirements.",
+              size=12, color=("#92400e", "#fbbf24")).pack(padx=14, pady=9)
+
+        q          = self._search_var.get().lower()
+        cat_filter = self._tmpl_cat_var.get()
+
+        templates = self.app.templates
+        if q:
+            templates = [t for t in templates
+                         if q in t.get("name","").lower()
+                         or q in t.get("category","").lower()
+                         or q in " ".join(t.get("tags",[])).lower()
+                         or q in t.get("description","").lower()]
+        if cat_filter != "All Categories":
+            templates = [t for t in templates
+                         if t.get("category","") == cat_filter]
+
+        if not templates:
+            label(self.scroll, "No templates found.", size=14,
+                  color=T3).grid(row=1, column=0, pady=60)
+            return
+
+        # Group by category, preserve sorted order
+        from collections import defaultdict as _dd
+        by_cat = _dd(list)
+        for t in templates:
+            by_cat[t.get("category","Other")].append(t)
+
+        row = 1
+        for cat_name in sorted(by_cat):
+            # Category section header
+            cat_hdr = ctk.CTkFrame(self.scroll, fg_color="transparent")
+            cat_hdr.grid(row=row, column=0, sticky="ew", pady=(14, 4))
+            label(cat_hdr, cat_name, size=15, weight="bold").pack(side="left")
+            sep_line = ctk.CTkFrame(cat_hdr, fg_color=CARD_B, height=1)
+            sep_line.pack(side="left", fill="x", expand=True, padx=(12, 0))
+            row += 1
+            for tmpl in by_cat[cat_name]:
+                self._template_card(tmpl, row)
+                row += 1
+
+    def _template_card(self, tmpl, row_idx):
+        card = ctk.CTkFrame(
+            self.scroll,
+            fg_color=("#f0fdf4", "#052e16"),
+            corner_radius=R_LG,
+            border_width=2,
+            border_color=("#6ee7b7", "#059669"))
+        card.grid(row=row_idx, column=0, sticky="ew", pady=(0, 8))
+        card.grid_columnconfigure(0, weight=1)
+
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="x", padx=16, pady=12)
+        inner.grid_columnconfigure(0, weight=1)
+
+        left = ctk.CTkFrame(inner, fg_color="transparent")
+        left.grid(row=0, column=0, sticky="ew")
+
+        # ── Name row ─────────────────────────────────────────────────────────
+        name_row = ctk.CTkFrame(left, fg_color="transparent")
+        name_row.pack(fill="x", anchor="w")
+
+        # "TEMPLATE" pill badge
+        tmpl_pill = ctk.CTkFrame(
+            name_row, fg_color=("#6ee7b7","#065f46"), corner_radius=R_SM)
+        tmpl_pill.pack(side="left", padx=(0, 8))
+        label(tmpl_pill, "TEMPLATE", size=10,
+              color=("#064e3b","#d1fae5")).pack(padx=7, pady=2)
+
+        label(name_row, tmpl.get("name",""), size=15,
+              weight="bold").pack(side="left")
+
+        for tag in tmpl.get("tags", [])[:4]:
+            tb = ctk.CTkFrame(name_row,
+                              fg_color=("#d1fae5","#064e3b"), corner_radius=R_SM)
+            tb.pack(side="left", padx=(6, 0))
+            label(tb, tag, size=10, color=("#065f46","#6ee7b7")).pack(padx=7, pady=2)
+
+        # ── Description ──────────────────────────────────────────────────────
+        desc = tmpl.get("description","")
+        if desc:
+            label(left, (desc[:95] + "…") if len(desc) > 95 else desc,
+                  size=12, color=T2).pack(anchor="w", pady=(4, 0))
+
+        # ── Stats ─────────────────────────────────────────────────────────────
+        steps  = tmpl.get("steps", [])
+        total_m = sum(s.get("handsOnMinutes",0) + s.get("waitMinutes",0) for s in steps)
+        ho_m    = sum(s.get("handsOnMinutes",0) for s in steps)
+        meta = (f"{len(steps)} steps  ·  Total: {fmt_mins(total_m)}"
+                f"  ·  Hands-on: {fmt_mins(ho_m)}")
+        label(left, meta, size=11, color=T3).pack(anchor="w", pady=(4, 0))
+
+        # ── Use Template button ───────────────────────────────────────────────
+        acts = ctk.CTkFrame(inner, fg_color="transparent")
+        acts.grid(row=0, column=1, sticky="e", padx=(12, 0))
+        btn(acts, "＋ Use Template",
+            lambda t=tmpl: self._use_template(t),
+            color=GREEN, width=138, height=36, size=13).pack()
+
+    def _use_template(self, tmpl):
+        """Deep-copy a built-in template into a new user protocol and open the editor."""
+        import copy
+
+        p = new_protocol()
+        p["name"]        = tmpl.get("name", "Protocol")
+        p["category"]    = tmpl.get("category", "")
+        p["description"] = tmpl.get("description", "")
+        p["tags"]        = list(tmpl.get("tags", []))
+        p["source"] = {
+            "sourceType":       "template",
+            "sourceName":       f"Built-in Template: {tmpl.get('name','')}",
+            "sourceUrl":        tmpl.get("source_reference_url", ""),
+            "importedAt":       now_ts(),
+            "rawText":          "",
+            "originalFileName": tmpl.get("templateId", ""),
+            "notes":            tmpl.get("source_note", ""),
+        }
+
+        steps = []
+        for i, ts in enumerate(tmpl.get("steps", [])):
+            s = copy.deepcopy(ts)
+            s["id"]    = new_id()
+            s["order"] = i
+            # Ensure all fields from new_step() schema are present
+            s.setdefault("type",               "preparation")
+            s.setdefault("description",        "")
+            s.setdefault("reagents",           [])
+            s.setdefault("equipment",          [])
+            s.setdefault("handsOnMinutes",     5)
+            s.setdefault("waitMinutes",        0)
+            s.setdefault("bufferMinutes",      0)
+            s.setdefault("temperature",        "")
+            s.setdefault("centrifugeCondition","")
+            s.setdefault("shakingRotation",    "")
+            s.setdefault("checklist",          [])
+            s.setdefault("notes",              "")
+            s.setdefault("warnings",           "")
+            s.setdefault("substeps",           [])
+            steps.append(s)
+
+        p["steps"] = steps
+        self.app.protocols.append(p)
+        save_protocols(self.app.protocols)
+        messagebox.showinfo(
+            "Template Copied",
+            f'"{p["name"]}" has been added to your protocols.\n\n'
+            "You can now edit, rename, and customise it freely.\n"
+            "The original template is never modified.")
+        self.app.open_editor(p["id"])
 
 # ─── Editor ───────────────────────────────────────────────────────────────────
 class EditorPage(PageBase):
@@ -6737,6 +7022,7 @@ class BenchFlowApp(ctk.CTk):
         self.schedule = load_schedule()
         self.categories = load_categories()
         self.tags = load_tags()
+        self.templates = load_templates()
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
