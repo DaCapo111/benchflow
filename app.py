@@ -32,8 +32,13 @@ RUNS_FILE       = APP_DIR / "runs.json"
 CATEGORIES_FILE = APP_DIR / "categories.json"
 TAGS_FILE       = APP_DIR / "tags.json"
 SCHEDULE_FILE   = APP_DIR / "schedule.json"
-# Built-in protocol templates directory (ships alongside app.py)
-TEMPLATES_DIR   = Path(__file__).parent / "templates"
+# Built-in protocol templates directory.
+# When frozen by PyInstaller, data files live in sys._MEIPASS.
+# When running from source, they sit next to app.py.
+_APP_BASE = (Path(sys._MEIPASS)      # type: ignore[attr-defined]
+             if getattr(sys, "frozen", False)
+             else Path(__file__).parent)
+TEMPLATES_DIR   = _APP_BASE / "templates"
 
 # ─── Palette ──────────────────────────────────────────────────────────────────
 # (light, dark)
