@@ -2548,10 +2548,11 @@ class RunPage(PageBase):
         self._session_start_ts    = None
         self._temp_block_indices  = []
         self._autosave_job        = None
+        # Flag: show resume dialog the next time the user opens Run Mode.
+        # NOT at startup — showing a grab_set() dialog at startup while the
+        # Dashboard is visible locks the whole app.
+        self._pending_resume      = RUNTIME_FILE.exists()
         self._build()
-        # Offer to resume if a checkpoint exists from a previous crash / close
-        if RUNTIME_FILE.exists():
-            self.after(600, self._offer_resume)
 
     def _build(self):
         self.grid_columnconfigure(0, minsize=230, weight=0)
@@ -4250,6 +4251,12 @@ class RunPage(PageBase):
         self._select_proto_obj(protocol)
 
     def refresh(self):
+        # Offer session resume the first time the user opens Run Mode.
+        # Done here (not at __init__) so the main window is fully visible
+        # and the dialog parent is the active page, not a hidden frame.
+        if getattr(self, "_pending_resume", False):
+            self._pending_resume = False
+            self.after(120, self._offer_resume)
         self._refresh_proto_panel()
         if not self.protocol:
             self._show_topbar_controls()
