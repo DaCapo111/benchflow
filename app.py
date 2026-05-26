@@ -654,7 +654,10 @@ class ScrollFrame(ctk.CTkScrollableFrame):
                 except (NotImplementedError, tk.TclError):
                     pass
 
-    def _refresh_scroll_bindings(self):
+    def _bind_all_children(self):
+        """Bind scroll inputs to every current child widget — one-shot, no reschedule.
+        Safe to call any number of times; already-bound widgets are skipped via
+        the _scroll_bound_widgets set so there is no binding accumulation."""
         def bind_tree(widget):
             self._bind_scroll_inputs(widget)
             for child in widget.winfo_children():
@@ -662,7 +665,13 @@ class ScrollFrame(ctk.CTkScrollableFrame):
         try:
             bind_tree(self)
         except tk.TclError:
-            return
+            pass
+
+    def _refresh_scroll_bindings(self):
+        """Periodic (5 s) rebind pass — exactly ONE chain exists per ScrollFrame
+        instance, started in __init__. Do NOT call this directly from outside;
+        use _bind_all_children() instead to avoid spawning extra chains."""
+        self._bind_all_children()
         self.after(5000, self._refresh_scroll_bindings)
 
     def _on_scroll_input(self, event):
@@ -4125,9 +4134,10 @@ class RunPage(PageBase):
         self._show_empty()
 
     def _rebind_scroll(self, widget=None):
-        """Trigger immediate scroll re-binding on the main content ScrollFrame."""
+        """Bind scroll inputs on all current step-card widgets.
+        Uses _bind_all_children() — does NOT spawn a new recurring chain."""
         try:
-            self._main._refresh_scroll_bindings()
+            self._main._bind_all_children()
         except Exception:
             pass
 
