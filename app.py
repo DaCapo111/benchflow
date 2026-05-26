@@ -32,6 +32,7 @@ RUNS_FILE       = APP_DIR / "runs.json"
 CATEGORIES_FILE = APP_DIR / "categories.json"
 TAGS_FILE       = APP_DIR / "tags.json"
 SCHEDULE_FILE   = APP_DIR / "schedule.json"
+RUNTIME_FILE    = APP_DIR / "runtime_session.json"  # crash-recovery checkpoint
 # Built-in protocol templates directory.
 # When frozen by PyInstaller, data files live in sys._MEIPASS.
 # When running from source, they sit next to app.py.
@@ -367,6 +368,13 @@ def load_tags():
 
 def save_tags(tags):
     save_terms(TAGS_FILE, tags)
+
+def _discard_runtime_session():
+    """Delete the crash-recovery checkpoint file (session complete or user discarded)."""
+    try:
+        RUNTIME_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 def load_schedule():
     if SCHEDULE_FILE.exists():
@@ -2428,7 +2436,7 @@ class AddBlockDialog(ctk.CTkToplevel):
         self.withdraw()
         self.title("Add Temporary Block")
         self.resizable(True, True)
-        self._type_var = ctk.StringVar(value="preparation")
+        self._type_var = ctk.StringVar(value="action")   # must match BLOCK_TYPES[0][0]
         self._pos_var  = ctk.StringVar(value="end")
         self._build()
         _show_dialog(self, parent, 480, 500)
@@ -2490,17 +2498,23 @@ class AddBlockDialog(ctk.CTkToplevel):
         btn(brow, "Add Block", self._confirm, color=ACC, width=120).pack(side="right")
 
     def _confirm(self):
-        title = self.e_title.get().strip() or "Unnamed Block"
-        desc  = self.tb_desc.get("0.0","end").strip()
-        try: mins = float(self.e_time.get().strip() or "5")
-        except: mins = 5.0
+        # Read ALL widget values BEFORE destroy() — accessing Tcl vars after
+        # destroy() is unreliable on some CTk/Tk versions.
+        title     = self.e_title.get().strip() or "Unnamed Block"
+        desc      = self.tb_desc.get("0.0", "end").strip()
+        position  = self._pos_var.get()
         btype_key = self._type_var.get()
-        step_type = next((t[2] for t in self.BLOCK_TYPES if t[0] == btype_key), "custom")
+        try:
+            mins = float(self.e_time.get().strip() or "5")
+        except Exception:
+            mins = 5.0
+        step_type = next(
+            (t[2] for t in self.BLOCK_TYPES if t[0] == btype_key), "custom")
         self.destroy()
         self.on_confirm({
             "title": title, "description": desc,
             "time_mins": mins, "step_type": step_type,
-            "position": self._pos_var.get(),
+            "position": position,
         })
 
 
@@ -2533,7 +2547,11 @@ class RunPage(PageBase):
         self._timeline            = []
         self._session_start_ts    = None
         self._temp_block_indices  = []
+        self._autosave_job        = None
         self._build()
+        # Offer to resume if a checkpoint exists from a previous crash / close
+        if RUNTIME_FILE.exists():
+            self.after(600, self._offer_resume)
 
     def _build(self):
         self.grid_columnconfigure(0, minsize=230, weight=0)
@@ -2708,6 +2726,7 @@ class RunPage(PageBase):
         self._refresh_proto_panel()
         self._render_steps()
         self._show_topbar_controls()
+        self._autosave()
 
     def _used_secs(self, sr):
         if sr["original_secs"] > 0:
@@ -3071,7 +3090,12 @@ class RunPage(PageBase):
         nb.pack(fill="x")
         def save_note(ev=None, i=idx):
             self._step_states[i]["notes"] = nb.get("0.0","end").strip()
+            self._autosave()
         nb.bind("<KeyRelease>", save_note)
+
+        # Restore visual state from sr["status"] so a mid-run rebuild
+        # (e.g. adding a temp block) doesn't reset all cards to idle.
+        self._restore_step_visual(idx)
 
     # ── TIMER ENGINE ──────────────────────────────────────────────────────────
     def _start_step(self, idx):
@@ -3098,6 +3122,7 @@ class RunPage(PageBase):
                 sr["status_dot"].configure(fg_color=self.ST_COLOR[self.ST_PAUSED])
             self._log(f"Paused Step {idx+1}: {step_title}")
             self._refresh_proto_panel()
+            self._autosave()
         elif sr["status"] in (self.ST_IDLE, self.ST_PAUSED):
             if sr["status"] == self.ST_IDLE:
                 if is_countdown:
@@ -3113,6 +3138,7 @@ class RunPage(PageBase):
             if sr.get("status_dot"):
                 sr["status_dot"].configure(fg_color=self.ST_COLOR[self.ST_RUNNING])
             self._refresh_proto_panel()
+            self._autosave()
             if is_countdown:
                 # Anchor wall clock so tick computes remaining from real time
                 sr["start_mono"]      = time.monotonic()
@@ -3331,6 +3357,7 @@ class RunPage(PageBase):
         sr["_undo_job"] = self.after(10000, lambda i=idx: self._confirm_complete(i))
         self._undo_countdown_tick(idx, 9)
         self._refresh_proto_panel()
+        self._autosave()
         # Only ask to save adjusted time for countdown steps with actual timers
         if sr["adjusted"] and sr["original_secs"] > 0:
             self._ask_save_adjusted(idx)
@@ -3370,6 +3397,7 @@ class RunPage(PageBase):
         sr["_undo_job"] = self.after(10000, lambda i=idx: self._confirm_complete(i))
         self._undo_countdown_tick(idx, 9)
         self._refresh_proto_panel()
+        self._autosave()
         if self._seq_mode and idx == self._seq_idx:
             self._advance_sequential()
 
@@ -3494,6 +3522,66 @@ class RunPage(PageBase):
         step_title = self.protocol["steps"][idx].get("title","?") if self.protocol else "?"
         self._log(f"Reset Block — Step {idx+1}: {step_title}")
         self._refresh_proto_panel()
+        self._autosave()
+
+    def _restore_step_visual(self, idx):
+        """Re-apply the correct visual state after step cards are rebuilt.
+
+        Called at the end of _step_card() so that steps which were running /
+        paused / completed retain their appearance when the full card list is
+        recreated (e.g. after adding a temp block mid-run).
+        """
+        sr = self._step_states[idx]
+        st = sr["status"]
+        is_countdown = sr["original_secs"] > 0
+
+        # Status dot
+        if sr.get("status_dot"):
+            sr["status_dot"].configure(fg_color=self.ST_COLOR[st])
+
+        if st in (self.ST_COMPLETED, self.ST_SKIPPED):
+            # Swap to done-controls panel
+            if sr.get("_ctrl_norm") and sr.get("_ctrl_done"):
+                sr["_ctrl_norm"].pack_forget()
+                sr["_ctrl_done"].pack(fill="x")
+            if sr.get("_undo_lbl"):
+                if sr.get("_undo_job"):
+                    # Undo window still open — show generic "Undo" prompt
+                    action = "✓ Completed" if st == self.ST_COMPLETED else "⤼ Skipped"
+                    col    = GREEN if st == self.ST_COMPLETED else self.ST_COLOR[self.ST_SKIPPED][0]
+                    sr["_undo_lbl"].configure(text=f"{action} — Undo", text_color=col)
+                else:
+                    if st == self.ST_COMPLETED:
+                        sr["_undo_lbl"].configure(text="✓ Done", text_color=GREEN)
+                    else:
+                        sr["_undo_lbl"].configure(
+                            text="⤼ Skipped",
+                            text_color=self.ST_COLOR[self.ST_SKIPPED][0])
+        elif st == self.ST_RUNNING:
+            if sr.get("btn_start"):
+                sr["btn_start"].configure(
+                    text="⏸  Pause" if is_countdown else "⏸  Active",
+                    fg_color=("#e2e8f0","#334155"), text_color=T1)
+        elif st == self.ST_PAUSED:
+            if sr.get("btn_start"):
+                sr["btn_start"].configure(
+                    text="▶  Resume" if is_countdown else "▶  Mark Active",
+                    fg_color=ACC if is_countdown else ("#e2e8f0","#334155"),
+                    text_color=("#fff","#fff") if is_countdown else T1)
+
+        # Restore HO stopwatch button label
+        if sr.get("ho_status") == "running" and sr.get("ho_btn"):
+            sr["ho_btn"].configure(text="⏸  Pause tracking",
+                                   fg_color=ORANGE, text_color=("#fff","#fff"))
+        elif sr.get("ho_status") == "stopped" and sr.get("ho_btn"):
+            sr["ho_btn"].configure(text="▶  Resume hands-on",
+                                   fg_color=("#e2e8f0","#334155"), text_color=T1)
+
+        # Refresh countdown display (label text + progress bar)
+        self._update_timer_display(idx)
+        if sr.get("ho_timer_lbl"):
+            sr["ho_timer_lbl"].configure(
+                text=fmt_secs(sr.get("ho_elapsed_secs", 0)))
 
     def _ask_save_adjusted(self, idx):
         sr   = self._step_states[idx]
@@ -3621,6 +3709,200 @@ class RunPage(PageBase):
                 canvas.yview_moveto(max(0.0, frac - 0.05))
         except Exception:
             pass
+
+    # ── SESSION PERSISTENCE (crash recovery) ─────────────────────────────────
+    _AUTOSAVE_DELAY_MS = 1500   # debounce: at most one write per 1.5 s
+    _autosave_job: "int | None" = None
+
+    def _autosave(self):
+        """Debounce-save: schedules a checkpoint write in 1.5 s.
+        If called again before the timer fires, the previous one is cancelled
+        so we never spam the disk during rapid state changes."""
+        if getattr(self, "_autosave_job", None):
+            self.after_cancel(self._autosave_job)
+        self._autosave_job = self.after(
+            self._AUTOSAVE_DELAY_MS, self._write_runtime_session)
+
+    def _write_runtime_session(self):
+        """Serialize current run state to RUNTIME_FILE for crash recovery."""
+        self._autosave_job = None
+        if not self.protocol:
+            _discard_runtime_session()
+            return
+        step_states_data = []
+        for sr in self._step_states:
+            # Snapshot accurate remaining for running timers
+            if sr["status"] == self.ST_RUNNING and sr.get("start_mono") is not None:
+                elapsed = time.monotonic() - sr["start_mono"]
+                live_remaining = max(0.0,
+                    sr.get("start_remaining", sr["timer_secs"]) - elapsed)
+            else:
+                live_remaining = sr["timer_secs"]
+            step_states_data.append({
+                "status":              sr["status"],
+                "timer_secs":          live_remaining,
+                "original_secs":       sr["original_secs"],
+                "adjusted_total_secs": sr.get("adjusted_total_secs", sr["original_secs"]),
+                "elapsed_secs":        sr.get("elapsed_secs", 0),
+                "timer_secs_at_start": sr.get("timer_secs_at_start", sr["original_secs"]),
+                "adjusted":            sr.get("adjusted", False),
+                "notes":               sr.get("notes", ""),
+                "ho_elapsed_secs":     sr.get("ho_elapsed_secs", 0),
+                "ho_status":           sr.get("ho_status", "idle"),
+                "is_temp":             sr.get("is_temp", False),
+            })
+        payload = {
+            "version":           1,
+            "saved_at_ts":       now_ts(),
+            "protocol_id":       self.protocol["id"],
+            "protocol_snapshot": self.protocol,   # includes temp blocks added mid-run
+            "session_start_ts":  self._session_start_ts,
+            "timeline":          self._timeline,
+            "step_states":       step_states_data,
+            "seq_mode":          self._seq_mode,
+            "seq_idx":           self._seq_idx,
+        }
+        try:
+            RUNTIME_FILE.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass   # never crash the app due to a save failure
+
+    def _offer_resume(self):
+        """Shown on startup when a crash-recovery file exists."""
+        try:
+            data = json.loads(RUNTIME_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            _discard_runtime_session()
+            return
+        if data.get("version") != 1:
+            _discard_runtime_session()
+            return
+        proto_name = (data.get("protocol_snapshot") or {}).get("name", "?")
+        saved_ts   = data.get("saved_at_ts", 0)
+        try:
+            saved_str = datetime.fromtimestamp(
+                saved_ts / 1000).strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            saved_str = "?"
+
+        d = ctk.CTkToplevel(self)
+        d.withdraw()
+        d.title("Resume Previous Session?")
+        d.resizable(False, False)
+        f = ctk.CTkFrame(d, fg_color=BG, corner_radius=R_XL)
+        f.pack(fill="both", expand=True, padx=24, pady=24)
+        label(f, "Resume previous session?", size=15,
+              weight="bold").pack(anchor="w")
+        label(f, f"Protocol:   {proto_name}",
+              size=13, color=T2).pack(anchor="w", pady=(8, 2))
+        label(f, f"Last saved:  {saved_str}",
+              size=12, color=T3).pack(anchor="w", pady=(0, 16))
+
+        def _resume():
+            d.destroy()
+            self._restore_from_runtime(data)
+
+        def _discard():
+            d.destroy()
+            _discard_runtime_session()
+
+        btn(f, "▶  Resume Session", _resume,
+            color=GREEN, text_color=("#fff","#fff"),
+            width=200, height=42).pack(anchor="w", pady=(0, 8))
+        btn(f, "Discard", _discard,
+            color=("#e2e8f0","#334155"), text_color=T1,
+            width=110, height=38).pack(anchor="w")
+        _show_dialog(d, self, 420, 260)
+
+    def _restore_from_runtime(self, data):
+        """Rebuild RunPage state from a crash-recovery snapshot."""
+        proto = data.get("protocol_snapshot")
+        if not proto:
+            _discard_runtime_session()
+            return
+
+        self._cancel_all_timers()
+        self.protocol           = proto
+        self._session_start_ts  = data.get("session_start_ts") or now_ts()
+        self._timeline          = list(data.get("timeline", []))
+        self._seq_mode          = data.get("seq_mode", False)
+        self._seq_idx           = int(data.get("seq_idx", -1))
+        self._temp_block_indices = []
+
+        now_ts_val           = now_ts()
+        saved_ts             = data.get("saved_at_ts", now_ts_val)
+        elapsed_since_save   = max(0.0, (now_ts_val - saved_ts) / 1000.0)  # seconds
+
+        saved_states = data.get("step_states", [])
+        steps        = proto.get("steps", [])
+        self._step_states = []
+
+        for i, step in enumerate(steps):
+            saved = saved_states[i] if i < len(saved_states) else {}
+            stype  = step.get("type", "custom")
+            wt_m   = step.get("waitMinutes", 0)
+            buf_m  = step.get("bufferMinutes", 0)
+            if wt_m > 0 or STEP_TIMER_MODE.get(stype) == "countdown":
+                default_secs = int((wt_m + buf_m) * 60)
+            else:
+                default_secs = 0
+
+            saved_status = saved.get("status", self.ST_IDLE)
+            saved_secs   = float(saved.get("timer_secs", default_secs))
+
+            # Adjust for time elapsed while the app was closed
+            if saved_status == self.ST_RUNNING:
+                restored_secs   = max(0.0, saved_secs - elapsed_since_save)
+                # Restore as PAUSED — user resumes manually; avoids silent overrun
+                restored_status = self.ST_PAUSED
+            else:
+                restored_secs   = saved_secs
+                restored_status = saved_status
+
+            if saved.get("is_temp"):
+                self._temp_block_indices.append(i)
+
+            self._step_states.append({
+                "status":               restored_status,
+                "timer_secs":           float(restored_secs),
+                "original_secs":        int(saved.get("original_secs", default_secs)),
+                "adjusted_total_secs":  int(saved.get("adjusted_total_secs", default_secs)),
+                "elapsed_secs":         int(saved.get("elapsed_secs", 0)),
+                "timer_secs_at_start":  float(saved.get("timer_secs_at_start", default_secs)),
+                "adjusted":             bool(saved.get("adjusted", False)),
+                "notes":                saved.get("notes", ""),
+                "timer_job":            None,
+                "timer_lbl":            None,
+                "status_dot":           None,
+                "prog_var":             None,
+                "btn_start":            None,
+                "card":                 None,
+                "is_temp":              bool(saved.get("is_temp", False)),
+                "start_mono":           None,
+                "start_remaining":      float(restored_secs),
+                "ho_elapsed_secs":      int(saved.get("ho_elapsed_secs", 0)),
+                "ho_timer_job":         None,
+                "ho_timer_lbl":         None,
+                "ho_btn":               None,
+                "ho_status":            "idle",   # hands-on always resets on restore
+                "ho_start_mono":        None,
+                "ho_start_elapsed":     0,
+                "_pre_complete_status": self.ST_IDLE,
+                "_undo_job":            None,
+                "_ctrl_norm":           None,
+                "_ctrl_done":           None,
+                "_undo_lbl":            None,
+                "_ctrl_container":      None,
+            })
+
+        self._log(
+            f"Session restored (was saved {datetime.fromtimestamp(saved_ts/1000).strftime('%H:%M')})")
+        _discard_runtime_session()   # clear the file — we've consumed it
+        self._refresh_proto_panel()
+        self._render_steps()
+        self._show_topbar_controls()
+        self._autosave()   # write fresh checkpoint immediately
 
     # ── FINISH SESSION ─────────────────────────────────────────────────────────
     def _maybe_finish(self):
@@ -3766,6 +4048,7 @@ class RunPage(PageBase):
         runs.insert(0, session)
         self.app.runs = runs
         save_runs(runs)
+        _discard_runtime_session()   # session complete — clear crash-recovery file
         has_temp = any(s.get("tempBlock") for s in self.protocol.get("steps",[]))
         if has_temp:
             self._ask_save_temp_blocks()
@@ -3922,7 +4205,9 @@ class RunPage(PageBase):
             if ins not in self._temp_block_indices:
                 self._temp_block_indices.append(ins)
             self._log(f"Added temp block: {block['title']}")
-            self._render_steps()
+            # Defer so dialog window visually closes before the heavy rebuild
+            self.after(0, self._render_steps)
+            self._autosave()
         AddBlockDialog(self, _on_confirmed)
 
     def _ask_save_temp_blocks(self):
