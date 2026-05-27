@@ -1,5 +1,5 @@
 """
-Run Mode page — Phase 3: full timer implementation.
+Run Mode page — Phase 3.5: full timer + sequential mode + progress bars.
 
 Architecture
 ------------
@@ -11,11 +11,17 @@ Architecture
 - Wall-clock timer math: remaining = planned - (now - started_at - paused_time).
   Accurate across sleep, window switches, and app restart.
 
-No full re-render on:
-  - timer tick     → update_timer() on active card only
-  - step complete  → apply_state() on that one card
-  - protocol switch → render_step_cards_once()
-  - undo           → apply_state() on that one card
+Phase 3.5 additions
+-------------------
+- Sequential mode: auto-start next idle step after each complete
+- QProgressBar per step card, updated only for running steps on tick
+- Remove temp block button with confirmation dialog
+- Notes: apply_state() no longer overwrites notes while user is typing
+- Left panel step list is clickable → focus_step() scrolls to card
+- "💾 Save Session" button: save to notebook + ask to clear/keep
+- Info bar shows N steps / X done / Y skipped live counts
+- Logging: start_sequential, auto_start_next, remove_temp_block,
+  save_to_notebook, notes_autosave, focus_step
 """
 from __future__ import annotations
 
@@ -27,9 +33,11 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-    QPushButton, QScrollArea, QSizePolicy, QSplitter, QVBoxLayout, QWidget,
+    QMessageBox, QPushButton, QScrollArea, QSizePolicy,
+    QSplitter, QVBoxLayout, QWidget,
 )
 
 from qt_app.theme import Colors, Fonts, Radii
@@ -124,17 +132,19 @@ class _UndoSnackbar(QFrame):
         self._on_undo()
 
 
-
 # ── RunModePage ───────────────────────────────────────────────────────────────
 
 class RunModePage(BasePage):
-    """Full Run Mode — wall-clock timers, autosave, session restore."""
+    """Full Run Mode — wall-clock timers, autosave, session restore, sequential mode."""
 
     def __init__(self, app: "BenchFlowApp", parent: QWidget | None = None) -> None:  # type: ignore[name-defined]
         super().__init__(app, parent)
         self._session: RunModeSession | None = None
         self._cards: list[StepCard] = []
         self._snackbar: _UndoSnackbar | None = None
+
+        # Sequential mode state
+        self._sequential: bool = False
 
         # Single global tick timer
         self._tick_timer = QTimer(self)
@@ -166,7 +176,7 @@ class RunModePage(BasePage):
         hdr_w.setStyleSheet(f"background: {Colors.BG_PAGE};")
         hdr_lay = QHBoxLayout(hdr_w)
         hdr_lay.setContentsMargins(28, 22, 28, 14)
-        hdr_lay.setSpacing(12)
+        hdr_lay.setSpacing(8)
 
         col = QVBoxLayout()
         col.setSpacing(2)
@@ -175,12 +185,46 @@ class RunModePage(BasePage):
         hdr_lay.addLayout(col)
         hdr_lay.addStretch()
 
+        # Sequential mode toggle
+        self._seq_btn = QPushButton("▶ Sequential")
+        self._seq_btn.setMinimumWidth(120)
+        self._seq_btn.setMinimumHeight(36)
+        self._seq_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._seq_btn.setCheckable(True)
+        self._seq_btn.setVisible(False)
+        self._seq_btn.setStyleSheet(
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  padding: 6px 16px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+            f"QPushButton:checked {{ background: {Colors.ACCENT}; color: white;"
+            f"  border-color: {Colors.ACCENT}; }}"
+            f"QPushButton:checked:hover {{ background: {Colors.ACCENT_HOVER}; }}"
+        )
+        self._seq_btn.toggled.connect(self._on_sequential_toggled)
+        hdr_lay.addWidget(self._seq_btn)
+
         # Add Block button
         self._add_block_btn = PrimaryButton("＋ Block")
-        self._add_block_btn.setMinimumWidth(110)
+        self._add_block_btn.setMinimumWidth(100)
         self._add_block_btn.setVisible(False)
         self._add_block_btn.clicked.connect(self._on_add_block)
         hdr_lay.addWidget(self._add_block_btn)
+
+        # Save Session button
+        self._save_btn = QPushButton("💾 Save")
+        self._save_btn.setMinimumWidth(90)
+        self._save_btn.setMinimumHeight(36)
+        self._save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._save_btn.setVisible(False)
+        self._save_btn.setStyleSheet(
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  padding: 6px 16px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+        )
+        self._save_btn.clicked.connect(self._on_save_session)
+        hdr_lay.addWidget(self._save_btn)
 
         # End Run button
         self._end_run_btn = PrimaryButton("■ End Run")
@@ -240,15 +284,33 @@ class RunModePage(BasePage):
         self._proto_list.currentItemChanged.connect(self._on_proto_selected)
         lay.addWidget(self._proto_list, stretch=1)
 
-        # Step status mini-list (visible during active session)
+        # Step status clickable list (visible during active session)
         lay.addWidget(HSeparator())
-        self._step_status_widget = QWidget()
-        self._step_status_widget.setVisible(False)
-        step_lay = QVBoxLayout(self._step_status_widget)
-        step_lay.setContentsMargins(0, 6, 0, 0)
-        step_lay.setSpacing(2)
-        self._step_status_labels: list[QLabel] = []
-        lay.addWidget(self._step_status_widget)
+
+        self._steps_hdr = QLabel("Steps")
+        self._steps_hdr.setStyleSheet(
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
+            f"font-weight: 600; padding-left: 4px;"
+        )
+        self._steps_hdr.setVisible(False)
+        lay.addWidget(self._steps_hdr)
+
+        self._step_status_list = QListWidget()
+        self._step_status_list.setStyleSheet(
+            f"QListWidget {{ background: transparent; border: none; outline: none;"
+            f"  font-size: {Fonts.SIZE_XS}px; }}"
+            f"QListWidget::item {{ padding: 3px 4px; border-radius: 6px; margin: 1px 0; }}"
+            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.ACCENT}20; }}"
+        )
+        self._step_status_list.setVisible(False)
+        self._step_status_list.setMaximumHeight(220)
+        self._step_status_list.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._step_status_list.itemClicked.connect(self._on_step_list_clicked)
+        lay.addWidget(self._step_status_list)
+
         return w
 
     def _build_right_panel(self) -> QWidget:
@@ -258,7 +320,7 @@ class RunModePage(BasePage):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
-        # Info bar (protocol name, step count, duration)
+        # Info bar (protocol name, step counts)
         self._info_bar = QWidget()
         self._info_bar.setStyleSheet(
             f"background: {Colors.BG_SIDEBAR}; border-bottom: 1px solid {Colors.BORDER};"
@@ -267,11 +329,12 @@ class RunModePage(BasePage):
         info_lay.setContentsMargins(20, 10, 20, 10)
         info_lay.setSpacing(14)
 
-        self._info_name  = QLabel("—")
+        self._info_name = QLabel("—")
         self._info_name.setStyleSheet(
             f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
         )
         info_lay.addWidget(self._info_name)
+
         self._info_meta = QLabel("")
         self._info_meta.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
@@ -289,11 +352,6 @@ class RunModePage(BasePage):
         info_lay.addWidget(self._session_badge)
 
         lay.addWidget(self._info_bar)
-
-        # Snackbar overlay (placed manually over scroll area)
-        self._snackbar_container = QWidget(w)
-        self._snackbar_container.setVisible(False)
-        self._snackbar_container.raise_()
 
         # Scroll area for step cards
         self._step_scroll = QScrollArea()
@@ -345,11 +403,15 @@ class RunModePage(BasePage):
 
         logger.info(f"select_protocol: {protocol.get('name', '?')}")
         self._session = RunModeSession.new(protocol)
+        self._sequential = False
+        self._seq_btn.setChecked(False)
         self._render_step_cards_once()
         self._schedule_save()
         self._tick_timer.start()
         self._add_block_btn.setVisible(True)
+        self._save_btn.setVisible(True)
         self._end_run_btn.setVisible(True)
+        self._seq_btn.setVisible(True)
         self._session_badge.setText("● Active session")
         self._session_badge.setVisible(True)
 
@@ -369,21 +431,16 @@ class RunModePage(BasePage):
 
         proto = self._session.protocol_snapshot
         name = proto.get("name", "Untitled")
-        steps_all = self._session.step_states  # includes temp blocks
         proto_steps = self._session.steps()
 
         self._info_name.setText(name)
-        n = len(proto_steps)
-        total_min = DataService.protocol_total_minutes(proto)
-        self._info_meta.setText(
-            f"{n} steps  ·  ~{DataService.format_duration(total_min)}"
-        )
+        self._update_session_stats()
 
         # Build left-panel mini step status
         self._update_left_step_status()
 
         # Create cards
-        for state in steps_all:
+        for state in self._session.step_states:
             step_data = self._session.step_data(state)
             card = StepCard(state.step_idx, step_data, state, parent=self._step_content)
             self._wire_card(card)
@@ -401,6 +458,7 @@ class RunModePage(BasePage):
         card.action_skip.connect(self._on_skip)
         card.action_undo_skip.connect(self._on_undo_skip)
         card.action_reset.connect(self._on_reset)
+        card.action_remove.connect(self._on_remove_block)
         card.action_adjust.connect(self._on_adjust)
         card.notes_changed.connect(self._on_notes_changed)
 
@@ -412,6 +470,7 @@ class RunModePage(BasePage):
         state = self._session.step_states[idx]
         self._cards[idx].apply_state(state)
         self._update_left_step_status()
+        self._update_session_stats()
 
     # ── Timer tick ────────────────────────────────────────────────────────────
 
@@ -421,7 +480,9 @@ class RunModePage(BasePage):
         now = time.time()
         for state in self._session.step_states:
             if state.status == "running" and state.step_idx < len(self._cards):
-                self._cards[state.step_idx].update_timer(state, now)
+                card = self._cards[state.step_idx]
+                card.update_timer(state, now)
+                card.update_progress(state, now)
 
     # ── Step actions ──────────────────────────────────────────────────────────
 
@@ -464,8 +525,15 @@ class RunModePage(BasePage):
         self._update_card(idx)
         self._schedule_save()
 
-        # Show undo snackbar
+        # Clear focus on completed card
+        self._cards[idx].set_focused(False)
+
+        # Undo snackbar
         self._show_snackbar(title, lambda i=idx: self._on_undo_complete(i))
+
+        # Sequential mode: auto-start next
+        if self._sequential:
+            self._advance_sequential(idx)
 
     def _on_undo_complete(self, idx: int) -> None:
         if not self._validate(idx):
@@ -517,6 +585,118 @@ class RunModePage(BasePage):
             return
         self._session.step_states[idx].notes = text
         self._notes_save_timer.start()
+        logger.info(f"notes_autosave: step={idx} len={len(text)}")
+
+    # ── Sequential mode ───────────────────────────────────────────────────────
+
+    def _on_sequential_toggled(self, checked: bool) -> None:
+        self._sequential = checked
+        if checked:
+            self._start_sequential()
+        else:
+            # Clear all focus indicators
+            for card in self._cards:
+                card.set_focused(False)
+
+    def _start_sequential(self) -> None:
+        """Enable sequential mode and start the first idle step."""
+        if self._session is None:
+            return
+        first_idle = next(
+            (s.step_idx for s in self._session.step_states if s.status == "idle"),
+            None
+        )
+        if first_idle is not None:
+            self._on_start(first_idle)
+            self._focus_step(first_idle)
+            logger.info(f"start_sequential: first_step={first_idle}")
+        else:
+            logger.info("start_sequential: no idle steps found")
+
+    def _advance_sequential(self, completed_idx: int) -> None:
+        """After completing a step, auto-start the next idle step."""
+        if self._session is None or not self._sequential:
+            return
+        next_idx = next(
+            (s.step_idx for s in self._session.step_states
+             if s.step_idx > completed_idx and s.status == "idle"),
+            None
+        )
+        if next_idx is not None:
+            self._on_start(next_idx)
+            self._focus_step(next_idx)
+            logger.info(f"auto_start_next: step={next_idx}")
+        else:
+            # No more idle steps — deactivate sequential
+            self._sequential = False
+            self._seq_btn.setChecked(False)
+            for card in self._cards:
+                card.set_focused(False)
+            logger.info("auto_start_next: all steps done, sequential mode off")
+
+    # ── Step focus (scroll to card) ───────────────────────────────────────────
+
+    def _focus_step(self, idx: int) -> None:
+        """Scroll right panel to show card at idx, highlight it."""
+        if idx >= len(self._cards):
+            return
+        card = self._cards[idx]
+        self._step_scroll.ensureWidgetVisible(card, 0, 20)
+
+        # Update focused state on all cards
+        for i, c in enumerate(self._cards):
+            c.set_focused(i == idx)
+
+        # Sync left panel selection
+        if idx < self._step_status_list.count():
+            self._step_status_list.setCurrentRow(idx)
+
+        logger.info(f"focus_step: idx={idx}")
+
+    def _on_step_list_clicked(self, item: QListWidgetItem) -> None:
+        """Left panel step clicked → focus matching card."""
+        idx = item.data(Qt.ItemDataRole.UserRole)
+        if idx is not None:
+            self._focus_step(idx)
+
+    # ── Remove Temporary Block ────────────────────────────────────────────────
+
+    def _on_remove_block(self, idx: int) -> None:
+        if self._session is None or not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        if not state.is_temp:
+            return
+        sd = self._session.step_data(state)
+        title = sd.get("title", "this block")
+
+        ret = QMessageBox.question(
+            self,
+            "Remove Block",
+            f"Remove temporary block '{title}'?\nThis cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if ret != QMessageBox.StandardButton.Yes:
+            return
+
+        # Remove card from layout and list
+        card = self._cards[idx]
+        self._step_layout.removeWidget(card)
+        card.deleteLater()
+        self._cards.pop(idx)
+
+        # Remove from session (re-indexes step_states)
+        self._session.remove_temp_block(idx)
+
+        # Re-index remaining cards
+        for i in range(idx, len(self._cards)):
+            self._cards[i].set_idx(i)
+
+        self._update_left_step_status()
+        self._update_session_stats()
+        self._schedule_save()
+        logger.info(f"remove_temp_block: idx={idx} title={title}")
 
     # ── Add Temporary Block ───────────────────────────────────────────────────
 
@@ -544,33 +724,68 @@ class RunModePage(BasePage):
         self._step_layout.insertWidget(count - 1, card)
 
         self._update_left_step_status()
+        self._update_session_stats()
         self._schedule_save()
         logger.info(f"add_block: title={title} type={btype} dur={dur_m}m")
+
+    # ── Save Session to Lab Notebook ──────────────────────────────────────────
+
+    def _on_save_session(self) -> None:
+        if self._session is None:
+            return
+        self._save_to_notebook()
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Session Saved")
+        msg.setText("Session saved to Lab Notebook.")
+        msg.setInformativeText("Clear the current session state and start fresh?")
+        clear_btn = msg.addButton("Clear Session", QMessageBox.ButtonRole.DestructiveRole)
+        keep_btn  = msg.addButton("Keep Running",  QMessageBox.ButtonRole.RejectRole)
+        msg.setDefaultButton(keep_btn)
+        msg.exec()
+
+        if msg.clickedButton() is clear_btn:
+            self._clear_session_state()
+
+        logger.info("save_to_notebook: manual_save")
 
     # ── End Run ───────────────────────────────────────────────────────────────
 
     def _on_end_run(self) -> None:
         if self._session is None:
             return
-        # Save a run record then clear session
         self._save_to_notebook()
+        self._clear_session_state()
+        logger.info("end_run")
+
+    def _clear_session_state(self) -> None:
+        """Tear down all session state and reset the UI."""
         self.app.data.clear_active_session()
         self._session = None
         self._cards.clear()
+        self._sequential = False
         self._tick_timer.stop()
+
+        # Hide header buttons
         self._add_block_btn.setVisible(False)
+        self._save_btn.setVisible(False)
         self._end_run_btn.setVisible(False)
+        self._seq_btn.setChecked(False)
+        self._seq_btn.setVisible(False)
         self._session_badge.setVisible(False)
-        self._step_status_widget.setVisible(False)
+
+        # Hide step list
+        self._step_status_list.setVisible(False)
+        self._steps_hdr.setVisible(False)
+        self._step_status_list.clear()
+
         self._show_idle_state()
         self._info_name.setText("—")
         self._info_meta.setText("")
-        logger.info("end_run")
 
     # ── Session restore ───────────────────────────────────────────────────────
 
     def _offer_restore(self, raw: dict) -> None:
-        # Only offer if not already running same session
         if (self._session is not None
                 and self._session.protocol_id == raw.get("protocol_id", "")):
             return
@@ -589,7 +804,9 @@ class RunModePage(BasePage):
                 self._render_step_cards_once()
                 self._tick_timer.start()
                 self._add_block_btn.setVisible(True)
+                self._save_btn.setVisible(True)
                 self._end_run_btn.setVisible(True)
+                self._seq_btn.setVisible(True)
                 self._session_badge.setText("● Resumed")
                 self._session_badge.setVisible(True)
 
@@ -646,30 +863,30 @@ class RunModePage(BasePage):
             for state in self._session.step_states:
                 sd = self._session.step_data(state)
                 step_records.append({
-                    "stepId":     state.step_id,
-                    "stepTitle":  sd.get("title", ""),
-                    "stepType":   sd.get("type", ""),
-                    "status":     state.status,
+                    "stepId":      state.step_id,
+                    "stepTitle":   sd.get("title", ""),
+                    "stepType":    sd.get("type", ""),
+                    "status":      state.status,
                     "plannedSecs": state.original_planned_secs,
-                    "usedSecs":   state.accumulated_elapsed_secs,
-                    "notes":      state.notes,
+                    "usedSecs":    state.accumulated_elapsed_secs,
+                    "notes":       state.notes,
                 })
 
             dt = datetime.fromtimestamp(self._session.session_start_ts)
             record = {
-                "id":             str(uuid.uuid4()),
-                "title":          f"{proto.get('name', 'Untitled')} — {dt.strftime('%b %d, %Y')}",
-                "protocolId":     proto.get("id", ""),
-                "protocolName":   proto.get("name", "Untitled"),
+                "id":               str(uuid.uuid4()),
+                "title":            f"{proto.get('name', 'Untitled')} — {dt.strftime('%b %d, %Y')}",
+                "protocolId":       proto.get("id", ""),
+                "protocolName":     proto.get("name", "Untitled"),
                 "protocolSnapshot": proto,
-                "startedAt":      start_ts,
-                "endedAt":        now_ts,
-                "actualDuration": dur_s,
-                "timeline":       [],
-                "stepRecords":    step_records,
-                "observations":   "",
-                "tags":           [],
-                "notes":          "",
+                "startedAt":        start_ts,
+                "endedAt":          now_ts,
+                "actualDuration":   dur_s,
+                "timeline":         [],
+                "stepRecords":      step_records,
+                "observations":     "",
+                "tags":             [],
+                "notes":            "",
             }
             runs = self.app.data.load_runs()
             runs.insert(0, record)
@@ -678,42 +895,49 @@ class RunModePage(BasePage):
         except Exception as e:
             logger.error(f"save_to_notebook error: {e}")
 
-    # ── Left panel step status ────────────────────────────────────────────────
+    # ── Left panel step status (clickable) ────────────────────────────────────
 
     def _update_left_step_status(self) -> None:
         if self._session is None:
             return
 
-        self._step_status_widget.setVisible(True)
-        lay = self._step_status_widget.layout()
-        if lay is None:
-            return
-
-        # Clear old labels
-        while lay.count():
-            item = lay.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        self._step_status_labels.clear()
+        self._step_status_list.setVisible(True)
+        self._steps_hdr.setVisible(True)
+        self._step_status_list.clear()
 
         status_icons = {
-            "idle": ("●", Colors.TEXT_MUTED),
-            "running": ("▶", Colors.SUCCESS),
-            "paused": ("⏸", Colors.WARNING),
+            "idle":      ("●", Colors.TEXT_MUTED),
+            "running":   ("▶", Colors.SUCCESS),
+            "paused":    ("⏸", Colors.WARNING),
             "completed": ("✓", Colors.ACCENT_LIGHT),
-            "skipped": ("⟩", Colors.TEXT_MUTED),
+            "skipped":   ("⟩", Colors.TEXT_MUTED),
         }
 
         for state in self._session.step_states:
             sd = self._session.step_data(state)
-            title = sd.get("title", f"Block {state.step_idx+1}")
+            title = sd.get("title", f"Block {state.step_idx + 1}")
             icon, color = status_icons.get(state.status, ("●", Colors.TEXT_MUTED))
-            lbl = QLabel(f"{icon}  {title[:22]}{'…' if len(title) > 22 else ''}")
-            lbl.setStyleSheet(
-                f"color: {color}; font-size: {Fonts.SIZE_XS}px; padding: 1px 4px;"
-            )
-            lay.addWidget(lbl)
-            self._step_status_labels.append(lbl)
+            short = f"{icon}  {title[:20]}{'…' if len(title) > 20 else ''}"
+            item = QListWidgetItem(short)
+            item.setData(Qt.ItemDataRole.UserRole, state.step_idx)
+            item.setForeground(QColor(color))
+            self._step_status_list.addItem(item)
+
+    # ── Session stats in info bar ─────────────────────────────────────────────
+
+    def _update_session_stats(self) -> None:
+        if self._session is None:
+            return
+        states = self._session.step_states
+        total   = len(states)
+        done    = sum(1 for s in states if s.status == "completed")
+        skipped = sum(1 for s in states if s.status == "skipped")
+        proto   = self._session.protocol_snapshot
+        total_min = DataService.protocol_total_minutes(proto)
+        self._info_meta.setText(
+            f"{total} steps  ·  {done} done  ·  {skipped} skipped"
+            f"  ·  ~{DataService.format_duration(total_min)}"
+        )
 
     # ── Idle / empty state ────────────────────────────────────────────────────
 
@@ -741,7 +965,6 @@ class RunModePage(BasePage):
             self._snackbar.hide()
             self._snackbar.deleteLater()
 
-        # Position at bottom of the step scroll area
         sb = _UndoSnackbar(step_title, on_undo, parent=self._step_scroll)
         sb.setFixedHeight(48)
         self._snackbar = sb

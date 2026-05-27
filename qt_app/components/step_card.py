@@ -6,7 +6,8 @@ Design principles
 - Created ONCE when a protocol is selected (render_step_cards_once).
 - State changes call apply_state(state) which only toggles visibility and
   updates labels — no widget is destroyed or recreated.
-- Timer ticks call update_timer(remaining) which updates ONE QLabel only.
+- Timer ticks call update_timer(state, now) which updates ONE QLabel only.
+- update_progress(state, now) updates ONE QProgressBar only (fast path).
 - All user actions emit signals; RunModePage wires them to the session.
 
 Signals emitted (all carry step_idx: int)
@@ -19,15 +20,16 @@ action_undo_complete(int)
 action_skip(int)
 action_undo_skip(int)
 action_reset(int)
-action_adjust(int, float)   # (step_idx, delta_secs)
-notes_changed(int, str)     # debounced by RunModePage
+action_remove(int)         # temp blocks only
+action_adjust(int, float)  # (step_idx, delta_secs)
+notes_changed(int, str)    # debounced by RunModePage
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPlainTextEdit,
-    QPushButton, QSizePolicy, QVBoxLayout, QWidget,
+    QProgressBar, QPushButton, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from qt_app.theme import Colors, Fonts, Radii
@@ -149,16 +151,17 @@ class StepCard(QFrame):
     """One step card — created once, updated in-place."""
 
     # Signals
-    action_start      = Signal(int)
-    action_pause      = Signal(int)
-    action_resume     = Signal(int)
-    action_complete   = Signal(int)
+    action_start         = Signal(int)
+    action_pause         = Signal(int)
+    action_resume        = Signal(int)
+    action_complete      = Signal(int)
     action_undo_complete = Signal(int)
-    action_skip       = Signal(int)
-    action_undo_skip  = Signal(int)
-    action_reset      = Signal(int)
-    action_adjust     = Signal(int, float)
-    notes_changed     = Signal(int, str)
+    action_skip          = Signal(int)
+    action_undo_skip     = Signal(int)
+    action_reset         = Signal(int)
+    action_remove        = Signal(int)   # temp blocks only
+    action_adjust        = Signal(int, float)
+    notes_changed        = Signal(int, str)
 
     def __init__(self, idx: int, step: dict, state: StepRunState,
                  parent: QWidget | None = None) -> None:
@@ -169,6 +172,8 @@ class StepCard(QFrame):
         self._stype = step.get("type", "other")
         self._has_timer = step_has_timer(step)
         self._is_countdown = is_countdown_step(step)
+        self._is_temp = state.is_temp
+        self._focused = False
 
         accent = _accent(self._stype)
         bg     = _bg(self._stype)
@@ -204,6 +209,7 @@ class StepCard(QFrame):
             f"background: {accent}25; border-radius: 5px; padding: 2px 6px;"
         )
         row1.addWidget(idx_lbl)
+        self._idx_lbl = idx_lbl
 
         title_lbl = QLabel(step.get("title", "Untitled"))
         title_lbl.setStyleSheet(
@@ -269,8 +275,24 @@ class StepCard(QFrame):
             timer_row.addLayout(adj_row)
 
             root.addLayout(timer_row)
+
+            # ── Progress bar ─────────────────────────────────────────────────
+            self._progress = QProgressBar()
+            self._progress.setRange(0, 1000)
+            self._progress.setValue(0)
+            self._progress.setFixedHeight(4)
+            self._progress.setTextVisible(False)
+            self._progress.setStyleSheet(
+                f"QProgressBar {{ background: rgba(255,255,255,0.08);"
+                f"  border-radius: 2px; border: none; }}"
+                f"QProgressBar::chunk {{ background: {accent};"
+                f"  border-radius: 2px; }}"
+            )
+            root.addWidget(self._progress)
+
         else:
             self._timer_lbl = None
+            self._progress = None
             # Show duration estimate for non-timed steps
             ho = float(step.get("handsOnMinutes", 0))
             if ho > 0:
@@ -325,14 +347,14 @@ class StepCard(QFrame):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(6)
 
-        self._btn_start   = _btn("▶  Start",   Colors.ACCENT, Colors.ACCENT_HOVER)
-        self._btn_pause   = _btn("⏸  Pause",   "#64748b",     "#475569")
-        self._btn_resume  = _btn("▶  Resume",  Colors.ACCENT, Colors.ACCENT_HOVER)
-        self._btn_complete = _btn("✓  Complete", Colors.SUCCESS, "#16a34a", min_w=100)
-        self._btn_undo_complete = _btn("↩  Undo", "#64748b", "#475569")
-        self._btn_skip    = _ghost_btn("Skip →", Colors.WARNING)
-        self._btn_undo_skip = _btn("↩  Undo Skip", "#64748b", "#475569")
-        self._btn_reset   = _ghost_btn("⟳ Reset", Colors.TEXT_MUTED, min_w=64)
+        self._btn_start          = _btn("▶  Start",      Colors.ACCENT, Colors.ACCENT_HOVER)
+        self._btn_pause          = _btn("⏸  Pause",      "#64748b",     "#475569")
+        self._btn_resume         = _btn("▶  Resume",     Colors.ACCENT, Colors.ACCENT_HOVER)
+        self._btn_complete       = _btn("✓  Complete",   Colors.SUCCESS, "#16a34a", min_w=100)
+        self._btn_undo_complete  = _btn("↩  Undo",       "#64748b",     "#475569")
+        self._btn_skip           = _ghost_btn("Skip →",  Colors.WARNING)
+        self._btn_undo_skip      = _btn("↩  Undo Skip",  "#64748b",     "#475569")
+        self._btn_reset          = _ghost_btn("⟳ Reset", Colors.TEXT_MUTED, min_w=64)
 
         self._btn_start.clicked.connect(lambda: self.action_start.emit(self._idx))
         self._btn_pause.clicked.connect(lambda: self.action_pause.emit(self._idx))
@@ -349,45 +371,18 @@ class StepCard(QFrame):
             btn_row.addWidget(b)
         btn_row.addStretch()
 
+        # Remove button — temp blocks only
+        if self._is_temp:
+            self._btn_remove = _ghost_btn("✕ Remove", Colors.DANGER, min_w=90)
+            self._btn_remove.clicked.connect(lambda: self.action_remove.emit(self._idx))
+            btn_row.addWidget(self._btn_remove)
+
         root.addLayout(btn_row)
 
-    # ── apply_state — updates all visual elements in-place ────────────────────
+    # ── Card border helper ────────────────────────────────────────────────────
 
-    def apply_state(self, state: StepRunState) -> None:
-        """Update all visual elements based on current state (no widget rebuild)."""
-        self._state = state
-        status = state.status
-
-        # Status badge
-        badge_map = {
-            "idle":      (f"color: {Colors.TEXT_MUTED};",    "●  idle"),
-            "running":   (f"color: {Colors.SUCCESS};",       "▶  running"),
-            "paused":    (f"color: {Colors.WARNING};",       "⏸  paused"),
-            "completed": (f"color: {Colors.ACCENT_LIGHT};",  "✓  done"),
-            "skipped":   (f"color: {Colors.TEXT_MUTED};",    "⟩  skipped"),
-        }
-        style, text = badge_map.get(status, ("", ""))
-        self._status_badge.setStyleSheet(style + f" font-size: {Fonts.SIZE_XS}px;")
-        self._status_badge.setText(text)
-
-        # Button visibility
-        self._btn_start.setVisible(status == "idle")
-        self._btn_pause.setVisible(status == "running")
-        self._btn_resume.setVisible(status == "paused")
-        self._btn_complete.setVisible(status in ("running", "paused"))
-        self._btn_undo_complete.setVisible(status == "completed")
-        self._btn_skip.setVisible(status in ("idle", "running", "paused"))
-        self._btn_undo_skip.setVisible(status == "skipped")
-        self._btn_reset.setVisible(status in ("idle", "paused", "completed", "skipped"))
-
-        # Notes
-        if self._notes.toPlainText() != state.notes:
-            # Block signals to avoid re-triggering notes_changed
-            self._notes.blockSignals(True)
-            self._notes.setPlainText(state.notes)
-            self._notes.blockSignals(False)
-
-        # Card border highlight for running state
+    def _apply_card_style(self, status: str) -> None:
+        """Set card border/background based on status + focused flag."""
         accent = self._accent
         if status == "running":
             self.setStyleSheet(
@@ -407,6 +402,13 @@ class StepCard(QFrame):
                 f"  border-radius: {Radii.LG}px;"
                 f"  border: 1px solid {Colors.BORDER}; }}"
             )
+        elif self._focused:
+            # Idle/paused + focused — dim accent glow
+            self.setStyleSheet(
+                f"QFrame {{ background: {_bg(self._stype)};"
+                f"  border-radius: {Radii.LG}px;"
+                f"  border: 2px solid {accent}80; }}"
+            )
         else:
             self.setStyleSheet(
                 f"QFrame {{ background: {_bg(self._stype)};"
@@ -414,9 +416,51 @@ class StepCard(QFrame):
                 f"  border: 1px solid {accent}40; }}"
             )
 
-        # Update timer label with current remaining
+    # ── apply_state — updates all visual elements in-place ────────────────────
+
+    def apply_state(self, state: StepRunState) -> None:
+        """Update all visual elements based on current state (no widget rebuild)."""
+        self._state = state
+        status = state.status
+
+        # Status badge
+        badge_map = {
+            "idle":      (f"color: {Colors.TEXT_MUTED};",    "●  idle"),
+            "running":   (f"color: {Colors.SUCCESS};",       "▶  running"),
+            "paused":    (f"color: {Colors.WARNING};",       "⏸  paused"),
+            "completed": (f"color: {Colors.ACCENT_LIGHT};",  "✓  done"),
+            "skipped":   (f"color: {Colors.TEXT_MUTED};",    "⟩  skipped"),
+        }
+        badge_style, badge_text = badge_map.get(status, ("", ""))
+        self._status_badge.setStyleSheet(badge_style + f" font-size: {Fonts.SIZE_XS}px;")
+        self._status_badge.setText(badge_text)
+
+        # Button visibility
+        self._btn_start.setVisible(status == "idle")
+        self._btn_pause.setVisible(status == "running")
+        self._btn_resume.setVisible(status == "paused")
+        self._btn_complete.setVisible(status in ("running", "paused"))
+        self._btn_undo_complete.setVisible(status == "completed")
+        self._btn_skip.setVisible(status in ("idle", "running", "paused"))
+        self._btn_undo_skip.setVisible(status == "skipped")
+        self._btn_reset.setVisible(status in ("idle", "paused", "completed", "skipped"))
+
+        # Notes — only sync from state if user isn't currently typing in this box
+        if not self._notes.hasFocus() and self._notes.toPlainText() != state.notes:
+            self._notes.blockSignals(True)
+            self._notes.setPlainText(state.notes)
+            self._notes.blockSignals(False)
+
+        # Card border
+        self._apply_card_style(status)
+
+        # Timer label
         if self._timer_lbl is not None:
             self.update_timer(state)
+
+        # Progress bar
+        if self._progress is not None:
+            self.update_progress(state)
 
     def update_timer(self, state: StepRunState, now: float | None = None) -> None:
         """Fast path: only update the timer label. Called every 500 ms."""
@@ -427,7 +471,6 @@ class StepCard(QFrame):
         is_cd = self._is_countdown
 
         if state.status == "idle":
-            # Show planned duration
             self._timer_lbl.setText(format_timer(state.planned_secs, countdown=is_cd))
             self._timer_lbl.setStyleSheet(
                 f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_2XL}px;"
@@ -435,13 +478,11 @@ class StepCard(QFrame):
             )
         elif state.status in ("running", "paused"):
             if is_cd:
-                # Countdown
                 color = Colors.DANGER if remaining <= 0 else (
                     Colors.WARNING if remaining < 60 else Colors.TEXT_PRIMARY
                 )
                 self._timer_lbl.setText(format_timer(remaining, countdown=True))
             else:
-                # Elapsed stopwatch (counts up)
                 elapsed = state.elapsed_secs(now)
                 color = Colors.TEXT_PRIMARY
                 self._timer_lbl.setText(format_timer(elapsed, countdown=False))
@@ -464,6 +505,36 @@ class StepCard(QFrame):
                 f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_2XL}px;"
                 f"font-weight: 700;"
             )
+
+    def update_progress(self, state: StepRunState, now: float | None = None) -> None:
+        """Fast path: update only the progress bar. Called every 500 ms for running steps."""
+        if self._progress is None:
+            return
+        status = state.status
+        if status == "idle":
+            self._progress.setValue(0)
+        elif status in ("running", "paused"):
+            planned = state.planned_secs if state.planned_secs > 0 else 1.0
+            elapsed = state.elapsed_secs(now)
+            pct = min(int(elapsed / planned * 1000), 1000)
+            self._progress.setValue(pct)
+        elif status == "completed":
+            self._progress.setValue(1000)
+        # skipped: leave bar as-is
+
+    # ── Focus indicator ───────────────────────────────────────────────────────
+
+    def set_focused(self, focused: bool) -> None:
+        """Highlight card as the sequential-mode target step."""
+        self._focused = focused
+        self._apply_card_style(self._state.status)
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def set_idx(self, idx: int) -> None:
+        """Update the internal step index (used after temp block removal)."""
+        self._idx = idx
+        self._idx_lbl.setText(f"{idx + 1:02d}")
 
     def set_notes_text(self, text: str) -> None:
         """Set notes without triggering notes_changed signal."""
