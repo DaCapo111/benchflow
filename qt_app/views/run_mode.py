@@ -1,257 +1,225 @@
 """
-Run Mode page — Phase 2: protocol selector + read-only step cards.
+Run Mode page — Phase 3: full timer implementation.
 
-Layout:
-  ┌─────────────────┬──────────────────────────────────────┐
-  │  Protocol list  │  Step cards (read-only in Phase 2)   │
-  │  (left panel)   │  Full timer logic in Phase 3         │
-  └─────────────────┴──────────────────────────────────────┘
+Architecture
+------------
+- Single QTimer (500 ms) drives all step timer updates.
+- StepCard widgets are created ONCE per protocol load; state changes
+  call card.apply_state() or card.update_timer() — no rebuild.
+- Session persisted to runtime_session.json on every state change
+  via a debounced QTimer (100 ms) for immediate writes, 1000 ms for notes.
+- Wall-clock timer math: remaining = planned - (now - started_at - paused_time).
+  Accurate across sleep, window switches, and app restart.
 
-Phase 2 focus: smooth scrolling validation, real data display.
-Phase 3 adds: QTimer, complete/pause/undo, autosave.
+No full re-render on:
+  - timer tick     → update_timer() on active card only
+  - step complete  → apply_state() on that one card
+  - protocol switch → render_step_cards_once()
+  - undo           → apply_state() on that one card
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+import logging
+import time
+import uuid
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-    QScrollArea, QSizePolicy, QSplitter, QVBoxLayout, QWidget,
+    QPushButton, QScrollArea, QSizePolicy, QSplitter, QVBoxLayout, QWidget,
 )
 
 from qt_app.theme import Colors, Fonts, Radii
-from qt_app.components.widgets import (
-    Card, HSeparator, PageTitle, SubLabel, Badge,
+from qt_app.components.widgets import HSeparator, PageTitle, PrimaryButton, SubLabel
+from qt_app.components.step_card import StepCard
+from qt_app.services.run_service import (
+    RunModeSession, StepRunState,
+    step_planned_secs, is_countdown_step, format_timer,
 )
-from qt_app.views.base_page import BasePage
 from qt_app.services.data import DataService
+from qt_app.dialogs.add_block import AddBlockDialog
+from qt_app.dialogs.restore_session import RestoreSessionDialog
+from qt_app.views.base_page import BasePage
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+_logs_dir = Path(__file__).parent.parent.parent / "logs"
+_logs_dir.mkdir(exist_ok=True)
+_handler = logging.FileHandler(_logs_dir / "qt_run_mode.log", encoding="utf-8")
+_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+logger = logging.getLogger("benchflow.run_mode")
+if not logger.handlers:
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
 
 
-# ── Step card (read-only Phase 2 version) ─────────────────────────────────────
+# ── Left-panel protocol item ──────────────────────────────────────────────────
 
-STEP_TYPE_COLORS: dict[str, tuple[str, str]] = {
-    "preparation":       ("#1e3a5f", "#60a5fa"),
-    "reagent_addition":  ("#042f2e", "#2dd4bf"),
-    "mixing":            ("#2e1065", "#c084fc"),
-    "incubation":        ("#431407", "#fb923c"),
-    "waiting":           ("#1e293b", "#64748b"),
-    "centrifuge":        ("#1e1b4b", "#818cf8"),
-    "wash":              ("#164e63", "#22d3ee"),
-    "transfer":          ("#1e1b4b", "#a5b4fc"),
-    "pipetting":         ("#0c4a6e", "#38bdf8"),
-    "resuspension":      ("#052e16", "#4ade80"),
-    "staining":          ("#500724", "#f472b6"),
-    "blocking":          ("#4c0519", "#fb7185"),
-    "electrophoresis":   ("#3b0764", "#d8b4fe"),
-    "gel_running":       ("#2e1065", "#c4b5fd"),
-    "membrane_transfer": ("#1e3a5f", "#93c5fd"),
-    "imaging":           ("#064e3b", "#6ee7b7"),
-    "measurement":       ("#422006", "#fdba74"),
-    "lysis":             ("#450a0a", "#fca5a5"),
-    "heating":           ("#431407", "#fb923c"),
-    "cooling":           ("#0c4a6e", "#7dd3fc"),
-    "storage":           ("#1e293b", "#94a3b8"),
-    "harvest":           ("#1a2e05", "#86efac"),
-    "sample_collection": ("#451a03", "#fcd34d"),
-    "other":             ("#1e293b", "#94a3b8"),
-}
-
-def _step_colors(step_type: str) -> tuple[str, str]:
-    return STEP_TYPE_COLORS.get(step_type, STEP_TYPE_COLORS["other"])
-
-
-class StepCard(QFrame):
-    """Read-only step card for Phase 2."""
-
-    def __init__(self, step: dict, idx: int, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        bg, accent = _step_colors(step.get("type", "other"))
-        self.setStyleSheet(
-            f"QFrame {{"
-            f"  background: {bg};"
-            f"  border-radius: {Radii.LG}px;"
-            f"  border: 1px solid {accent}40;"
-            f"}}"
-        )
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._build(step, idx, accent)
-
-    def _build(self, step: dict, idx: int, accent: str) -> None:
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(18, 14, 18, 14)
-        lay.setSpacing(6)
-
-        # ── Header: index + title + type badge ────────────────────────────
-        row1 = QHBoxLayout()
-        row1.setSpacing(10)
-
-        idx_lbl = QLabel(f"{idx + 1:02d}")
-        idx_lbl.setStyleSheet(
-            f"color: {accent}; font-size: {Fonts.SIZE_SM}px; font-weight: 700;"
-            f"background: {accent}25; border-radius: 6px; padding: 2px 8px;"
-        )
-        row1.addWidget(idx_lbl)
-
-        title = step.get("title", "Untitled step")
-        title_lbl = QLabel(title)
-        title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 600;"
-        )
-        title_lbl.setWordWrap(True)
-        row1.addWidget(title_lbl, stretch=1)
-
-        stype = step.get("type", "other").replace("_", " ").title()
-        type_badge = QLabel(stype)
-        type_badge.setStyleSheet(
-            f"color: {accent}; background: {accent}20;"
-            f"border-radius: 6px; padding: 2px 8px;"
-            f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
-        )
-        row1.addWidget(type_badge)
-        lay.addLayout(row1)
-
-        # ── Timing row ─────────────────────────────────────────────────────
-        timing_parts = []
-        ho = float(step.get("handsOnMinutes", 0))
-        wt = float(step.get("waitMinutes", 0))
-        buf = float(step.get("bufferMinutes", 0))
-        if ho:
-            timing_parts.append(f"⏱ {ho:.0f}m hands-on")
-        if wt:
-            timing_parts.append(f"⏳ {wt:.0f}m wait")
-        if buf:
-            timing_parts.append(f"+ {buf:.0f}m buffer")
-
-        if timing_parts:
-            timing_lbl = QLabel("  ·  ".join(timing_parts))
-            timing_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
-            )
-            lay.addWidget(timing_lbl)
-
-        # ── Description preview ────────────────────────────────────────────
-        desc = step.get("description", "").strip()
-        if desc:
-            # Show first 120 chars
-            preview = desc[:120] + ("…" if len(desc) > 120 else "")
-            desc_lbl = QLabel(preview)
-            desc_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
-            )
-            desc_lbl.setWordWrap(True)
-            lay.addWidget(desc_lbl)
-
-        # ── Reagents ───────────────────────────────────────────────────────
-        reagents = step.get("reagents", [])
-        if reagents:
-            r_names = [r.get("name", "") for r in reagents[:3] if r.get("name")]
-            if r_names:
-                suffix = f" +{len(reagents)-3}" if len(reagents) > 3 else ""
-                r_lbl = QLabel("🧪 " + ", ".join(r_names) + suffix)
-                r_lbl.setStyleSheet(
-                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
-                )
-                lay.addWidget(r_lbl)
-
-        # ── Temperature / condition ────────────────────────────────────────
-        temp = step.get("temperature", "").strip()
-        centrifuge = step.get("centrifugeCondition", "").strip()
-        cond_parts = []
-        if temp:
-            cond_parts.append(f"🌡 {temp}")
-        if centrifuge:
-            cond_parts.append(f"⚙ {centrifuge}")
-        if cond_parts:
-            cond_lbl = QLabel("  ·  ".join(cond_parts))
-            cond_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
-            )
-            lay.addWidget(cond_lbl)
-
-        # ── Notes preview ─────────────────────────────────────────────────
-        notes = step.get("notes", "").strip()
-        if notes:
-            n_lbl = QLabel(f"📝 {notes[:80]}{'…' if len(notes) > 80 else ''}")
-            n_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
-            )
-            n_lbl.setWordWrap(True)
-            lay.addWidget(n_lbl)
-
-
-# ── Protocol list item ────────────────────────────────────────────────────────
-
-class ProtocolListItem(QListWidgetItem):
+class _ProtoItem(QListWidgetItem):
     def __init__(self, protocol: dict) -> None:
         name = protocol.get("name", "Untitled")
-        n_steps = len(protocol.get("steps", []))
-        super().__init__(f"  {name}  ({n_steps} steps)")
+        n = len(protocol.get("steps", []))
+        super().__init__(f"  {name}  ({n})")
         self.setData(Qt.ItemDataRole.UserRole, protocol)
+
+
+# ── Undo snackbar ─────────────────────────────────────────────────────────────
+
+class _UndoSnackbar(QFrame):
+    """9-second floating undo toast shown after Complete."""
+
+    def __init__(self, step_title: str, on_undo, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._on_undo = on_undo
+        self._remaining = 9
+        self.setStyleSheet(
+            f"QFrame {{ background: {Colors.BG_SIDEBAR};"
+            f"  border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.SUCCESS}80; }}"
+        )
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(14, 10, 14, 10)
+        lay.setSpacing(12)
+
+        self._msg_lbl = QLabel(f"✓  '{step_title[:30]}' completed")
+        self._msg_lbl.setStyleSheet(
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+        )
+        lay.addWidget(self._msg_lbl, stretch=1)
+
+        self._countdown_lbl = QLabel("9s")
+        self._countdown_lbl.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+        )
+        lay.addWidget(self._countdown_lbl)
+
+        undo_btn = QPushButton("Undo")
+        undo_btn.setStyleSheet(
+            f"QPushButton {{ background: {Colors.WARNING}; color: white; border: none;"
+            f"  border-radius: {Radii.SM}px; padding: 4px 12px;"
+            f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: #ea580c; }}"
+        )
+        undo_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        undo_btn.clicked.connect(self._do_undo)
+        lay.addWidget(undo_btn)
+
+        self._tick_timer = QTimer(self)
+        self._tick_timer.setInterval(1000)
+        self._tick_timer.timeout.connect(self._tick)
+        self._tick_timer.start()
+
+    def _tick(self) -> None:
+        self._remaining -= 1
+        self._countdown_lbl.setText(f"{self._remaining}s")
+        if self._remaining <= 0:
+            self._tick_timer.stop()
+            self.hide()
+
+    def _do_undo(self) -> None:
+        self._tick_timer.stop()
+        self.hide()
+        self._on_undo()
+
 
 
 # ── RunModePage ───────────────────────────────────────────────────────────────
 
 class RunModePage(BasePage):
-    """Run Mode page — Phase 2: protocol browser + read-only step cards."""
+    """Full Run Mode — wall-clock timers, autosave, session restore."""
 
     def __init__(self, app: "BenchFlowApp", parent: QWidget | None = None) -> None:  # type: ignore[name-defined]
         super().__init__(app, parent)
+        self._session: RunModeSession | None = None
+        self._cards: list[StepCard] = []
+        self._snackbar: _UndoSnackbar | None = None
+
+        # Single global tick timer
+        self._tick_timer = QTimer(self)
+        self._tick_timer.setInterval(500)
+        self._tick_timer.timeout.connect(self._on_tick)
+
+        # Debounced save timers
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.setInterval(100)
+        self._save_timer.timeout.connect(self._do_save)
+
+        self._notes_save_timer = QTimer(self)
+        self._notes_save_timer.setSingleShot(True)
+        self._notes_save_timer.setInterval(1000)
+        self._notes_save_timer.timeout.connect(self._do_save)
+
         self._build()
+
+    # ── UI construction ───────────────────────────────────────────────────────
 
     def _build(self) -> None:
         root = QVBoxLayout()
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Top header ────────────────────────────────────────────────────────
-        header_widget = QWidget()
-        header_widget.setStyleSheet(f"background: {Colors.BG_PAGE};")
-        header_layout = QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(32, 28, 32, 16)
-        header_layout.setSpacing(12)
+        # Header bar
+        hdr_w = QWidget()
+        hdr_w.setStyleSheet(f"background: {Colors.BG_PAGE};")
+        hdr_lay = QHBoxLayout(hdr_w)
+        hdr_lay.setContentsMargins(28, 22, 28, 14)
+        hdr_lay.setSpacing(12)
 
-        title_col = QVBoxLayout()
-        title_col.setSpacing(2)
-        title_col.addWidget(PageTitle("Run Mode"))
-        sub = SubLabel("Select a protocol to view its steps. Timers coming in Phase 3.")
-        title_col.addWidget(sub)
-        header_layout.addLayout(title_col)
-        header_layout.addStretch()
-        root.addWidget(header_widget)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        col.addWidget(PageTitle("Run Mode"))
+        col.addWidget(SubLabel("Real-time protocol execution with wall-clock accurate timers."))
+        hdr_lay.addLayout(col)
+        hdr_lay.addStretch()
 
-        sep = HSeparator()
-        root.addWidget(sep)
+        # Add Block button
+        self._add_block_btn = PrimaryButton("＋ Block")
+        self._add_block_btn.setMinimumWidth(110)
+        self._add_block_btn.setVisible(False)
+        self._add_block_btn.clicked.connect(self._on_add_block)
+        hdr_lay.addWidget(self._add_block_btn)
 
-        # ── Main split: protocol list | step cards ────────────────────────────
+        # End Run button
+        self._end_run_btn = PrimaryButton("■ End Run")
+        self._end_run_btn.setMinimumWidth(110)
+        self._end_run_btn.setVisible(False)
+        self._end_run_btn.setStyleSheet(
+            f"QPushButton {{ background: {Colors.DANGER}; color: white; border: none;"
+            f"  border-radius: {Radii.MD}px; padding: 8px 20px;"
+            f"  font-size: {Fonts.SIZE_MD}px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: #dc2626; }}"
+        )
+        self._end_run_btn.clicked.connect(self._on_end_run)
+        hdr_lay.addWidget(self._end_run_btn)
+
+        root.addWidget(hdr_w)
+        root.addWidget(HSeparator())
+
+        # Main splitter
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
             f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
         )
 
-        # Left panel — protocol list
-        left = self._build_left_panel()
-        self._splitter.addWidget(left)
-
-        # Right panel — step cards
-        right = self._build_right_panel()
-        self._splitter.addWidget(right)
-
-        self._splitter.setSizes([220, 900])
+        self._splitter.addWidget(self._build_left_panel())
+        self._splitter.addWidget(self._build_right_panel())
+        self._splitter.setSizes([210, 900])
         self._splitter.setChildrenCollapsible(False)
         root.addWidget(self._splitter, stretch=1)
 
         self._root_layout.addLayout(root)
-        self._populate_protocols()
-
-    # ── Left panel ────────────────────────────────────────────────────────────
 
     def _build_left_panel(self) -> QWidget:
         w = QWidget()
         w.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
-        w.setMinimumWidth(200)
-        w.setMaximumWidth(300)
+        w.setMinimumWidth(180)
+        w.setMaximumWidth(280)
         lay = QVBoxLayout(w)
-        lay.setContentsMargins(12, 16, 12, 16)
-        lay.setSpacing(8)
+        lay.setContentsMargins(10, 14, 10, 14)
+        lay.setSpacing(6)
 
         hdr = QLabel("Protocols")
         hdr.setStyleSheet(
@@ -262,25 +230,26 @@ class RunModePage(BasePage):
 
         self._proto_list = QListWidget()
         self._proto_list.setStyleSheet(
-            f"QListWidget {{"
-            f"  background: transparent; border: none; outline: none;"
-            f"  font-size: {Fonts.SIZE_MD}px; color: {Colors.TEXT_PRIMARY};"
-            f"}}"
-            f"QListWidget::item {{"
-            f"  padding: 10px 8px; border-radius: 10px; margin: 2px 0;"
-            f"}}"
-            f"QListWidget::item:hover {{"
-            f"  background: {Colors.BG_CARD_HOV};"
-            f"}}"
-            f"QListWidget::item:selected {{"
-            f"  background: {Colors.ACCENT}; color: white; border-radius: 10px;"
-            f"}}"
+            f"QListWidget {{ background: transparent; border: none; outline: none;"
+            f"  font-size: {Fonts.SIZE_MD}px; color: {Colors.TEXT_PRIMARY}; }}"
+            f"QListWidget::item {{ padding: 9px 8px; border-radius: 10px; margin: 1px 0; }}"
+            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.ACCENT}; color: white;"
+            f"  border-radius: 10px; }}"
         )
-        self._proto_list.currentItemChanged.connect(self._on_protocol_selected)
+        self._proto_list.currentItemChanged.connect(self._on_proto_selected)
         lay.addWidget(self._proto_list, stretch=1)
-        return w
 
-    # ── Right panel ───────────────────────────────────────────────────────────
+        # Step status mini-list (visible during active session)
+        lay.addWidget(HSeparator())
+        self._step_status_widget = QWidget()
+        self._step_status_widget.setVisible(False)
+        step_lay = QVBoxLayout(self._step_status_widget)
+        step_lay.setContentsMargins(0, 6, 0, 0)
+        step_lay.setSpacing(2)
+        self._step_status_labels: list[QLabel] = []
+        lay.addWidget(self._step_status_widget)
+        return w
 
     def _build_right_panel(self) -> QWidget:
         w = QWidget()
@@ -289,40 +258,44 @@ class RunModePage(BasePage):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
-        # Protocol info bar
+        # Info bar (protocol name, step count, duration)
         self._info_bar = QWidget()
         self._info_bar.setStyleSheet(
             f"background: {Colors.BG_SIDEBAR}; border-bottom: 1px solid {Colors.BORDER};"
         )
         info_lay = QHBoxLayout(self._info_bar)
-        info_lay.setContentsMargins(20, 12, 20, 12)
-        info_lay.setSpacing(16)
+        info_lay.setContentsMargins(20, 10, 20, 10)
+        info_lay.setSpacing(14)
 
-        self._info_name = QLabel("—")
+        self._info_name  = QLabel("—")
         self._info_name.setStyleSheet(
             f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
         )
         info_lay.addWidget(self._info_name)
-
-        self._info_steps = QLabel("")
-        self._info_steps.setStyleSheet(f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;")
-        info_lay.addWidget(self._info_steps)
-
-        self._info_dur = QLabel("")
-        self._info_dur.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;")
-        info_lay.addWidget(self._info_dur)
+        self._info_meta = QLabel("")
+        self._info_meta.setStyleSheet(
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+        )
+        info_lay.addWidget(self._info_meta)
         info_lay.addStretch()
 
-        phase_badge = QLabel("Read-only · Phase 2")
-        phase_badge.setStyleSheet(
-            f"color: {Colors.ACCENT_LIGHT}; background: rgba(59,130,246,0.15);"
+        self._session_badge = QLabel("")
+        self._session_badge.setStyleSheet(
+            f"color: {Colors.SUCCESS}; background: rgba(34,197,94,0.12);"
             f"border-radius: 8px; padding: 3px 10px;"
             f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
         )
-        info_lay.addWidget(phase_badge)
+        self._session_badge.setVisible(False)
+        info_lay.addWidget(self._session_badge)
+
         lay.addWidget(self._info_bar)
 
-        # Step scroll area
+        # Snackbar overlay (placed manually over scroll area)
+        self._snackbar_container = QWidget(w)
+        self._snackbar_container.setVisible(False)
+        self._snackbar_container.raise_()
+
+        # Scroll area for step cards
         self._step_scroll = QScrollArea()
         self._step_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._step_scroll.setWidgetResizable(True)
@@ -332,75 +305,427 @@ class RunModePage(BasePage):
         self._step_content = QWidget()
         self._step_content.setStyleSheet(f"background: {Colors.BG_PAGE};")
         self._step_layout = QVBoxLayout(self._step_content)
-        self._step_layout.setContentsMargins(20, 20, 20, 20)
+        self._step_layout.setContentsMargins(20, 16, 20, 20)
         self._step_layout.setSpacing(10)
         self._step_scroll.setWidget(self._step_content)
         lay.addWidget(self._step_scroll, stretch=1)
 
-        # Initial empty state
-        self._show_empty_state("Select a protocol from the left panel.")
+        self._show_idle_state()
         return w
 
-    # ── Data ──────────────────────────────────────────────────────────────────
+    # ── on_show ───────────────────────────────────────────────────────────────
 
-    def _populate_protocols(self) -> None:
+    def on_show(self) -> None:
+        logger.info("enter_run_mode")
+        self._load_protocol_list()
+
+        # Check for existing session
+        existing = self.app.data.load_active_session()
+        if existing and existing.get("version", 0) == 3:
+            self._offer_restore(existing)
+
+    # ── Protocol list ─────────────────────────────────────────────────────────
+
+    def _load_protocol_list(self) -> None:
         self._proto_list.clear()
-        protocols = self.app.data.load_protocols()
-        for p in protocols:
-            self._proto_list.addItem(ProtocolListItem(p))
-        if not protocols:
-            placeholder = QListWidgetItem("  No protocols yet")
-            placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
-            placeholder.setForeground(Colors.TEXT_MUTED)
-            self._proto_list.addItem(placeholder)
+        for p in self.app.data.load_protocols():
+            self._proto_list.addItem(_ProtoItem(p))
 
-    def _on_protocol_selected(self, current: QListWidgetItem | None, _prev) -> None:
+    def _on_proto_selected(self, current: QListWidgetItem | None, _prev) -> None:
         if current is None:
             return
         protocol = current.data(Qt.ItemDataRole.UserRole)
         if protocol is None:
             return
-        self._render_steps(protocol)
 
-    def _render_steps(self, protocol: dict) -> None:
-        # Update info bar
-        name = protocol.get("name", "Untitled")
-        steps = protocol.get("steps", [])
-        total_min = DataService.protocol_total_minutes(protocol)
+        # If we already have an active session for this protocol, keep it
+        if (self._session is not None
+                and self._session.protocol_id == protocol.get("id", "")):
+            return
 
-        self._info_name.setText(name)
-        self._info_steps.setText(f"{len(steps)} steps")
-        self._info_dur.setText(f"~{DataService.format_duration(total_min)}")
+        logger.info(f"select_protocol: {protocol.get('name', '?')}")
+        self._session = RunModeSession.new(protocol)
+        self._render_step_cards_once()
+        self._schedule_save()
+        self._tick_timer.start()
+        self._add_block_btn.setVisible(True)
+        self._end_run_btn.setVisible(True)
+        self._session_badge.setText("● Active session")
+        self._session_badge.setVisible(True)
 
-        # Clear step layout
+    # ── Step card rendering (once per protocol) ───────────────────────────────
+
+    def _render_step_cards_once(self) -> None:
+        """Create all StepCard widgets. Called once per protocol selection."""
+        if self._session is None:
+            return
+
+        # Clear previous cards
+        self._cards.clear()
         while self._step_layout.count():
             item = self._step_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        if not steps:
-            self._show_empty_state("This protocol has no steps.")
-            return
+        proto = self._session.protocol_snapshot
+        name = proto.get("name", "Untitled")
+        steps_all = self._session.step_states  # includes temp blocks
+        proto_steps = self._session.steps()
 
-        for i, step in enumerate(steps):
-            card = StepCard(step, i, parent=self._step_content)
+        self._info_name.setText(name)
+        n = len(proto_steps)
+        total_min = DataService.protocol_total_minutes(proto)
+        self._info_meta.setText(
+            f"{n} steps  ·  ~{DataService.format_duration(total_min)}"
+        )
+
+        # Build left-panel mini step status
+        self._update_left_step_status()
+
+        # Create cards
+        for state in steps_all:
+            step_data = self._session.step_data(state)
+            card = StepCard(state.step_idx, step_data, state, parent=self._step_content)
+            self._wire_card(card)
+            self._cards.append(card)
             self._step_layout.addWidget(card)
 
         self._step_layout.addStretch()
 
-    def _show_empty_state(self, msg: str) -> None:
-        # Clear existing content first
+    def _wire_card(self, card: StepCard) -> None:
+        card.action_start.connect(self._on_start)
+        card.action_pause.connect(self._on_pause)
+        card.action_resume.connect(self._on_resume)
+        card.action_complete.connect(self._on_complete)
+        card.action_undo_complete.connect(self._on_undo_complete)
+        card.action_skip.connect(self._on_skip)
+        card.action_undo_skip.connect(self._on_undo_skip)
+        card.action_reset.connect(self._on_reset)
+        card.action_adjust.connect(self._on_adjust)
+        card.notes_changed.connect(self._on_notes_changed)
+
+    # ── Update individual card state (no rebuild) ─────────────────────────────
+
+    def _update_card(self, idx: int) -> None:
+        if self._session is None or idx >= len(self._cards):
+            return
+        state = self._session.step_states[idx]
+        self._cards[idx].apply_state(state)
+        self._update_left_step_status()
+
+    # ── Timer tick ────────────────────────────────────────────────────────────
+
+    def _on_tick(self) -> None:
+        if self._session is None:
+            return
+        now = time.time()
+        for state in self._session.step_states:
+            if state.status == "running" and state.step_idx < len(self._cards):
+                self._cards[state.step_idx].update_timer(state, now)
+
+    # ── Step actions ──────────────────────────────────────────────────────────
+
+    def _on_start(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.start()
+        logger.info(f"start_timer: step={idx} id={state.step_id}")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_pause(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.pause()
+        logger.info(f"pause_timer: step={idx}")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_resume(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.resume()
+        logger.info(f"resume_timer: step={idx}")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_complete(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        step_data = self._session.step_data(state)
+        title = step_data.get("title", f"Step {idx+1}")
+
+        state.complete()
+        logger.info(f"complete_step: step={idx} title={title}")
+        self._update_card(idx)
+        self._schedule_save()
+
+        # Show undo snackbar
+        self._show_snackbar(title, lambda i=idx: self._on_undo_complete(i))
+
+    def _on_undo_complete(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.undo_complete()
+        logger.info(f"undo_complete: step={idx}")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_skip(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.skip()
+        logger.info(f"skip_step: step={idx}")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_undo_skip(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.undo_skip()
+        logger.info(f"undo_skip: step={idx}")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_reset(self, idx: int) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.reset()
+        logger.info(f"reset_step: step={idx}")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_adjust(self, idx: int, delta_secs: float) -> None:
+        if not self._validate(idx):
+            return
+        state = self._session.step_states[idx]
+        state.adjust(delta_secs)
+        logger.info(f"adjust_timer: step={idx} delta={delta_secs}s")
+        self._update_card(idx)
+        self._schedule_save()
+
+    def _on_notes_changed(self, idx: int, text: str) -> None:
+        if not self._validate(idx):
+            return
+        self._session.step_states[idx].notes = text
+        self._notes_save_timer.start()
+
+    # ── Add Temporary Block ───────────────────────────────────────────────────
+
+    def _on_add_block(self) -> None:
+        if self._session is None:
+            return
+        dlg = AddBlockDialog(self)
+        if dlg.exec() != AddBlockDialog.DialogCode.Accepted:
+            return
+        title = dlg.block_title()
+        btype = dlg.block_type()
+        dur_m = dlg.duration_minutes()
+        notes = dlg.notes()
+
+        state = self._session.add_temp_block(title, btype, dur_m, notes)
+        idx = state.step_idx
+        step_data = state.temp_step_data
+
+        card = StepCard(idx, step_data, state, parent=self._step_content)
+        self._wire_card(card)
+        self._cards.append(card)
+
+        # Insert before the stretch spacer
+        count = self._step_layout.count()
+        self._step_layout.insertWidget(count - 1, card)
+
+        self._update_left_step_status()
+        self._schedule_save()
+        logger.info(f"add_block: title={title} type={btype} dur={dur_m}m")
+
+    # ── End Run ───────────────────────────────────────────────────────────────
+
+    def _on_end_run(self) -> None:
+        if self._session is None:
+            return
+        # Save a run record then clear session
+        self._save_to_notebook()
+        self.app.data.clear_active_session()
+        self._session = None
+        self._cards.clear()
+        self._tick_timer.stop()
+        self._add_block_btn.setVisible(False)
+        self._end_run_btn.setVisible(False)
+        self._session_badge.setVisible(False)
+        self._step_status_widget.setVisible(False)
+        self._show_idle_state()
+        self._info_name.setText("—")
+        self._info_meta.setText("")
+        logger.info("end_run")
+
+    # ── Session restore ───────────────────────────────────────────────────────
+
+    def _offer_restore(self, raw: dict) -> None:
+        # Only offer if not already running same session
+        if (self._session is not None
+                and self._session.protocol_id == raw.get("protocol_id", "")):
+            return
+
+        dlg = RestoreSessionDialog(raw, self)
+        if dlg.exec() != RestoreSessionDialog.DialogCode.Accepted:
+            return
+
+        action = dlg.action()
+        logger.info(f"restore_session: action={action}")
+
+        if action == "resume":
+            try:
+                restored = RunModeSession.from_dict(raw)
+                self._session = restored
+                self._render_step_cards_once()
+                self._tick_timer.start()
+                self._add_block_btn.setVisible(True)
+                self._end_run_btn.setVisible(True)
+                self._session_badge.setText("● Resumed")
+                self._session_badge.setVisible(True)
+
+                # Highlight the restored protocol in the list
+                proto_id = restored.protocol_id
+                for i in range(self._proto_list.count()):
+                    item = self._proto_list.item(i)
+                    if item and (item.data(Qt.ItemDataRole.UserRole) or {}).get("id") == proto_id:
+                        self._proto_list.setCurrentItem(item)
+                        break
+                logger.info(f"restore_session: resumed protocol_id={proto_id}")
+            except Exception as e:
+                logger.error(f"restore_session error: {e}")
+
+        elif action == "save_notebook":
+            try:
+                restored = RunModeSession.from_dict(raw)
+                self._session = restored
+                self._save_to_notebook()
+                self.app.data.clear_active_session()
+                self._session = None
+            except Exception as e:
+                logger.error(f"save_notebook error: {e}")
+
+        else:  # discard
+            self.app.data.clear_active_session()
+
+    # ── Autosave ──────────────────────────────────────────────────────────────
+
+    def _schedule_save(self) -> None:
+        self._save_timer.start()
+
+    def _do_save(self) -> None:
+        if self._session is None:
+            return
+        try:
+            self.app.data.save_active_session(self._session.to_dict())
+            logger.info("autosave: runtime_session.json written")
+        except Exception as e:
+            logger.error(f"autosave error: {e}")
+
+    # ── Save to notebook ──────────────────────────────────────────────────────
+
+    def _save_to_notebook(self) -> None:
+        if self._session is None:
+            return
+        try:
+            proto = self._session.protocol_snapshot
+            now_ts = int(time.time() * 1000)
+            start_ts = int(self._session.session_start_ts * 1000)
+            dur_s = (time.time() - self._session.session_start_ts)
+
+            step_records = []
+            for state in self._session.step_states:
+                sd = self._session.step_data(state)
+                step_records.append({
+                    "stepId":     state.step_id,
+                    "stepTitle":  sd.get("title", ""),
+                    "stepType":   sd.get("type", ""),
+                    "status":     state.status,
+                    "plannedSecs": state.original_planned_secs,
+                    "usedSecs":   state.accumulated_elapsed_secs,
+                    "notes":      state.notes,
+                })
+
+            dt = datetime.fromtimestamp(self._session.session_start_ts)
+            record = {
+                "id":             str(uuid.uuid4()),
+                "title":          f"{proto.get('name', 'Untitled')} — {dt.strftime('%b %d, %Y')}",
+                "protocolId":     proto.get("id", ""),
+                "protocolName":   proto.get("name", "Untitled"),
+                "protocolSnapshot": proto,
+                "startedAt":      start_ts,
+                "endedAt":        now_ts,
+                "actualDuration": dur_s,
+                "timeline":       [],
+                "stepRecords":    step_records,
+                "observations":   "",
+                "tags":           [],
+                "notes":          "",
+            }
+            runs = self.app.data.load_runs()
+            runs.insert(0, record)
+            self.app.data.save_runs(runs)
+            logger.info(f"save_to_notebook: saved run record id={record['id']}")
+        except Exception as e:
+            logger.error(f"save_to_notebook error: {e}")
+
+    # ── Left panel step status ────────────────────────────────────────────────
+
+    def _update_left_step_status(self) -> None:
+        if self._session is None:
+            return
+
+        self._step_status_widget.setVisible(True)
+        lay = self._step_status_widget.layout()
+        if lay is None:
+            return
+
+        # Clear old labels
+        while lay.count():
+            item = lay.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._step_status_labels.clear()
+
+        status_icons = {
+            "idle": ("●", Colors.TEXT_MUTED),
+            "running": ("▶", Colors.SUCCESS),
+            "paused": ("⏸", Colors.WARNING),
+            "completed": ("✓", Colors.ACCENT_LIGHT),
+            "skipped": ("⟩", Colors.TEXT_MUTED),
+        }
+
+        for state in self._session.step_states:
+            sd = self._session.step_data(state)
+            title = sd.get("title", f"Block {state.step_idx+1}")
+            icon, color = status_icons.get(state.status, ("●", Colors.TEXT_MUTED))
+            lbl = QLabel(f"{icon}  {title[:22]}{'…' if len(title) > 22 else ''}")
+            lbl.setStyleSheet(
+                f"color: {color}; font-size: {Fonts.SIZE_XS}px; padding: 1px 4px;"
+            )
+            lay.addWidget(lbl)
+            self._step_status_labels.append(lbl)
+
+    # ── Idle / empty state ────────────────────────────────────────────────────
+
+    def _show_idle_state(self) -> None:
         while self._step_layout.count():
             item = self._step_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        self._info_name.setText("—")
-        self._info_steps.setText("")
-        self._info_dur.setText("")
-
-        lbl = QLabel(msg)
+        lbl = QLabel("Select a protocol from the left panel to begin a run.")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setWordWrap(True)
         lbl.setStyleSheet(
             f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px;"
             f"font-style: italic;"
@@ -409,5 +734,37 @@ class RunModePage(BasePage):
         self._step_layout.addWidget(lbl)
         self._step_layout.addStretch()
 
-    def on_show(self) -> None:
-        self._populate_protocols()
+    # ── Snackbar ──────────────────────────────────────────────────────────────
+
+    def _show_snackbar(self, step_title: str, on_undo) -> None:
+        if self._snackbar is not None:
+            self._snackbar.hide()
+            self._snackbar.deleteLater()
+
+        # Position at bottom of the step scroll area
+        sb = _UndoSnackbar(step_title, on_undo, parent=self._step_scroll)
+        sb.setFixedHeight(48)
+        self._snackbar = sb
+        self._reposition_snackbar()
+        sb.show()
+        sb.raise_()
+
+    def _reposition_snackbar(self) -> None:
+        if self._snackbar is None:
+            return
+        sr = self._step_scroll
+        w = sr.width() - 40
+        x = 20
+        y = sr.height() - 58
+        self._snackbar.setGeometry(x, y, w, 48)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._reposition_snackbar()
+
+    # ── Validation helper ─────────────────────────────────────────────────────
+
+    def _validate(self, idx: int) -> bool:
+        return (self._session is not None
+                and 0 <= idx < len(self._session.step_states)
+                and idx < len(self._cards))
