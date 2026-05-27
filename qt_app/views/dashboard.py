@@ -1,8 +1,10 @@
 """
-Dashboard page — Phase 1 skeleton.
+Dashboard page — Phase 2: real data from DataService.
 
-Shows a welcome banner plus quick-stat cards.
-Full implementation comes in a later phase.
+Shows:
+- Protocol / template / schedule / notebook counts
+- Active session indicator (if crash-recovery session exists)
+- Quick-access cards
 """
 from __future__ import annotations
 
@@ -14,31 +16,30 @@ from PySide6.QtWidgets import (
 
 from qt_app.theme import Colors, Fonts
 from qt_app.components.widgets import (
-    Card, HSeparator, MutedLabel, PageTitle, PrimaryButton, SubLabel,
+    Card, HSeparator, PageTitle, PrimaryButton, SubLabel,
 )
 from qt_app.views.base_page import BasePage
 
 
-class _StatCard(Card):
-    """Small metric card: icon + number + label."""
+# ── Stat card ─────────────────────────────────────────────────────────────────
 
-    def __init__(self, icon: str, value: str, label: str,
-                 accent: str = Colors.ACCENT,
+class _StatCard(Card):
+    def __init__(self, icon: str, value: str, label: str, accent: str,
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(20, 20, 20, 20)
-        lay.setSpacing(6)
+        lay.setContentsMargins(20, 18, 20, 18)
+        lay.setSpacing(4)
 
         icon_lbl = QLabel(icon)
-        icon_lbl.setStyleSheet(f"font-size: 28px; color: {accent};")
+        icon_lbl.setStyleSheet(f"font-size: 26px; color: {accent};")
         lay.addWidget(icon_lbl)
+        lay.addSpacing(4)
 
         val_lbl = QLabel(value)
         val_lbl.setStyleSheet(
             f"color: {Colors.TEXT_PRIMARY};"
-            f"font-size: {Fonts.SIZE_2XL}px;"
-            f"font-weight: 700;"
+            f"font-size: {Fonts.SIZE_2XL}px; font-weight: 700;"
         )
         lay.addWidget(val_lbl)
 
@@ -50,15 +51,81 @@ class _StatCard(Card):
         lay.addStretch()
 
 
+# ── Active session banner ─────────────────────────────────────────────────────
+
+class _ActiveSessionBanner(QFrame):
+    """Shown when a crash-recovery runtime_session.json exists."""
+
+    def __init__(self, session: dict, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setStyleSheet(
+            f"QFrame {{"
+            f"  background: rgba(249,115,22,0.12);"
+            f"  border: 1px solid {Colors.WARNING};"
+            f"  border-radius: 12px;"
+            f"}}"
+        )
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(18, 12, 18, 12)
+        lay.setSpacing(14)
+
+        icon = QLabel("⚠")
+        icon.setStyleSheet(f"color: {Colors.WARNING}; font-size: 20px;")
+        lay.addWidget(icon)
+
+        proto_name = (
+            session.get("protocol_snapshot", {}).get("name", "")
+            or session.get("protocol_id", "Unknown protocol")
+        )
+        msg = QLabel(f"Interrupted run: <b>{proto_name}</b>  — open Run Mode to resume")
+        msg.setStyleSheet(
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+        )
+        msg.setTextFormat(Qt.TextFormat.RichText)
+        lay.addWidget(msg, stretch=1)
+
+
+# ── Quick-access card ─────────────────────────────────────────────────────────
+
+def _quick_card(emoji: str, label: str, page: str, app) -> QFrame:
+    card = Card()
+    card.setCursor(Qt.CursorShape.PointingHandCursor)
+    card.setMinimumHeight(76)
+    card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    lay = QHBoxLayout(card)
+    lay.setContentsMargins(18, 14, 18, 14)
+    lay.setSpacing(12)
+
+    e_lbl = QLabel(emoji)
+    e_lbl.setStyleSheet("font-size: 22px;")
+    lay.addWidget(e_lbl)
+
+    t_lbl = QLabel(label)
+    t_lbl.setStyleSheet(
+        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 600;"
+    )
+    lay.addWidget(t_lbl)
+    lay.addStretch()
+
+    arr = QLabel("›")
+    arr.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 22px;")
+    lay.addWidget(arr)
+
+    card.mousePressEvent = lambda e, p=page: app.navigate(p)
+    return card
+
+
+# ── DashboardPage ─────────────────────────────────────────────────────────────
+
 class DashboardPage(BasePage):
-    """Landing page shown on app start."""
+    """Landing page — shows real counts from DataService."""
 
     def __init__(self, app: "BenchFlowApp", parent: QWidget | None = None) -> None:  # type: ignore[name-defined]
         super().__init__(app, parent)
         self._build()
 
     def _build(self) -> None:
-        # ── Outer scroll wrapper ──────────────────────────────────────────────
         scroll = QScrollArea()
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidgetResizable(True)
@@ -71,144 +138,93 @@ class DashboardPage(BasePage):
 
         root = QVBoxLayout(inner)
         root.setContentsMargins(32, 32, 32, 32)
-        root.setSpacing(24)
+        root.setSpacing(0)
+
+        # ── Active session banner (optional) ──────────────────────────────────
+        session = self.app.data.load_active_session()
+        if session:
+            banner = _ActiveSessionBanner(session)
+            root.addWidget(banner)
+            root.addSpacing(16)
 
         # ── Header ────────────────────────────────────────────────────────────
         header = QHBoxLayout()
         header.setSpacing(16)
 
-        title_col = QVBoxLayout()
-        title_col.setSpacing(4)
-        title_col.addWidget(PageTitle("Dashboard"))
-        sub = SubLabel("Welcome back — your lab at a glance.")
-        title_col.addWidget(sub)
-        header.addLayout(title_col)
+        col = QVBoxLayout()
+        col.setSpacing(4)
+        col.addWidget(PageTitle("Dashboard"))
+        col.addWidget(SubLabel("Your lab at a glance."))
+        header.addLayout(col)
         header.addStretch()
 
         run_btn = PrimaryButton("▶  Start Run")
         run_btn.setMinimumWidth(140)
         run_btn.clicked.connect(lambda: self.app.navigate("run"))
         header.addWidget(run_btn)
-
         root.addLayout(header)
+        root.addSpacing(20)
         root.addWidget(HSeparator())
+        root.addSpacing(20)
 
-        # ── Stat cards ────────────────────────────────────────────────────────
-        stats_label = QLabel("Overview")
-        stats_label.setStyleSheet(
+        # ── Stats ─────────────────────────────────────────────────────────────
+        n_protocols  = len(self.app.data.load_protocols())
+        n_templates  = len(self.app.data.load_templates())
+        n_schedule   = len(self.app.data.load_schedule())
+        n_runs       = len(self.app.data.load_runs())
+
+        ovr_lbl = QLabel("Overview")
+        ovr_lbl.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
             f"font-weight: 600; letter-spacing: 1px;"
         )
-        root.addWidget(stats_label)
+        root.addWidget(ovr_lbl)
+        root.addSpacing(10)
 
         grid = QGridLayout()
-        grid.setSpacing(12)
+        grid.setSpacing(10)
         grid.setContentsMargins(0, 0, 0, 0)
 
         stats = [
-            ("📋", self._count_protocols(), "Protocols",     Colors.ACCENT),
-            ("▶",  self._count_runs(),      "Runs logged",   Colors.SUCCESS),
-            ("🗓", self._count_schedule(),  "Scheduled",     Colors.WARNING),
-            ("📓", self._count_notes(),     "Notebook entries", Colors.ACCENT_LIGHT),
+            ("📋", str(n_protocols),  "Protocols",     Colors.ACCENT),
+            ("🗂", str(n_templates),  "Templates",     Colors.ACCENT_LIGHT),
+            ("🗓", str(n_schedule),   "Scheduled",     Colors.WARNING),
+            ("📓", str(n_runs),       "Run records",   Colors.SUCCESS),
         ]
-        for col, (icon, val, lbl, color) in enumerate(stats):
-            card = _StatCard(icon, str(val), lbl, color)
-            card.setMinimumHeight(130)
-            grid.addWidget(card, 0, col)
-
+        for col_idx, (icon, val, lbl, color) in enumerate(stats):
+            card = _StatCard(icon, val, lbl, color)
+            card.setMinimumHeight(120)
+            grid.addWidget(card, 0, col_idx)
         root.addLayout(grid)
+        root.addSpacing(28)
 
         # ── Quick access ──────────────────────────────────────────────────────
-        qa_label = QLabel("Quick access")
-        qa_label.setStyleSheet(
+        qa_lbl = QLabel("Quick access")
+        qa_lbl.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
             f"font-weight: 600; letter-spacing: 1px;"
         )
-        root.addWidget(qa_label)
+        root.addWidget(qa_lbl)
+        root.addSpacing(10)
 
         qa_row = QHBoxLayout()
-        qa_row.setSpacing(12)
-
+        qa_row.setSpacing(10)
         for label, page, emoji in [
             ("Protocol Library", "library",  "📋"),
+            ("Run Mode",         "run",      "▶"),
             ("Schedule",         "schedule", "🗓"),
             ("Lab Notebook",     "history",  "📓"),
-            ("Settings",         "settings", "⚙"),
         ]:
-            btn = self._make_quick_card(emoji, label, page)
-            qa_row.addWidget(btn)
-
+            qa_row.addWidget(_quick_card(emoji, label, page, self.app))
         root.addLayout(qa_row)
         root.addStretch()
 
         self._root_layout.addWidget(scroll)
 
-    # ── Quick card ────────────────────────────────────────────────────────────
-
-    def _make_quick_card(self, emoji: str, label: str, page: str) -> QFrame:
-        card = Card()
-        card.setCursor(Qt.CursorShape.PointingHandCursor)
-        card.setMinimumHeight(80)
-        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-        lay = QHBoxLayout(card)
-        lay.setContentsMargins(16, 16, 16, 16)
-        lay.setSpacing(12)
-
-        icon = QLabel(emoji)
-        icon.setStyleSheet(f"font-size: 22px;")
-        lay.addWidget(icon)
-
-        lbl = QLabel(label)
-        lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 600;"
-        )
-        lay.addWidget(lbl)
-        lay.addStretch()
-
-        arrow = QLabel("›")
-        arrow.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 20px;")
-        lay.addWidget(arrow)
-
-        # Make the whole card clickable via mouse press event
-        card.mousePressEvent = lambda e, p=page: self.app.navigate(p)
-        return card
-
-    # ── Data helpers ──────────────────────────────────────────────────────────
-
-    def _count_protocols(self) -> int:
-        try:
-            return len(self.app.data.load_protocols())
-        except Exception:
-            return 0
-
-    def _count_runs(self) -> int:
-        try:
-            return len(self.app.data.load_runs())
-        except Exception:
-            return 0
-
-    def _count_schedule(self) -> int:
-        try:
-            return len(self.app.data.load_schedule())
-        except Exception:
-            return 0
-
-    def _count_notes(self) -> int:
-        try:
-            return len(self.app.data.load_runs())  # placeholder until notebook model is separate
-        except Exception:
-            return 0
-
-    # ── on_show ───────────────────────────────────────────────────────────────
-
     def on_show(self) -> None:
-        """Rebuild stat cards with fresh data each time Dashboard is shown."""
-        # For Phase 1, a full rebuild is fine.
-        # Phase 2+ will use signals to update only changed counts.
-        # Clear and rebuild
-        for i in reversed(range(self._root_layout.count())):
-            item = self._root_layout.itemAt(i)
-            if item and item.widget():
+        # Rebuild with fresh data each visit (fast — just counting, no heavy IO)
+        while self._root_layout.count():
+            item = self._root_layout.takeAt(0)
+            if item.widget():
                 item.widget().deleteLater()
         self._build()
