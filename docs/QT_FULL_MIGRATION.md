@@ -13,7 +13,9 @@
 | Phase 1 | App skeleton (window, sidebar, routing, theme) | ✅ **Done** |
 | Phase 2 | Data layer integration (DataService, models, read-only pages) | ✅ **Done** |
 | Phase 3 | Run Mode — QTimer, step cards, complete/pause/undo, autosave | ✅ **Done** |
-| Phase 4 | Schedule — QGraphicsScene calendar, drag-and-drop | 🔲 |
+| Phase 3.5 | Run Mode polish — sequential, progress bars, remove block, focus scroll | ✅ **Done** |
+| Phase 4 | Schedule — calendar grid, drag session blocks, timeline editor | ✅ **Done** |
+| Phase 4.5 | Schedule polish — week view, right-panel drag-reorder, context menu | 🔲 |
 | Phase 5 | Library + Protocol Editor + Import | 🔲 |
 | Phase 6 | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
 | Phase 7 | Lab Notebook — rich text (QTextEdit), PDF/DOCX export | 🔲 |
@@ -177,9 +179,84 @@ Both apps read/write the same JSON format. No migration needed.
 - No progress bar on step cards (Phase 3.5)
 - Notes scroll position not restored after session reload
 
-### Phase 4 — Schedule
+---
 
-Next implementation target: full calendar view with `QGraphicsScene` + drag-and-drop blocks.
+## Phase 4 — Schedule ✅
+
+**Commit**: `feat(phase-4): Schedule calendar, timeline editor, drag sessions`
+
+### New files
+
+```
+qt_app/models/schedule_experiment.py   ScheduledExperiment + TimelineBlock dataclasses
+qt_app/services/schedule_service.py    protocol_to_timeline(), make_scheduled_experiment(), helpers
+qt_app/dialogs/add_experiment.py       AddExperimentDialog (title/protocol/date/time/notes)
+qt_app/dialogs/edit_block.py           EditBlockDialog (add or edit a timeline block)
+qt_app/views/schedule.py              Full rewrite — calendar grid + timeline detail panel
+logs/qt_schedule.log                   Structured action log
+```
+
+### Data
+
+New file `~/Library/Application Support/BenchFlow/scheduled_experiments.json`  
+Format: `List[ScheduledExperiment]` (Qt-native, independent of CTk `schedule.json`)
+
+CTk `schedule.json` is **not touched** — full compatibility preserved.
+
+### Architecture
+
+| Component | Implementation |
+|---|---|
+| Calendar grid | `_CalendarGrid(QWidget)` — custom paintEvent + `_SessionBlock(QFrame)` children |
+| Session blocks | Absolutely positioned `QFrame` children; geometry set by `_reposition_blocks()` |
+| Day header | `_DayHeader(QWidget)` — custom paintEvent (today circle in blue) |
+| Timeline rows | `_TimelineBlockRow(QFrame)` — per-block widget with time, title, actions |
+| Drag | Global-y delta in `mouseMoveEvent`; 15-min snap; `drag_finished` signal on release |
+| Autosave | 150ms debounced `QTimer` → atomic write via `DataService` |
+
+### What was built
+
+- **Day / Work Week calendar view** with Day / Work Week toggle
+- Date navigation: `< Prev`, `Today`, `Next >`; date range label
+- **Today column highlight** + **current-time indicator** (red line + dot)
+- **Session blocks** positioned on grid by `planned_start` / `planned_end`
+- **Vertical drag** to change session start time (15-minute snap)
+- **+ Schedule Experiment** dialog: title, protocol selector (protocols + templates), date, start time, notes
+- Protocol → timeline auto-generation using `step_planned_secs()`
+- **Right panel** shows selected experiment's full timeline blocks
+- Per-block actions: **Edit** (dialog), **Skip** (status=skipped, zero-duration), **Delete**
+- **Add Break / Task / Note** buttons append blocks to timeline
+- `recalculate_times()` updates all block start/end after any change
+- Session block position and height update after drag or timeline edit
+- Experiment persisted to `scheduled_experiments.json` on every change
+
+### Known limitations (Phase 4.5)
+
+- Week view (7-day) not implemented — only Day and Work Week
+- Right-panel timeline block drag-reorder deferred to Phase 4.5
+- Right-click context menu not implemented
+- Parallel task support not implemented
+- "Mark done" per block not yet in the UI (status can be set to `done` via Edit dialog)
+
+### Differences from CTk Schedule page
+
+| CTk | Phase 4 Qt |
+|---|---|
+| List-only (grouped by date) | Interactive calendar grid with time axis |
+| No drag | Drag session block to change start time |
+| No timeline detail | Right panel shows all internal steps |
+| No add/edit | Full add/edit/skip/delete per block |
+| Reads `schedule.json` | New `scheduled_experiments.json` — no conflict |
+
+### Phase 4.5 plan
+
+- Week view (Mon–Sun, 7 columns)
+- Right-panel drag-reorder (via QListWidget or manual drag)
+- Right-click context menu on blocks
+- "Mark done" quick action
+- Parallel task columns
+
+### Next: Phase 5 — Schedule
 
 ---
 

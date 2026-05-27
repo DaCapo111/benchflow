@@ -36,12 +36,13 @@ from typing import Any
 APP_DIR = Path.home() / "Library" / "Application Support" / "BenchFlow"
 APP_DIR.mkdir(parents=True, exist_ok=True)
 
-PROTOCOLS_FILE   = APP_DIR / "protocols.json"
-RUNS_FILE        = APP_DIR / "runs.json"
-CATEGORIES_FILE  = APP_DIR / "categories.json"
-TAGS_FILE        = APP_DIR / "tags.json"
-SCHEDULE_FILE    = APP_DIR / "schedule.json"
-RUNTIME_FILE     = APP_DIR / "runtime_session.json"
+PROTOCOLS_FILE        = APP_DIR / "protocols.json"
+RUNS_FILE             = APP_DIR / "runs.json"
+CATEGORIES_FILE       = APP_DIR / "categories.json"
+TAGS_FILE             = APP_DIR / "tags.json"
+SCHEDULE_FILE         = APP_DIR / "schedule.json"
+SCHEDULED_EXP_FILE    = APP_DIR / "scheduled_experiments.json"
+RUNTIME_FILE          = APP_DIR / "runtime_session.json"
 
 # Templates: repo root / templates/*.json  (read-only)
 _APP_BASE = (Path(sys._MEIPASS)          # type: ignore[attr-defined]
@@ -159,6 +160,16 @@ class DataService:
 
     def save_schedule(self, schedule: list[dict[str, Any]]) -> None:
         _save_json(SCHEDULE_FILE, schedule)
+
+    # ── Scheduled experiments (PySide6 calendar) ───────────────────────────────
+
+    def load_scheduled_experiments(self) -> list[dict[str, Any]]:
+        """Load scheduled_experiments.json (Qt-native format)."""
+        data = _load_json(SCHEDULED_EXP_FILE, [])
+        return data if isinstance(data, list) else []
+
+    def save_scheduled_experiments(self, experiments: list[dict[str, Any]]) -> None:
+        _save_json(SCHEDULED_EXP_FILE, experiments)
 
     # ── Templates (built-in, read-only) ───────────────────────────────────────
 
