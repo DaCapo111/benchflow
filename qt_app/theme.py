@@ -17,13 +17,13 @@ Usage
 
     # Runtime switch (emits EventBus "theme_changed" separately)
     apply_theme(qapp, "light")
-    bus.publish("theme_changed", theme="light")
+    bus.emit("theme_changed", theme="light")
 """
 
 from __future__ import annotations
 from PySide6.QtGui import QColor, QPalette, QFont
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 
 
 # ── Color palettes ────────────────────────────────────────────────────────────
@@ -640,6 +640,13 @@ def apply_theme(app: QApplication | None = None, name: str = "dark") -> None:
         default_font = QFont()
         default_font.setPointSize(Fonts.SIZE_MD)
         app.setFont(default_font)
+
+        for widget in app.allWidgets():
+            widget.setPalette(app.palette())
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            widget.update()
+            app.sendEvent(widget, QEvent(QEvent.Type.StyleChange))
 
 
 # ── Backwards-compat alias (old STYLESHEET constant) ─────────────────────────

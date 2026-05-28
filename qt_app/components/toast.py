@@ -22,37 +22,28 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QWidget
 
-from qt_app.theme import Colors, Fonts, Radii
+from qt_app.theme import Colors, Fonts, Radii, current_theme
 
 
 # ── Per-level style ───────────────────────────────────────────────────────────
 
-_LEVEL_STYLE: dict[str, dict[str, str]] = {
-    "success": {
-        "bg":     "rgba(20, 83, 45, 0.96)",
-        "border": Colors.SUCCESS,
-        "icon":   "✓",
-        "color":  Colors.SUCCESS,
-    },
-    "error": {
-        "bg":     "rgba(69, 10, 10, 0.96)",
-        "border": Colors.DANGER,
-        "icon":   "✕",
-        "color":  Colors.DANGER,
-    },
-    "warning": {
-        "bg":     "rgba(67, 20, 7, 0.96)",
-        "border": Colors.WARNING,
-        "icon":   "⚠",
-        "color":  Colors.WARNING,
-    },
-    "info": {
-        "bg":     "rgba(30, 41, 59, 0.96)",
-        "border": Colors.ACCENT,
-        "icon":   "ℹ",
-        "color":  Colors.ACCENT,
-    },
-}
+def _level_style(level: str) -> dict[str, str]:
+    light = current_theme() == "light"
+    bg_by_level = {
+        "success": Colors.SUCCESS_BG if light else "rgba(20, 83, 45, 0.96)",
+        "error": Colors.DANGER_BG if light else "rgba(69, 10, 10, 0.96)",
+        "warning": Colors.WARNING_BG if light else "rgba(67, 20, 7, 0.96)",
+        "info": Colors.BG_CARD if light else "rgba(30, 41, 59, 0.96)",
+    }
+    base = {
+        "success": {"border": Colors.SUCCESS, "icon": "✓", "color": Colors.SUCCESS},
+        "error": {"border": Colors.DANGER, "icon": "✕", "color": Colors.DANGER},
+        "warning": {"border": Colors.WARNING, "icon": "⚠", "color": Colors.WARNING},
+        "info": {"border": Colors.ACCENT, "icon": "ℹ", "color": Colors.ACCENT},
+    }
+    style = base.get(level, base["info"]).copy()
+    style["bg"] = bg_by_level.get(level, bg_by_level["info"])
+    return style
 
 _TOAST_W       = 320   # fixed width
 _TOAST_H       = 52    # fixed height per toast
@@ -71,7 +62,7 @@ class _Toast(QFrame):
     def __init__(self, message: str, level: str, parent: QWidget) -> None:
         super().__init__(parent)
         self._level = level
-        style = _LEVEL_STYLE.get(level, _LEVEL_STYLE["info"])
+        style = _level_style(level)
 
         self.setFixedSize(_TOAST_W, _TOAST_H)
         self.setStyleSheet(

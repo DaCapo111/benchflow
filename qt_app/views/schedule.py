@@ -533,17 +533,18 @@ class _CalendarGrid(QWidget):
 
 # ── _TimelineBlockRow ─────────────────────────────────────────────────────────
 
-_CONTEXT_MENU_QSS = """
-QMenu {
-    background: #1e2030; color: #e2e8f0;
-    border: 1px solid #334155; border-radius: 6px;
+def _context_menu_qss() -> str:
+    return f"""
+QMenu {{
+    background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};
+    border: 1px solid {Colors.BORDER}; border-radius: 6px;
     padding: 4px 0;
-}
-QMenu::item { padding: 6px 18px 6px 14px; font-size: 13px; }
-QMenu::item:selected { background: #334155; color: #f1f5f9; }
-QMenu::item:disabled { color: #475569; }
-QMenu::separator { height: 1px; background: #334155; margin: 3px 0; }
-QMenu::indicator { width: 0; }
+}}
+QMenu::item {{ padding: 6px 18px 6px 14px; font-size: 13px; }}
+QMenu::item:selected {{ background: {Colors.BG_CARD_HOV}; color: {Colors.TEXT_PRIMARY}; }}
+QMenu::item:disabled {{ color: {Colors.TEXT_MUTED}; }}
+QMenu::separator {{ height: 1px; background: {Colors.BORDER}; margin: 3px 0; }}
+QMenu::indicator {{ width: 0; }}
 """
 
 
@@ -711,7 +712,7 @@ class _TimelineBlockRow(QFrame):
         block = self._block
         is_inactive = block.status in ("skipped", "canceled")
         menu = QMenu(self)
-        menu.setStyleSheet(_CONTEXT_MENU_QSS)
+        menu.setStyleSheet(_context_menu_qss())
 
         # Edit
         a_edit = menu.addAction("✎  Edit…")
@@ -725,7 +726,7 @@ class _TimelineBlockRow(QFrame):
 
         # Insert Before submenu
         ins_before = menu.addMenu("↑  Insert Before")
-        ins_before.setStyleSheet(_CONTEXT_MENU_QSS)
+        ins_before.setStyleSheet(_context_menu_qss())
         for btype, label in [("break", "Break"), ("task", "Task"),
                               ("note", "Note"), ("custom", "Custom")]:
             a = ins_before.addAction(label)
@@ -735,7 +736,7 @@ class _TimelineBlockRow(QFrame):
 
         # Insert After submenu
         ins_after = menu.addMenu("↓  Insert After")
-        ins_after.setStyleSheet(_CONTEXT_MENU_QSS)
+        ins_after.setStyleSheet(_context_menu_qss())
         for btype, label in [("break", "Break"), ("task", "Task"),
                               ("note", "Note"), ("custom", "Custom")]:
             a = ins_after.addAction(label)

@@ -168,7 +168,7 @@ class _StepNode(QGraphicsObject):
         bg_path.addRoundedRect(QRectF(0, 0, w, h), NODE_RAD, NODE_RAD)
 
         if self._sel:
-            bg_color = QColor(28, 52, 90)
+            bg_color = QColor(Colors.BG_CARD_HOV)
             border_pen = QPen(QColor(Colors.ACCENT), 2)
         else:
             bg_color = QColor(Colors.BG_CARD)

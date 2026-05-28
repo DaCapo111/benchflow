@@ -53,7 +53,7 @@ from qt_app.services.run_service import (
 from qt_app.services.data import DataService
 from qt_app.dialogs.add_block import AddBlockDialog
 from qt_app.dialogs.restore_session import RestoreSessionDialog
-from qt_app.views.base_page import BasePage
+from qt_app.views.base_page import BasePage, _clear_layout
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 _logs_dir = Path(__file__).parent.parent.parent / "logs"
@@ -169,17 +169,70 @@ class RunModePage(BasePage):
 
     # ── Theme override ────────────────────────────────────────────────────────
 
+    def _on_theme_changed(self, theme: str = "dark", **_kw) -> None:
+        """Refresh Run Mode without discarding an active timer session."""
+        if self._session is None:
+            self._rebuild_theme()
+            return
+        self._rebuild_active_theme()
+
     def _ensure_fresh_theme(self) -> None:
-        """Skip rebuild if a session is active to protect timer state."""
+        """Rebuild stale theme state while preserving active sessions."""
         from qt_app.theme import current_theme as _ct
         t = _ct()
         if self._last_theme == t:
             return
         if self._session is not None:
-            # Active session: mark dirty so we rebuild on next idle visit
-            self._last_theme = ""
+            self._rebuild_active_theme()
             return
         self._rebuild_theme()
+
+    def _rebuild_active_theme(self) -> None:
+        """Rebuild theme-dependent widgets while keeping the run session object."""
+        from qt_app.theme import current_theme as _ct
+
+        selected_step = self._step_status_list.currentRow() if hasattr(self, "_step_status_list") else -1
+        scroll_value = (
+            self._step_scroll.verticalScrollBar().value()
+            if hasattr(self, "_step_scroll") else 0
+        )
+        sequential = self._sequential
+
+        if self._snackbar is not None:
+            self._snackbar.hide()
+            self._snackbar = None
+
+        self._last_theme = _ct()
+        self.setStyleSheet(f"background: {Colors.BG_PAGE};")
+        _clear_layout(self._root_layout)
+        self._cards.clear()
+
+        self._build()
+        self._load_protocol_list()
+
+        if self._session is not None:
+            self._select_protocol_in_list(self._session.protocol_id)
+            self._sequential = sequential
+            self._seq_btn.blockSignals(True)
+            self._seq_btn.setChecked(sequential)
+            self._seq_btn.blockSignals(False)
+            self._add_block_btn.setVisible(True)
+            self._save_btn.setVisible(True)
+            self._end_run_btn.setVisible(True)
+            self._seq_btn.setVisible(True)
+            self._session_badge.setText("● Active session")
+            self._session_badge.setVisible(True)
+            self._render_step_cards_once()
+            if selected_step >= 0:
+                self._step_status_list.setCurrentRow(selected_step)
+                if selected_step < len(self._cards):
+                    self._focus_step(selected_step)
+            QTimer.singleShot(
+                0,
+                lambda value=scroll_value: self._step_scroll.verticalScrollBar().setValue(value),
+            )
+            if not self._tick_timer.isActive():
+                self._tick_timer.start()
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -417,6 +470,20 @@ class RunModePage(BasePage):
         self._proto_list.clear()
         for p in self.app.data.load_protocols():
             self._proto_list.addItem(_ProtoItem(p))
+
+    def _select_protocol_in_list(self, protocol_id: str) -> None:
+        """Select a protocol row without starting/replacing the active session."""
+        self._proto_list.blockSignals(True)
+        try:
+            self._proto_list.clearSelection()
+            for i in range(self._proto_list.count()):
+                item = self._proto_list.item(i)
+                proto = item.data(Qt.ItemDataRole.UserRole) if item else None
+                if proto and proto.get("id", "") == protocol_id:
+                    self._proto_list.setCurrentItem(item)
+                    break
+        finally:
+            self._proto_list.blockSignals(False)
 
     def _on_proto_selected(self, current: QListWidgetItem | None, _prev) -> None:
         if current is None:

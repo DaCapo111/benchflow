@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QProgressBar, QPushButton, QSizePolicy, QVBoxLayout, QWidget,
 )
 
-from qt_app.theme import Colors, Fonts, Radii
+from qt_app.theme import Colors, Fonts, Radii, current_theme
 from qt_app.services.run_service import (
     StepRunState, format_timer,
     is_countdown_step, step_has_timer, COUNTDOWN_TYPES,
@@ -105,11 +105,19 @@ _BG: dict[str, str] = {
 
 
 def _accent(stype: str) -> str:
-    return _ACCENTS.get(stype, "#94a3b8")
+    pair = Colors.STEP_COLORS.get(stype)
+    if pair:
+        return pair[1]
+    return _ACCENTS.get(stype, Colors.TEXT_MUTED)
 
 
 def _bg(stype: str) -> str:
-    return _BG.get(stype, "#1e293b")
+    pair = Colors.STEP_COLORS.get(stype)
+    if pair:
+        return pair[0]
+    if current_theme() == "light":
+        return Colors.BG_CARD
+    return _BG.get(stype, Colors.BG_CARD)
 
 
 # ── Button factory helpers ─────────────────────────────────────────────────────

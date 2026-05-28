@@ -412,10 +412,10 @@ class SettingsPage(BasePage):
         try:
             app = QApplication.instance()
             apply_theme(app, name)
-            bus.publish("theme_changed", theme=name)
             s = self.app.data.load_settings()
             s["theme"] = name
             self.app.data.save_settings(s)
+            bus.emit("theme_changed", theme=name)
         except Exception as exc:
             ToastManager.show_error(f"Theme switch failed: {exc}")
 

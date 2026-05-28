@@ -51,6 +51,7 @@ KNOWN_EVENTS = frozenset({
     "active_session_restored",
     "data_saved",
     "data_error",
+    "theme_changed",
 })
 
 
@@ -94,6 +95,10 @@ class _EventBus:
                 cb(**payload)
             except Exception as exc:
                 logger.exception(f"EventBus handler error [{event}] cb={cb}: {exc}")
+
+    def publish(self, event: str, **payload: Any) -> None:
+        """Backward-compatible alias for emit()."""
+        self.emit(event, **payload)
 
     def clear(self) -> None:
         """Remove all listeners.  Useful for testing."""
