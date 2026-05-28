@@ -36,9 +36,10 @@ from datetime import datetime, date
 from typing import Any
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
-    QMenu, QMessageBox, QPlainTextEdit, QPushButton,
+    QGraphicsDropShadowEffect, QMenu, QMessageBox, QPlainTextEdit, QPushButton,
     QScrollArea, QSizePolicy, QSplitter,
     QVBoxLayout, QWidget, QLineEdit,
 )
@@ -190,12 +191,12 @@ class _RecordCard(QFrame):
             return (
                 f"QFrame {{ background: {Colors.SELECTED_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border: 1px solid {Colors.BORDER};"
                 f"  border-left: 3px solid {Colors.ACCENT}; }}"
             )
         return (
-            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
-            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"QFrame {{ background: {Colors.BG_ELEVATED}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER}; }}"
             f"QFrame:hover {{ background: {Colors.HOVER_BG}; border-color: {Colors.BORDER}; }}"
         )
 
@@ -203,6 +204,11 @@ class _RecordCard(QFrame):
         super().__init__(parent)
         self._record = record
         self._sel    = False
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(12)
+        shadow.setOffset(0, 3)
+        shadow.setColor(QColor(17, 24, 39, 12))
+        self.setGraphicsEffect(shadow)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(self._style(False))

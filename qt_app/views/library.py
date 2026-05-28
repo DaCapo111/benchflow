@@ -32,9 +32,10 @@ from datetime import datetime
 from typing import Any
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QMenu, QMessageBox, QPushButton, QScrollArea,
+    QGraphicsDropShadowEffect, QMenu, QMessageBox, QPushButton, QScrollArea,
     QSizePolicy, QSplitter, QVBoxLayout, QWidget,
 )
 
@@ -100,6 +101,11 @@ class _ProtocolCard(QFrame):
         self._is_template = is_template
         self._sel         = False
         self.setObjectName("ProtocolCard")
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(14)
+        shadow.setOffset(0, 3)
+        shadow.setColor(QColor(17, 24, 39, 14))
+        self.setGraphicsEffect(shadow)
         self.setStyleSheet(self._style(False))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -111,14 +117,14 @@ class _ProtocolCard(QFrame):
             return (
                 f"QFrame#ProtocolCard {{ background: {Colors.SELECTED_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border: 1px solid {Colors.BORDER};"
                 f"  border-left: 3px solid {Colors.ACCENT}; }}"
                 f"QFrame#ProtocolCard:hover {{ background: {Colors.SELECTED_BG}; }}"
             )
         return (
-            f"QFrame#ProtocolCard {{ background: {Colors.BG_CARD};"
+            f"QFrame#ProtocolCard {{ background: {Colors.BG_ELEVATED};"
             f"  border-radius: {Radii.LG}px;"
-            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"  border: 1px solid {Colors.BORDER}; }}"
             f"QFrame#ProtocolCard:hover {{ background: {Colors.HOVER_BG};"
             f"  border-color: {Colors.BORDER}; }}"
         )

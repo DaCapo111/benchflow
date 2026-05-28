@@ -27,8 +27,9 @@ notes_changed(int, str)    # debounced by RunModePage
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPlainTextEdit,
+    QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QPlainTextEdit,
     QProgressBar, QPushButton, QSizePolicy, QVBoxLayout, QWidget,
 )
 
@@ -183,6 +184,11 @@ class StepCard(QFrame):
         self._is_temp = state.is_temp
         self._focused = False
         self.setObjectName("StepCard")
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(14)
+        shadow.setOffset(0, 3)
+        shadow.setColor(QColor(17, 24, 39, 12))
+        self.setGraphicsEffect(shadow)
 
         accent = _accent(self._stype)
         bg     = _bg(self._stype)
@@ -190,7 +196,7 @@ class StepCard(QFrame):
             f"QFrame#StepCard {{"
             f"  background: {bg};"
             f"  border-radius: {Radii.LG}px;"
-            f"  border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border: 1px solid {Colors.BORDER};"
             f"}}"
         )
         self._accent = accent
@@ -397,34 +403,34 @@ class StepCard(QFrame):
             self.setStyleSheet(
                 f"QFrame#StepCard {{ background: {Colors.SELECTED_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border: 1px solid {Colors.BORDER};"
                 f"  border-left: 3px solid {accent}; }}"
             )
         elif status == "completed":
             self.setStyleSheet(
                 f"QFrame#StepCard {{ background: {Colors.SUCCESS_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+                f"  border: 1px solid {Colors.BORDER}; }}"
             )
         elif status == "skipped":
             self.setStyleSheet(
                 f"QFrame#StepCard {{ background: {Colors.BG_SURFACE_ALT};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+                f"  border: 1px solid {Colors.BORDER}; }}"
             )
         elif self._focused:
             # Idle/paused + focused — dim accent glow
             self.setStyleSheet(
                 f"QFrame#StepCard {{ background: {Colors.SELECTED_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border: 1px solid {Colors.BORDER};"
                 f"  border-left: 3px solid {accent}; }}"
             )
         else:
             self.setStyleSheet(
                 f"QFrame#StepCard {{ background: {_bg(self._stype)};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+                f"  border: 1px solid {Colors.BORDER}; }}"
             )
 
     # ── apply_state — updates all visual elements in-place ────────────────────

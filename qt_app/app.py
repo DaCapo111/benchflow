@@ -98,7 +98,7 @@ class BenchFlowApp(QMainWindow):
             f"QStackedWidget#PageContainer {{"
             f"  background: {Colors.BG_PAGE};"
             f"  border-radius: 20px;"
-            f"  border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border: 1px solid {Colors.BORDER};"
             f"}}"
         )
         layout.addWidget(self._stack, stretch=1)
@@ -147,7 +147,7 @@ class BenchFlowApp(QMainWindow):
             f"QStackedWidget#PageContainer {{"
             f"  background: {Colors.BG_PAGE};"
             f"  border-radius: 20px;"
-            f"  border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border: 1px solid {Colors.BORDER};"
             f"}}"
         )
 

@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QFrame, QLabel, QPushButton, QScrollArea, QSizePolicy,
+    QGraphicsDropShadowEffect,
     QWidget, QVBoxLayout,
 )
 
@@ -117,6 +118,11 @@ class Card(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("Card")
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(18)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(17, 24, 39, 18))
+        self.setGraphicsEffect(shadow)
 
 
 # ── ScrollArea ────────────────────────────────────────────────────────────────

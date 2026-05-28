@@ -36,6 +36,7 @@ _DARK: dict[str, object] = {
     "BG_INPUT":     "#0f172a",
     "BG_PAGE":      "#0f172a",
     "BG_SURFACE_ALT": "#111827",
+    "BG_ELEVATED":  "#1e293b",
     "SELECTED_BG":  "rgba(59,130,246,0.18)",
     "HOVER_BG":     "#263548",
 
@@ -90,25 +91,26 @@ _DARK: dict[str, object] = {
 }
 
 _LIGHT: dict[str, object] = {
-    "BG_DARK":      "#F7F8FA",   # app window / outer frame
-    "BG_SIDEBAR":   "#F3F4F6",   # sidebar background
+    "BG_DARK":      "#F2F4F7",   # app window / outer frame
+    "BG_SIDEBAR":   "#ECEFF4",   # sidebar background
     "BG_CARD":      "#FFFFFF",   # card / panel surface
-    "BG_CARD_HOV":  "#F2F4F7",   # card hover
+    "BG_CARD_HOV":  "#F7F9FC",   # card hover
     "BG_INPUT":     "#FFFFFF",   # input field
-    "BG_PAGE":      "#F7F8FA",   # page body
-    "BG_SURFACE_ALT": "#F1F3F5",
-    "SELECTED_BG":  "#EAF1FF",
-    "HOVER_BG":     "#F2F4F7",
+    "BG_PAGE":      "#F6F7F9",   # page body
+    "BG_SURFACE_ALT": "#EEF1F5",
+    "BG_ELEVATED":  "#FFFFFF",
+    "SELECTED_BG":  "#E6F0FF",
+    "HOVER_BG":     "#F0F3F8",
 
-    "SB_ACTIVE":    "#EAF1FF",   # selected nav pill
-    "SB_HOVER":     "#F2F4F7",   # nav hover
-    "SB_TEXT":      "#6B7280",   # inactive nav text
+    "SB_ACTIVE":    "#DDEBFF",   # selected nav pill
+    "SB_HOVER":     "#E3E7EF",   # nav hover
+    "SB_TEXT":      "#4B5563",   # inactive nav text
     "SB_TEXT_ACT":  "#111827",   # active nav text
-    "SB_BORDER":    "#E5E7EB",   # sidebar/border
+    "SB_BORDER":    "#D8DEE8",   # sidebar/border
 
     "TEXT_PRIMARY": "#111827",   # main text
-    "TEXT_SECOND":  "#6B7280",   # secondary text
-    "TEXT_MUTED":   "#9CA3AF",   # muted / placeholder
+    "TEXT_SECOND":  "#4B5563",   # secondary text
+    "TEXT_MUTED":   "#7C8594",   # muted / placeholder
 
     "ACCENT":       "#2563EB",
     "ACCENT_HOVER": "#1D4ED8",
@@ -122,8 +124,8 @@ _LIGHT: dict[str, object] = {
     "DANGER":       "#DC2626",   # darker red
     "DANGER_BG":    "#FEE2E2",   # light red background
 
-    "BORDER":       "#E5E7EB",
-    "BORDER_LIGHT": "#EEF0F2",
+    "BORDER":       "#D6DCE6",
+    "BORDER_LIGHT": "#E5E9F0",
 
     "SCROLL_HANDLE": "#D1D5DB",
     "SCROLL_HOV":    "#9CA3AF",
@@ -167,6 +169,7 @@ class Colors:
     BG_INPUT:     str = _DARK["BG_INPUT"]      # type: ignore[assignment]
     BG_PAGE:      str = _DARK["BG_PAGE"]       # type: ignore[assignment]
     BG_SURFACE_ALT: str = _DARK.get("BG_SURFACE_ALT", _DARK["BG_CARD_HOV"])  # type: ignore[assignment]
+    BG_ELEVATED:  str = _DARK.get("BG_ELEVATED", _DARK["BG_CARD"])  # type: ignore[assignment]
     SELECTED_BG:  str = _DARK.get("SELECTED_BG", _DARK["ACCENT_BG"])  # type: ignore[assignment]
     HOVER_BG:     str = _DARK.get("HOVER_BG", _DARK["BG_CARD_HOV"])  # type: ignore[assignment]
 
@@ -269,12 +272,12 @@ QMainWindow, QWidget#CentralWidget {{
 QWidget#Sidebar {{
     background-color: {c.BG_SIDEBAR};
     border-right: 1px solid {c.SB_BORDER};
-    border-radius: {r.LG}px;
+    border-radius: {r.XL}px;
 }}
 QLabel#SidebarTitle {{
     color: {c.TEXT_PRIMARY};
-    font-size: {f.SIZE_LG}px;
-    font-weight: 650;
+    font-size: {f.SIZE_XL}px;
+    font-weight: 700;
 }}
 QLabel#SidebarSubtitle {{
     color: {c.SB_TEXT};
@@ -284,11 +287,11 @@ QPushButton#NavButton {{
     background-color: transparent;
     color: {c.SB_TEXT};
     text-align: left;
-    padding: 0px 12px;
+    padding: 0px 14px;
     border-radius: {r.LG}px;
     border: none;
     font-size: {f.SIZE_MD}px;
-    height: 38px;
+    height: 40px;
 }}
 QPushButton#NavButton:hover {{
     background-color: {c.SB_HOVER};
@@ -297,7 +300,8 @@ QPushButton#NavButton:hover {{
 QPushButton#NavButton[active="true"] {{
     background-color: {c.SB_ACTIVE};
     color: {c.SB_TEXT_ACT};
-    font-weight: 600;
+    font-weight: 700;
+    border-left: 3px solid {c.ACCENT};
 }}
 QLabel#SidebarFooter {{
     color: {c.TEXT_MUTED};
@@ -308,14 +312,14 @@ QLabel#SidebarFooter {{
 QWidget#PageContainer {{
     background-color: {c.BG_PAGE};
     border-radius: {r.XL}px;
-    border: 1px solid {c.BORDER_LIGHT};
+    border: 1px solid {c.BORDER};
 }}
 
 /* ── Cards ───────────────────────────────────── */
 QFrame#Card {{
-    background-color: {c.BG_CARD};
+    background-color: {c.BG_ELEVATED};
     border-radius: {r.LG}px;
-    border: 1px solid {c.BORDER_LIGHT};
+    border: 1px solid {c.BORDER};
 }}
 QFrame#Card:hover {{
     background-color: {c.BG_CARD_HOV};
@@ -325,17 +329,17 @@ QFrame#Card:hover {{
 /* ── Labels ──────────────────────────────────── */
 QLabel#SectionTitle {{
     color: {c.TEXT_PRIMARY};
-    font-size: {f.SIZE_LG}px;
+    font-size: {f.SIZE_XL}px;
     font-weight: 700;
 }}
 QLabel#PageTitle {{
     color: {c.TEXT_PRIMARY};
-    font-size: {f.SIZE_2XL}px;
-    font-weight: 700;
+    font-size: {f.SIZE_3XL}px;
+    font-weight: 750;
 }}
 QLabel#SubLabel {{
     color: {c.TEXT_SECOND};
-    font-size: {f.SIZE_SM}px;
+    font-size: {f.SIZE_MD}px;
 }}
 QLabel#MutedLabel {{
     color: {c.TEXT_MUTED};
