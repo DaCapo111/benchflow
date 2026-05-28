@@ -43,6 +43,9 @@ from PySide6.QtWidgets import (
 from qt_app.theme import Colors, Fonts, Radii
 from qt_app.components.widgets import HSeparator, PageTitle, PrimaryButton, SubLabel
 from qt_app.components.step_card import StepCard
+from qt_app.components.toast import ToastManager
+from qt_app.services.event_bus import bus
+from qt_app.services.perf import perf
 from qt_app.services.run_service import (
     RunModeSession, StepRunState,
     step_planned_secs, is_countdown_step, format_timer,
@@ -422,6 +425,10 @@ class RunModePage(BasePage):
         if self._session is None:
             return
 
+        with perf.measure("render_step_cards"):
+            self._render_step_cards_impl()
+
+    def _render_step_cards_impl(self) -> None:
         # Clear previous cards
         self._cards.clear()
         while self._step_layout.count():
@@ -734,6 +741,7 @@ class RunModePage(BasePage):
         if self._session is None:
             return
         self._save_to_notebook()
+        ToastManager.show_success("Session saved to Lab Notebook.")
 
         msg = QMessageBox(self)
         msg.setWindowTitle("Session Saved")
@@ -754,8 +762,12 @@ class RunModePage(BasePage):
     def _on_end_run(self) -> None:
         if self._session is None:
             return
+        proto_name = (self._session.protocol_snapshot or {}).get("name", "")
         self._save_to_notebook()
         self._clear_session_state()
+        ToastManager.show_success(
+            f"Run saved: {proto_name}" if proto_name else "Run saved to Lab Notebook."
+        )
         logger.info("end_run")
 
     def _clear_session_state(self) -> None:
@@ -892,6 +904,11 @@ class RunModePage(BasePage):
             runs.insert(0, record)
             self.app.data.save_runs(runs)
             logger.info(f"save_to_notebook: saved run record id={record['id']}")
+            # Notify other pages (Dashboard count, History list)
+            bus.emit("run_session_saved",
+                     protocol_name=proto.get("name", ""))
+            bus.emit("notebook_record_created",
+                     protocol_name=proto.get("name", ""))
         except Exception as e:
             logger.error(f"save_to_notebook error: {e}")
 

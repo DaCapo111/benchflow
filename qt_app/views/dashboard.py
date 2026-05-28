@@ -5,6 +5,12 @@ Shows:
 - Protocol / template / schedule / notebook counts
 - Active session indicator (if crash-recovery session exists)
 - Quick-access cards
+
+Phase 4.75
+----------
+- Subscribes to EventBus events (run_session_saved, schedule_updated,
+  notebook_record_created, protocol_updated) to refresh counts.
+- Counts are refreshed lazily via on_show() or immediately if visible.
 """
 from __future__ import annotations
 
@@ -18,6 +24,7 @@ from qt_app.theme import Colors, Fonts
 from qt_app.components.widgets import (
     Card, HSeparator, PageTitle, PrimaryButton, SubLabel,
 )
+from qt_app.services.event_bus import bus
 from qt_app.views.base_page import BasePage
 
 
@@ -119,11 +126,48 @@ def _quick_card(emoji: str, label: str, page: str, app) -> QFrame:
 # ── DashboardPage ─────────────────────────────────────────────────────────────
 
 class DashboardPage(BasePage):
-    """Landing page — shows real counts from DataService."""
+    """Landing page — shows real counts from DataService.
+
+    Phase 4.75: subscribes to EventBus so counts refresh when other pages
+    modify data.  If the Dashboard is currently visible the rebuild happens
+    immediately; otherwise it refreshes on the next on_show().
+    """
 
     def __init__(self, app: "BenchFlowApp", parent: QWidget | None = None) -> None:  # type: ignore[name-defined]
         super().__init__(app, parent)
+        self._needs_refresh = False
         self._build()
+        self._subscribe_events()
+
+    def _subscribe_events(self) -> None:
+        """Register callbacks for EventBus events that affect dashboard counts."""
+        for event in (
+            "run_session_saved",
+            "schedule_updated",
+            "notebook_record_created",
+            "protocol_created",
+            "protocol_updated",
+            "protocol_deleted",
+        ):
+            bus.subscribe(event, self._on_data_changed)
+
+    def _on_data_changed(self, **_kwargs) -> None:
+        """Called by EventBus when any relevant data changes."""
+        if self.isVisible():
+            # Immediately refresh if the dashboard tab is showing
+            self._rebuild()
+        else:
+            # Defer: rebuild on next on_show()
+            self._needs_refresh = True
+
+    def _rebuild(self) -> None:
+        """Clear and rebuild the entire dashboard with fresh counts."""
+        while self._root_layout.count():
+            item = self._root_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._build()
+        self._needs_refresh = False
 
     def _build(self) -> None:
         scroll = QScrollArea()
@@ -168,10 +212,10 @@ class DashboardPage(BasePage):
         root.addSpacing(20)
 
         # ── Stats ─────────────────────────────────────────────────────────────
-        n_protocols  = len(self.app.data.load_protocols())
-        n_templates  = len(self.app.data.load_templates())
-        n_schedule   = len(self.app.data.load_schedule())
-        n_runs       = len(self.app.data.load_runs())
+        n_protocols = len(self.app.data.load_protocols())
+        n_templates = len(self.app.data.load_templates())
+        n_schedule  = len(self.app.data.load_scheduled_experiments())
+        n_runs      = len(self.app.data.load_runs())
 
         ovr_lbl = QLabel("Overview")
         ovr_lbl.setStyleSheet(
@@ -186,10 +230,10 @@ class DashboardPage(BasePage):
         grid.setContentsMargins(0, 0, 0, 0)
 
         stats = [
-            ("📋", str(n_protocols),  "Protocols",     Colors.ACCENT),
-            ("🗂", str(n_templates),  "Templates",     Colors.ACCENT_LIGHT),
-            ("🗓", str(n_schedule),   "Scheduled",     Colors.WARNING),
-            ("📓", str(n_runs),       "Run records",   Colors.SUCCESS),
+            ("📋", str(n_protocols), "Protocols",    Colors.ACCENT),
+            ("🗂", str(n_templates), "Templates",    Colors.ACCENT_LIGHT),
+            ("🗓", str(n_schedule),  "Scheduled",    Colors.WARNING),
+            ("📓", str(n_runs),      "Run records",  Colors.SUCCESS),
         ]
         for col_idx, (icon, val, lbl, color) in enumerate(stats):
             card = _StatCard(icon, val, lbl, color)
@@ -222,9 +266,8 @@ class DashboardPage(BasePage):
         self._root_layout.addWidget(scroll)
 
     def on_show(self) -> None:
-        # Rebuild with fresh data each visit (fast — just counting, no heavy IO)
-        while self._root_layout.count():
-            item = self._root_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        self._build()
+        if self._needs_refresh:
+            self._rebuild()
+        else:
+            # Always rebuild on show to pick up any changes since last visit
+            self._rebuild()

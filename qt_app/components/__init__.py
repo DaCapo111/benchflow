@@ -1,6 +1,7 @@
 """Shared UI components used across multiple pages."""
 from .sidebar import Sidebar
 from .step_card import StepCard
+from .toast import ToastManager
 from .widgets import (
     HSeparator,
     PrimaryButton,
@@ -20,6 +21,7 @@ from .widgets import (
 __all__ = [
     "Sidebar",
     "StepCard",
+    "ToastManager",
     "HSeparator",
     "PrimaryButton",
     "SecondaryButton",

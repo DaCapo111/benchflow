@@ -58,6 +58,9 @@ from qt_app.services.schedule_service import (
 from qt_app.dialogs.add_experiment import AddExperimentDialog
 from qt_app.dialogs.edit_block import EditBlockDialog
 from qt_app.views.base_page import BasePage
+from qt_app.components.toast import ToastManager
+from qt_app.services.event_bus import bus
+from qt_app.services.perf import perf
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 _logs_dir = Path(__file__).parent.parent.parent / "logs"
@@ -1073,10 +1076,12 @@ class SchedulePage(BasePage):
 
     def _do_save(self) -> None:
         try:
-            self.app.data.save_scheduled_experiments(
-                [e.to_dict() for e in self._experiments]
-            )
+            with perf.measure("schedule_autosave", threshold_ms=100):
+                self.app.data.save_scheduled_experiments(
+                    [e.to_dict() for e in self._experiments]
+                )
             logger.info("autosave: scheduled_experiments.json written")
+            bus.emit("schedule_updated")
         except Exception as e:
             logger.error(f"autosave error: {e}")
 
@@ -1251,6 +1256,7 @@ class SchedulePage(BasePage):
         except Exception:
             pass
 
+        ToastManager.show_success(f"Scheduled: {exp.title}")
         logger.info(f"add_experiment: id={exp.id} title={exp.title}")
 
     # ── Right panel detail ────────────────────────────────────────────────────
@@ -1555,3 +1561,17 @@ class SchedulePage(BasePage):
 
     def _find_block(self, exp: ScheduledExperiment, block_id: str) -> TimelineBlock | None:
         return next((b for b in exp.timeline_blocks if b.id == block_id), None)
+
+    def _apply_block_change(self, exp: ScheduledExperiment,
+                            log_action: str = "block_changed") -> None:
+        """Recalculate times, refresh grid + detail panel, and schedule save.
+
+        Wraps the common post-mutation pattern used by all block edit handlers.
+        Includes perf instrumentation.
+        """
+        with perf.measure("schedule_recalc"):
+            exp.recalculate_times()
+        self._grid.update_experiment(exp)
+        self._show_experiment_detail(exp)
+        self._schedule_save()
+        logger.info(log_action)

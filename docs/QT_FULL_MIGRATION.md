@@ -16,6 +16,7 @@
 | Phase 3.5 | Run Mode polish — sequential, progress bars, remove block, focus scroll | ✅ **Done** |
 | Phase 4 | Schedule — calendar grid, drag session blocks, timeline editor | ✅ **Done** |
 | Phase 4.5 | Schedule polish — week view, right-panel drag-reorder, context menu | ✅ **Done** |
+| Phase 4.75 | App-wide stabilization — AppState, EventBus, Toast, BackgroundMgr, Perf | ✅ **Done** |
 | Phase 5 | Library + Protocol Editor + Import | 🔲 |
 | Phase 6 | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
 | Phase 7 | Lab Notebook — rich text (QTextEdit), PDF/DOCX export | 🔲 |
@@ -357,6 +358,86 @@ python3 qt_app/main.py
 
 Reads data from `~/Library/Application Support/BenchFlow/` —
 the same data directory used by the CTk app on `main`.
+
+---
+
+## Phase 4.75 — App-wide Stabilization ✅
+
+**Commit**: `stabilize: AppState, EventBus, ToastManager, BackgroundTaskManager, perf logging`
+
+### New files
+
+| File | Purpose |
+|---|---|
+| `qt_app/services/app_state.py` | `AppState(QObject)` — cross-page UI state with signals |
+| `qt_app/services/event_bus.py` | `_EventBus` singleton (`bus`) — lightweight pub/sub dispatcher |
+| `qt_app/services/background.py` | `BackgroundTaskManager` (`bg`) — centralized debounce / flush-on-close |
+| `qt_app/services/error_handler.py` | `_ErrorHandler` (`eh`) — `safe_call`, `log_exception`, `show_error_toast` |
+| `qt_app/services/perf.py` | `_Perf` (`perf`) — context-manager performance logging (>50ms threshold) |
+| `qt_app/components/toast.py` | `ToastManager` — bottom-right floating toasts (success/warning/error/info) |
+
+### AppState (`app.state`)
+
+Owned by `BenchFlowApp`. Replaces per-page duplicate state:
+- `selected_protocol_id`, `selected_schedule_experiment_id`, `active_run_session_id`
+- `current_schedule_date`, `current_schedule_view`, `last_opened_page`
+- `unsaved_changes`, `app_ready`
+- Signals: `protocol_selection_changed`, `schedule_selection_changed`, `run_session_changed`, `page_changed`, `unsaved_changes_changed`
+
+### EventBus (`bus`)
+
+Module-level singleton. Supported events:
+- `protocol_created/updated/deleted`
+- `run_session_started`, `run_session_saved`
+- `schedule_updated`
+- `notebook_record_created`
+- `active_session_restored`
+- `data_saved`, `data_error`
+
+### BackgroundTaskManager (`app.bg`)
+
+- `debounce(key, delay_ms, callback)` — cancel + reschedule by named key
+- `cancel(key)`, `cancel_all()` — explicit cancel
+- `flush_all()` — fire all pending callbacks immediately (called in `closeEvent`)
+
+### ToastManager
+
+- Installed on `centralWidget()` in `BenchFlowApp.__init__()`
+- `show_success/error/warning/info(message)`
+- Auto-dismiss after 3.8s; click to dismiss early
+- Stacks vertically bottom-right
+
+### Theme additions
+
+- `Radii.XS = 4`
+- `Spacing` class: `XS=4, SM=8, MD=12, LG=16, XL=24, XXL=32`
+
+### Page integrations
+
+| Page | Change |
+|---|---|
+| `app.py` | `closeEvent` — flushes `bg`, saves active run session, cancels timers |
+| `dashboard.py` | Subscribes to EventBus; refreshes counts on `run_session_saved`, `schedule_updated`, etc. |
+| `schedule.py` | `_do_save` emits `schedule_updated`; `_on_add_experiment` shows success toast; `_apply_block_change` helper wraps recalculate + perf |
+| `run_mode.py` | `_save_to_notebook` emits `run_session_saved` + `notebook_record_created`; `_on_save_session` / `_on_end_run` show success toast; `_render_step_cards_once` wrapped with `perf.measure` |
+
+### Log files produced
+
+| File | Content |
+|---|---|
+| `logs/qt_app.log` | Navigation events, startup/shutdown |
+| `logs/qt_errors.log` | Exceptions via `eh.log_exception` |
+| `logs/qt_perf.log` | Operations exceeding 50ms threshold |
+| `logs/qt_run_mode.log` | Run Mode actions (existing) |
+| `logs/qt_schedule.log` | Schedule actions (existing) |
+
+### Known limitations
+
+- `BackgroundTaskManager` does not yet replace the per-page `QTimer` instances in `run_mode.py` and `schedule.py` — those pages still create their own timers. Full migration deferred.
+- `AppState` fields are not yet read back by all pages — pages still use local state. Incremental adoption as pages are refactored.
+- Toast reposition on window resize deferred (toasts reposition correctly when the next toast appears).
+
+### Next: Phase 5 — Library + Protocol Editor + Import
 
 ---
 
