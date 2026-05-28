@@ -184,6 +184,7 @@ class _DetailPanel(QWidget):
     use_template_requested  = Signal(dict)
     edit_requested          = Signal(dict)   # opens Protocol Editor (Phase 6)
     flowchart_requested     = Signal(dict)   # opens Flowchart (Phase 8A)
+    export_requested        = Signal(dict, str)  # (protocol, fmt) — "json"|"md"|"pdf"
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -345,6 +346,7 @@ class _DetailPanel(QWidget):
                 Colors.TEXT_SECOND, False,
                 lambda p=proto: self.duplicate_requested.emit(p),
             )
+            self._add_export_menu_btn(proto)
         else:
             self._add_action_btn(
                 "✎  Edit Protocol",
@@ -376,6 +378,7 @@ class _DetailPanel(QWidget):
                 Colors.DANGER, False,
                 lambda p=proto: self.delete_requested.emit(p),
             )
+            self._add_export_menu_btn(proto)
 
         lay.addStretch()
 
@@ -417,6 +420,41 @@ class _DetailPanel(QWidget):
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
             )
         btn.clicked.connect(callback)
+        self._lay.addWidget(btn)
+
+    def _add_export_menu_btn(self, proto: dict) -> None:
+        btn = QPushButton("📤  Export ▾")
+        btn.setFixedHeight(36)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip("Export this protocol as JSON, Markdown, or PDF")
+        btn.setStyleSheet(
+            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
+            f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+        )
+
+        def _show_menu():
+            menu = QMenu(btn)
+            menu.setStyleSheet(
+                f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
+                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"  padding: 4px 0; }}"
+                f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
+                f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+            )
+            menu.addAction("{ }  JSON").triggered.connect(
+                lambda: self.export_requested.emit(proto, "json")
+            )
+            menu.addAction("📄  Markdown").triggered.connect(
+                lambda: self.export_requested.emit(proto, "md")
+            )
+            menu.addAction("📋  PDF").triggered.connect(
+                lambda: self.export_requested.emit(proto, "pdf")
+            )
+            menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
+
+        btn.clicked.connect(_show_menu)
         self._lay.addWidget(btn)
 
     def _clear(self) -> None:
@@ -578,6 +616,7 @@ class LibraryPage(BasePage):
         self._detail.use_template_requested.connect(self._on_use_template)
         self._detail.edit_requested.connect(self._on_edit)
         self._detail.flowchart_requested.connect(self._on_flowchart)
+        self._detail.export_requested.connect(self._on_export_protocol)
 
         self._splitter.addWidget(list_w)
         self._splitter.addWidget(self._detail)
@@ -927,6 +966,35 @@ class LibraryPage(BasePage):
     def _on_schedule(self, proto: dict) -> None:
         self.app.state.selected_protocol_id = proto.get("id", "")
         self.app.navigate("schedule")
+
+    def _on_export_protocol(self, proto: dict, fmt: str) -> None:
+        from PySide6.QtWidgets import QFileDialog
+        from qt_app.services import export_service
+        default_name = export_service.protocol_default_name(proto, fmt)
+        filters = {
+            "json": "JSON Files (*.json)",
+            "md":   "Markdown Files (*.md)",
+            "pdf":  "PDF Files (*.pdf)",
+        }
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Protocol", default_name, filters.get(fmt, "All Files (*)")
+        )
+        if not path:
+            return
+        try:
+            if fmt == "pdf":
+                export_service.export_protocol_pdf(proto, path)
+            elif fmt == "md":
+                export_service.export_protocol_markdown(proto, path)
+            else:
+                export_service.export_protocol_json(proto, path)
+            ToastManager.show_success(f"Exported → {path.split('/')[-1]}")
+        except export_service.ExportDependencyError as e:
+            ToastManager.show_error(
+                f"Missing dependency: {e.dep}. Run: {e.install_cmd}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            ToastManager.show_error(f"Export failed: {exc}")
 
     # ── on_show ───────────────────────────────────────────────────────────────
 

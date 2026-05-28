@@ -29,8 +29,8 @@ from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout,
-    QLabel, QLineEdit, QMessageBox, QPlainTextEdit,
+    QComboBox, QDoubleSpinBox, QFileDialog, QFrame, QHBoxLayout,
+    QLabel, QLineEdit, QMenu, QMessageBox, QPlainTextEdit,
     QPushButton, QScrollArea, QSizePolicy,
     QSplitter, QVBoxLayout, QWidget,
 )
@@ -937,6 +937,19 @@ class EditorPage(BasePage):
         )
         bar_lay.addWidget(self._dirty_lbl)
 
+        self._export_btn = QPushButton("📤  Export ▾")
+        self._export_btn.setFixedHeight(36)
+        self._export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._export_btn.setToolTip("Export this protocol as JSON, Markdown, or PDF")
+        self._export_btn.setStyleSheet(
+            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
+            f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+        )
+        self._export_btn.clicked.connect(self._on_export)
+        bar_lay.addWidget(self._export_btn)
+
         self._save_btn = PrimaryButton("💾  Save Protocol")
         self._save_btn.setFixedHeight(36)
         self._save_btn.setMinimumWidth(150)
@@ -1389,6 +1402,61 @@ class EditorPage(BasePage):
         bus.emit("protocol_updated", protocol_id=proto_id, name=name)
 
     # ── Back ──────────────────────────────────────────────────────────────────
+
+    def _on_export(self) -> None:
+        if not self._proto:
+            ToastManager.show_error("No protocol loaded — nothing to export.")
+            return
+        from qt_app.services import export_service
+        proto = self._proto
+        menu = QMenu(self._export_btn)
+        menu.setStyleSheet(
+            f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  padding: 4px 0; }}"
+            f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
+            f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+        )
+        menu.addAction("{ }  JSON").triggered.connect(
+            lambda: self._do_export(proto, "json")
+        )
+        menu.addAction("📄  Markdown").triggered.connect(
+            lambda: self._do_export(proto, "md")
+        )
+        menu.addAction("📋  PDF").triggered.connect(
+            lambda: self._do_export(proto, "pdf")
+        )
+        menu.exec(self._export_btn.mapToGlobal(
+            self._export_btn.rect().bottomLeft()
+        ))
+
+    def _do_export(self, proto: dict, fmt: str) -> None:
+        from qt_app.services import export_service
+        default_name = export_service.protocol_default_name(proto, fmt)
+        filters = {
+            "json": "JSON Files (*.json)",
+            "md":   "Markdown Files (*.md)",
+            "pdf":  "PDF Files (*.pdf)",
+        }
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Protocol", default_name, filters.get(fmt, "All Files (*)")
+        )
+        if not path:
+            return
+        try:
+            if fmt == "pdf":
+                export_service.export_protocol_pdf(proto, path)
+            elif fmt == "md":
+                export_service.export_protocol_markdown(proto, path)
+            else:
+                export_service.export_protocol_json(proto, path)
+            ToastManager.show_success(f"Exported → {path.split('/')[-1]}")
+        except export_service.ExportDependencyError as e:
+            ToastManager.show_error(
+                f"Missing dependency: {e.dep}. Run: {e.install_cmd}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            ToastManager.show_error(f"Export failed: {exc}")
 
     def _on_back(self) -> None:
         if self._dirty:

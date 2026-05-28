@@ -37,8 +37,8 @@ from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QComboBox, QFrame, QHBoxLayout, QLabel,
-    QMessageBox, QPlainTextEdit, QPushButton,
+    QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
+    QMenu, QMessageBox, QPlainTextEdit, QPushButton,
     QScrollArea, QSizePolicy, QSplitter,
     QVBoxLayout, QWidget, QLineEdit,
 )
@@ -299,6 +299,7 @@ class _DetailPanel(QWidget):
     save_requested      = Signal(dict)   # updated record dict
     delete_requested    = Signal(dict)
     duplicate_requested = Signal(dict)
+    export_requested    = Signal(dict, str)  # (record, fmt) — "pdf" | "docx" | "json"
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -576,15 +577,42 @@ class _DetailPanel(QWidget):
         del_btn.clicked.connect(lambda: self.delete_requested.emit(self._record))
         btn_row.addWidget(del_btn)
 
-        export_btn = QPushButton("📤  Export (coming soon)")
+        export_btn = QPushButton("📤  Export ▾")
         export_btn.setFixedHeight(34)
-        export_btn.setEnabled(False)
-        export_btn.setToolTip("PDF / DOCX export — Phase 8")
+        export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        export_btn.setToolTip("Export this session as PDF, Word, or JSON")
         export_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_MUTED};"
+            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
             f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
+            f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
+        _rec_ref = [None]  # mutable closure for current record
+
+        def _show_export_menu():
+            _rec = self._record
+            if not _rec:
+                return
+            menu = QMenu(export_btn)
+            menu.setStyleSheet(
+                f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
+                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"  padding: 4px 0; }}"
+                f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
+                f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+            )
+            menu.addAction("📄  PDF Report").triggered.connect(
+                lambda: self.export_requested.emit(_rec, "pdf")
+            )
+            menu.addAction("📝  Word Document").triggered.connect(
+                lambda: self.export_requested.emit(_rec, "docx")
+            )
+            menu.addAction("{ }  JSON Data").triggered.connect(
+                lambda: self.export_requested.emit(_rec, "json")
+            )
+            menu.exec(export_btn.mapToGlobal(export_btn.rect().bottomLeft()))
+
+        export_btn.clicked.connect(_show_export_menu)
         btn_row.addWidget(export_btn)
         btn_row.addStretch()
         lay.addLayout(btn_row)
@@ -866,16 +894,18 @@ class HistoryPage(BasePage):
         hdr_lay.addLayout(title_col)
         hdr_lay.addStretch()
 
-        export_btn = QPushButton("📤  Export All (coming soon)")
-        export_btn.setFixedHeight(34)
-        export_btn.setEnabled(False)
-        export_btn.setToolTip("Bulk PDF / DOCX export — Phase 8")
-        export_btn.setStyleSheet(
-            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_MUTED};"
+        imp_btn = QPushButton("📥  Import")
+        imp_btn.setFixedHeight(34)
+        imp_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        imp_btn.setToolTip("Import a session from JSON")
+        imp_btn.setStyleSheet(
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
             f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
+            f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
-        hdr_lay.addWidget(export_btn)
+        imp_btn.clicked.connect(lambda: self.navigate("import"))
+        hdr_lay.addWidget(imp_btn)
         outer.addWidget(hdr)
 
         # ── Toolbar ───────────────────────────────────────────────────────────
@@ -954,6 +984,7 @@ class HistoryPage(BasePage):
         self._detail.save_requested.connect(self._on_save_record)
         self._detail.delete_requested.connect(self._on_delete)
         self._detail.duplicate_requested.connect(self._on_duplicate)
+        self._detail.export_requested.connect(self._on_export_record)
 
         self._splitter.addWidget(list_w)
         self._splitter.addWidget(self._detail)
@@ -1172,6 +1203,34 @@ class HistoryPage(BasePage):
         self._detail.show_record(dup)
         for c in self._cards:
             c.set_selected(c._record.get("id") == dup["id"])
+
+    def _on_export_record(self, record: dict, fmt: str) -> None:
+        from qt_app.services import export_service
+        default_name = export_service.notebook_default_name(record, fmt)
+        filters = {
+            "pdf":  "PDF Files (*.pdf)",
+            "docx": "Word Documents (*.docx)",
+            "json": "JSON Files (*.json)",
+        }
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Session", default_name, filters.get(fmt, "All Files (*)")
+        )
+        if not path:
+            return
+        try:
+            if fmt == "pdf":
+                export_service.export_notebook_pdf(record, path)
+            elif fmt == "docx":
+                export_service.export_notebook_docx(record, path)
+            else:
+                export_service.export_notebook_json(record, path)
+            ToastManager.show_success(f"Exported → {path.split('/')[-1]}")
+        except export_service.ExportDependencyError as e:
+            ToastManager.show_error(
+                f"Missing dependency: {e.dep}. Run: {e.install_cmd}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            ToastManager.show_error(f"Export failed: {exc}")
 
     # ── on_show ───────────────────────────────────────────────────────────────
 

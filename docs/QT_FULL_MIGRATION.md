@@ -21,6 +21,7 @@
 | Phase 6 | Protocol Editor — metadata, step CRUD, reagents, conditions, reorder, save | ✅ **Done** |
 | Phase 8A | Flowchart — QGraphicsScene nodes, arrows, zoom/pan, step detail panel | ✅ **Done** |
 | Phase 7 | Lab Notebook — date-grouped list, detail panel, step table, edit notes, search | ✅ **Done** |
+| Phase 8B | Export (PDF/DOCX/JSON/MD) + Import page (JSON file, paste text) | ✅ **Done** |
 | Phase 8 | Settings, Categories/Tags manager | 🔲 |
 | Phase 9 | Cutover — remove CTk from distribution, update BenchFlow.spec | 🔲 |
 
@@ -761,9 +762,72 @@ Simple downward `QPainterPath` line with an arrowhead (8px wide, 10px tip) point
 - Linear layout only (no branch / decision nodes)
 - No drag-to-edit or rearrange nodes
 - No horizontal / swimlane layouts yet
-- Export (PNG/PDF) deferred to Phase 8B
+- Export (PNG/PDF) of flowchart nodes deferred to a future phase
 
-### Next: Phase 8B — Settings page, Tags manager, PDF export
+### Next: Phase 8B — Export and Import foundation
+
+---
+
+## Phase 8B — Export and Import ✅
+
+**Commit**: `Add PySide6 export and import foundation`
+
+### What was built
+
+#### `qt_app/services/export_service.py` (new)
+
+Full export back-end for both Lab Notebook sessions and Protocols:
+
+| Function | Output | Dependency |
+|---|---|---|
+| `export_notebook_json(record, path)` | JSON wrapper | stdlib |
+| `export_notebook_pdf(record, path)` | PDF report | reportlab |
+| `export_notebook_docx(record, path)` | Word document | python-docx |
+| `export_protocol_json(protocol, path)` | JSON wrapper | stdlib |
+| `export_protocol_markdown(protocol, path)` | Markdown file | stdlib |
+| `export_protocol_pdf(protocol, path)` | PDF report | reportlab |
+
+Helper functions:
+- `notebook_default_name(record, fmt)` → `"BenchFlow_<Title>_<YYYY-MM-DD>.pdf"`
+- `protocol_default_name(protocol, fmt)` → `"BenchFlow_Protocol_<Name>.json"`
+- `ExportDependencyError` raised when optional dep (reportlab / python-docx) is missing; callers catch and show toast with `pip install` instructions
+
+#### Export buttons (UI)
+
+- **Lab Notebook** (`history.py`): `_DetailPanel` — disabled export button replaced with active `📤 Export ▾` QMenu (PDF Report / Word Document / JSON Data); `HistoryPage` handles `export_requested(dict, str)` signal via `_on_export_record()`
+- **Library** (`library.py`): `_DetailPanel` — `📤 Export ▾` QMenu (JSON / Markdown / PDF) added after action buttons for both protocols and templates; `LibraryPage` handles via `_on_export_protocol()`
+- **Protocol Editor** (`editor.py`): top bar — `📤 Export ▾` button added between dirty indicator and Save; `_on_export()` shows QMenu; `_do_export()` calls export_service with file dialog
+
+All export handlers:
+1. Call `export_service.<fn>_default_name()` to suggest a filename
+2. Open `QFileDialog.getSaveFileName()` at that default
+3. Call the appropriate export function
+4. Show `ToastManager.show_success()` on success or `show_error()` on failure
+
+#### Import page (`import_page.py`, full rewrite)
+
+4-method selector on the left (card UI):
+
+| Method | Status | Description |
+|---|---|---|
+| 📁 JSON File | ✅ Active | `QFileDialog` → parse → preview |
+| 📋 Paste Text | ✅ Active | textarea → JSON or plain-text parser → preview |
+| 📄 PDF | Coming Soon | stub |
+| 📝 Word Doc | Coming Soon | stub |
+
+JSON parser: accepts bare protocol dict or `{protocol: {...}}` wrapper from export_service  
+Plain-text parser: first line → name, numbered/bulleted lines → step titles
+
+Preview panel (shared):
+- Editable protocol name
+- Step count + category stats
+- Scrollable step list (capped at 50 shown)
+- `⊕ Save to My Protocols` button — deduplicates name, saves to `protocols.json`, emits `protocol_created`, navigates to Library
+
+### Limitations / deferred
+- Notebook JSON import (parse runs.json entries) — future phase
+- Flowchart PNG export — future phase
+- Bulk export of all sessions — future phase
 
 ---
 
@@ -790,7 +854,8 @@ qt_app/
 │   ├── background.py        # BackgroundTaskManager (bg) — debounce + flush   [4.75]
 │   ├── error_handler.py     # _ErrorHandler (eh) — safe_call, log_exception   [4.75]
 │   ├── perf.py              # _Perf (perf) — context-manager perf logging      [4.75]
-│   └── run_service.py       # RunModeSession, StepRunState helpers
+│   ├── run_service.py       # RunModeSession, StepRunState helpers
+│   └── export_service.py    # ✅ PDF/DOCX/JSON/MD export (Phase 8B)
 │
 ├── components/
 │   ├── __init__.py
@@ -815,6 +880,6 @@ qt_app/
     ├── history.py           # ✅ Lab Notebook — full Phase 7 (date list, detail, edit)
     ├── editor.py            # ✅ Full Protocol Editor (Phase 6)
     ├── flowchart.py         # ✅ Flowchart — QGraphicsScene (Phase 8A)
-    ├── import_page.py       # Placeholder (future)
+    ├── import_page.py       # ✅ Import — JSON file + paste text (Phase 8B)
     └── settings.py          # Placeholder → Phase 8
 ```
