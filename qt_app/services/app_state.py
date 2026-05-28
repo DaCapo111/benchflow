@@ -68,6 +68,9 @@ class AppState(QObject):
         # Navigation
         self.last_opened_page: str = "dashboard"
 
+        # Preferences (user-configurable)
+        self.autosave_interval_s: int = 30  # autosave every N seconds
+
         # Dirty / ready flags
         self.unsaved_changes: bool = False
         self.app_ready: bool = False

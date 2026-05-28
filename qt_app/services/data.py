@@ -28,6 +28,7 @@ import json
 import os
 import shutil
 import sys
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -49,6 +50,16 @@ _APP_BASE = (Path(sys._MEIPASS)          # type: ignore[attr-defined]
              if getattr(sys, "frozen", False)
              else Path(__file__).parent.parent.parent)
 TEMPLATES_DIR = _APP_BASE / "templates"
+
+# App version — read from VERSION file at repo root, fallback "0.1.0"
+def _read_version() -> str:
+    vf = _APP_BASE / "VERSION"
+    try:
+        return vf.read_text(encoding="utf-8").strip()
+    except Exception:
+        return "0.1.0"
+
+_APP_VERSION: str = _read_version()
 
 
 # ── Low-level helpers ──────────────────────────────────────────────────────────
@@ -210,6 +221,87 @@ class DataService:
     load_runtime_session  = load_active_session
     save_runtime_session  = save_active_session
     discard_runtime_session = clear_active_session
+
+    # ── Backup / Restore ───────────────────────────────────────────────────────
+
+    def export_all_data(self, zip_path: str) -> dict[str, int]:
+        """Write a ZIP archive containing all user data files.
+
+        Returns a dict of ``{filename: byte_size}`` for every file included.
+        Raises ``OSError`` on write failure.
+        """
+        _data_files = [
+            PROTOCOLS_FILE,
+            RUNS_FILE,
+            CATEGORIES_FILE,
+            TAGS_FILE,
+            SCHEDULE_FILE,
+            SCHEDULED_EXP_FILE,
+            RUNTIME_FILE,
+        ]
+        ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        manifest: dict[str, int] = {}
+
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            # Write manifest header
+            meta = {
+                "benchflow_backup": True,
+                "created_at": ts,
+                "app_version": _APP_VERSION,
+                "files": [],
+            }
+            for f in _data_files:
+                if f.exists():
+                    arc_name = f.name
+                    zf.write(f, arc_name)
+                    size = f.stat().st_size
+                    manifest[arc_name] = size
+                    meta["files"].append(arc_name)
+            zf.writestr("_benchflow_backup_meta.json",
+                        json.dumps(meta, indent=2))
+        return manifest
+
+    def restore_all_data(self, zip_path: str) -> list[str]:
+        """Restore user data from a backup ZIP.
+
+        - Creates per-file backups of existing data before overwriting.
+        - Returns list of restored filenames.
+        - Raises ``ValueError`` if ZIP is not a BenchFlow backup.
+        - Raises ``OSError`` on read/write failure.
+        """
+        _allowed = {
+            "protocols.json", "runs.json", "categories.json",
+            "tags.json", "schedule.json", "scheduled_experiments.json",
+            "runtime_session.json",
+        }
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = set(zf.namelist())
+            if "_benchflow_backup_meta.json" not in names:
+                raise ValueError(
+                    "Not a BenchFlow backup — missing _benchflow_backup_meta.json"
+                )
+            meta_bytes = zf.read("_benchflow_backup_meta.json")
+            meta = json.loads(meta_bytes)
+            if not meta.get("benchflow_backup"):
+                raise ValueError("Not a valid BenchFlow backup archive")
+
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            restored: list[str] = []
+            for name in names:
+                if name not in _allowed:
+                    continue
+                dest = APP_DIR / name
+                # Back up existing file before overwriting
+                if dest.exists():
+                    backup = dest.with_suffix(f".pre_restore_{ts}.json")
+                    try:
+                        shutil.copy2(dest, backup)
+                    except Exception:
+                        pass
+                data = zf.read(name)
+                dest.write_bytes(data)
+                restored.append(name)
+        return restored
 
     # ── Convenience helpers ────────────────────────────────────────────────────
 

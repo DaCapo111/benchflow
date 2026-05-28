@@ -22,8 +22,8 @@
 | Phase 8A | Flowchart — QGraphicsScene nodes, arrows, zoom/pan, step detail panel | ✅ **Done** |
 | Phase 7 | Lab Notebook — date-grouped list, detail panel, step table, edit notes, search | ✅ **Done** |
 | Phase 8B | Export (PDF/DOCX/JSON/MD) + Import page (JSON file, paste text) | ✅ **Done** |
-| Phase 8 | Settings, Categories/Tags manager | 🔲 |
-| Phase 9 | Cutover — remove CTk from distribution, update BenchFlow.spec | 🔲 |
+| Phase 9 | Settings page, backup/restore, packaging (BenchFlow_Qt.spec, build scripts) | ✅ **Done** |
+| Phase 10 | Cutover — replace CTk on main, update GitHub Actions, signed builds | 🔲 |
 
 ---
 
@@ -831,6 +831,96 @@ Preview panel (shared):
 
 ---
 
+## Phase 9 — Settings and Packaging Readiness ✅
+
+**Commit**: `Add PySide6 settings and packaging readiness`
+
+### What was built
+
+#### `qt_app/views/settings.py` (full rewrite)
+
+Five card sections:
+
+| Section | Contents |
+|---------|---------|
+| **App Info** | Version badge · data folder path (monospace, selectable) · Open Folder button · GitHub link |
+| **Preferences** | Theme (dark, placeholder) · Autosave interval QSpinBox (5–300 s) · Session recovery status |
+| **Export Dependencies** | reportlab status badge (✓ Installed / ✗ Missing) · python-docx status badge · `pip install` hint if missing |
+| **Active Session** | ⊗ Reset Active Session (danger button, confirmation dialog) |
+| **Backup & Restore** | 📦 Backup All Data → `QFileDialog.getSaveFileName` → ZIP · 📂 Restore from Backup → `QFileDialog.getOpenFileName` → validates + restores |
+
+Design: card-style rows (key–value + note columns), `HSeparator` between rows, matching dark theme. Each card is a `QFrame` with `BG_CARD` + rounded border.
+
+#### `qt_app/services/data.py` additions
+
+Two new public methods on `DataService`:
+
+```python
+def export_all_data(self, zip_path: str) -> dict[str, int]:
+    # Writes protocols.json, runs.json, categories.json, tags.json,
+    # schedule.json, scheduled_experiments.json, runtime_session.json
+    # + _benchflow_backup_meta.json manifest inside the ZIP
+    # Returns {filename: byte_size} for each included file
+
+def restore_all_data(self, zip_path: str) -> list[str]:
+    # Validates _benchflow_backup_meta.json presence
+    # Creates .pre_restore_<timestamp>.json backups of existing files
+    # Writes restored files to APP_DIR
+    # Raises ValueError if not a BenchFlow backup ZIP
+    # Returns list of restored filenames
+```
+
+Also added `_APP_VERSION` constant (read from `VERSION` file at startup) used in the backup manifest.
+
+#### `qt_app/services/app_state.py` addition
+
+```python
+self.autosave_interval_s: int = 30   # user-configurable via Settings page
+```
+
+#### Packaging files (new)
+
+| File | Purpose |
+|------|---------|
+| `BenchFlow_Qt.spec` | PyInstaller spec for the Qt app (`qt_app/main.py` entry point; bundles PySide6, reportlab, python-docx, templates/, VERSION) |
+| `build_qt_mac.sh` | macOS build script — checks Python/PyInstaller/PySide6, builds `.app`, creates `.dmg`, copies to `releases/` |
+| `build_qt_windows.bat` | Windows build script — same flow, produces `.exe` + `.zip` |
+| `requirements_qt.txt` | `PySide6>=6.6`, `reportlab>=4.0`, `python-docx>=1.1`, `pyinstaller>=6.0` |
+
+### Running the Qt app
+
+```bash
+git checkout qt-prototype
+pip install -r requirements_qt.txt
+python3 qt_app/main.py
+```
+
+### Building a distributable
+
+```bash
+# macOS
+chmod +x build_qt_mac.sh
+./build_qt_mac.sh
+# → dist/mac_qt/BenchFlow.app  +  releases/BenchFlow-Qt-v0.1.0-macOS.dmg
+
+# Windows
+build_qt_windows.bat
+# → dist\win_qt\BenchFlow_Qt\BenchFlow_Qt.exe  +  releases\BenchFlow-Qt-v0.1.0-Windows.zip
+```
+
+### Known issues / remaining before Phase 10 cutover
+
+| Issue | Notes |
+|-------|-------|
+| No app icon for Qt build | `AppIcon.icns` from CTk build needs adapting; add to `BenchFlow_Qt.spec` `icon=` |
+| GitHub Actions not updated for Qt | `.github/workflows/build.yml` still targets `app.py` / CTk spec |
+| Windows `APP_DIR` hardcoded to macOS path | `data.py` uses `~/Library/Application Support/BenchFlow/` — needs `%APPDATA%/BenchFlow/` on Windows |
+| Settings preferences not persisted across restarts | `autosave_interval_s` lives in AppState (in-memory); add JSON preferences file in Phase 10 |
+| Categories/Tags manager not implemented | Placeholder section in Settings; full manager deferred to Phase 10 |
+| No light theme | Theme preference UI is present but non-functional; Phase 10 |
+
+---
+
 ## File Structure
 
 ```
@@ -881,5 +971,13 @@ qt_app/
     ├── editor.py            # ✅ Full Protocol Editor (Phase 6)
     ├── flowchart.py         # ✅ Flowchart — QGraphicsScene (Phase 8A)
     ├── import_page.py       # ✅ Import — JSON file + paste text (Phase 8B)
-    └── settings.py          # Placeholder → Phase 8
+    └── settings.py          # ✅ Settings — data folder, prefs, deps, backup (Phase 9)
+```
+
+**Repo-level packaging files (Phase 9):**
+```
+BenchFlow_Qt.spec       PyInstaller spec for Qt build (qt_app/main.py)
+build_qt_mac.sh         macOS build script (PySide6 version)
+build_qt_windows.bat    Windows build script (PySide6 version)
+requirements_qt.txt     PySide6 + optional export dependencies
 ```
