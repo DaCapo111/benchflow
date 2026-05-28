@@ -39,6 +39,59 @@ warn()  { echo -e "${YELLOW}⚠ $*${NC}"; }
 error() { echo -e "${RED}✗ $*${NC}" >&2; exit 1; }
 ok()    { echo -e "${GREEN}✓ $*${NC}"; }
 
+detach_benchflow_volumes() {
+  for volume in /Volumes/"${APP_NAME} Qt"* /Volumes/"${APP_NAME}"*; do
+    if [[ -d "$volume" ]]; then
+      warn "Detaching existing volume: $volume"
+      hdiutil detach "$volume" -force >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+create_dmg() {
+  local app_path="$1"
+  local dmg_path="$2"
+  local staging_dir
+
+  staging_dir=$(mktemp -d)
+  cleanup_dmg() {
+    trap - RETURN
+    detach_benchflow_volumes
+    rm -rf "$staging_dir"
+  }
+  trap cleanup_dmg RETURN
+
+  rm -f "$dmg_path"
+  detach_benchflow_volumes
+
+  cp -R "$app_path" "$staging_dir/"
+  ln -sf /Applications "$staging_dir/Applications"
+  xattr -cr "$staging_dir/${APP_NAME}.app" >/dev/null 2>&1 || true
+
+  for attempt in 1 2 3; do
+    info "hdiutil create attempt ${attempt}/3..."
+    if (
+      cd "$staging_dir"
+      hdiutil create \
+        -volname "${APP_NAME} Qt ${VERSION}" \
+        -srcfolder "." \
+        -ov -format UDZO \
+        "$dmg_path" \
+        >/dev/null
+    ); then
+      return 0
+    fi
+
+    rm -f "$dmg_path"
+    detach_benchflow_volumes
+    if [[ "$attempt" != "3" ]]; then
+      sleep 5
+    fi
+  done
+
+  return 1
+}
+
 echo ""
 echo "╔════════════════════════════════════════════╗"
 echo "║   BenchFlow Qt macOS Build  v${VERSION}          ║"
@@ -112,28 +165,15 @@ ok "${APP_NAME}.app  (${APP_SIZE})"
 # ── Create DMG ────────────────────────────────────────────────────────────────
 if $CREATE_DMG; then
   info "Creating ${DMG_NAME}..."
-  DMG_PATH="${DIST_DIR}/${DMG_NAME}"
+  DMG_PATH="${SCRIPT_DIR}/${DIST_DIR}/${DMG_NAME}"
 
-  TMP_DIR=$(mktemp -d)
-  cp -R "$APP_PATH" "${TMP_DIR}/"
-  ln -sf /Applications "${TMP_DIR}/Applications"
-
-  hdiutil create \
-    -volname "${APP_NAME} Qt ${VERSION}" \
-    -srcfolder "$TMP_DIR" \
-    -ov -format UDZO \
-    "$DMG_PATH" \
-    >/dev/null
-
-  rm -rf "$TMP_DIR"
-
-  if [[ -f "$DMG_PATH" ]]; then
+  if create_dmg "$APP_PATH" "$DMG_PATH" && [[ -f "$DMG_PATH" ]]; then
     DMG_SIZE=$(du -sh "$DMG_PATH" | cut -f1)
     ok "${DMG_NAME}  (${DMG_SIZE})"
     cp "$DMG_PATH" "${RELEASES_DIR}/${DMG_NAME}"
     ok "Copied to releases/${DMG_NAME}"
   else
-    warn "DMG creation failed – .app still available."
+    error "DMG creation failed."
   fi
 fi
 

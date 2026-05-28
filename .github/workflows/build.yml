@@ -74,34 +74,78 @@ jobs:
       - name: Create DMG
         env:
           VERSION: ${{ needs.version.outputs.version }}
+          REQUIRE_DMG: ${{ github.event_name != 'pull_request' }}
         run: |
-          DMG="dist/mac_qt/BenchFlow-Qt-v${VERSION}-macOS.dmg"
+          set -u
 
-          # Stage into a temp folder to avoid "Resource busy" on dist/mac_qt/
-          rm -rf release_temp
-          mkdir -p release_temp
-          cp -R dist/mac_qt/BenchFlow.app release_temp/
+          APP_NAME="BenchFlow"
+          APP_PATH="$PWD/dist/mac_qt/BenchFlow.app"
+          DMG_NAME="BenchFlow-Qt-v${VERSION}-macOS.dmg"
+          DMG="$PWD/dist/mac_qt/$DMG_NAME"
+          STAGING_DIR="$(mktemp -d)"
 
-          # Strip extended attributes that can cause hdiutil to fail
-          xattr -cr release_temp/BenchFlow.app || true
+          detach_benchflow_volumes() {
+            for volume in /Volumes/"${APP_NAME} Qt"* /Volumes/"${APP_NAME}"*; do
+              if [[ -d "$volume" ]]; then
+                echo "Detaching existing volume: $volume"
+                hdiutil detach "$volume" -force >/dev/null 2>&1 || true
+              fi
+            done
+          }
 
-          hdiutil create \
-            -volname "BenchFlow Qt" \
-            -srcfolder release_temp \
-            -ov -format UDZO \
-            "$DMG"
+          cleanup() {
+            detach_benchflow_volumes
+            rm -rf "$STAGING_DIR"
+          }
+          trap cleanup EXIT
 
-          rm -rf release_temp
+          rm -f "$DMG"
+          detach_benchflow_volumes
 
-          echo "DMG_PATH=$DMG" >> $GITHUB_ENV
-          echo "DMG_NAME=BenchFlow-Qt-v${VERSION}-macOS.dmg" >> $GITHUB_ENV
-          echo "✓ DMG: $(du -sh $DMG | cut -f1)"
+          cp -R "$APP_PATH" "$STAGING_DIR/"
+          ln -sf /Applications "$STAGING_DIR/Applications"
+          xattr -cr "$STAGING_DIR/BenchFlow.app" || true
+
+          dmg_ok=false
+          for attempt in 1 2 3; do
+            echo "hdiutil create attempt ${attempt}/3..."
+            if (
+              cd "$STAGING_DIR"
+              hdiutil create \
+                -volname "BenchFlow Qt" \
+                -srcfolder "." \
+                -ov -format UDZO \
+                "$DMG"
+            ); then
+              dmg_ok=true
+              break
+            fi
+
+            rm -f "$DMG"
+            detach_benchflow_volumes
+            if [[ "$attempt" != "3" ]]; then
+              sleep 5
+            fi
+          done
+
+          if [[ "$dmg_ok" == "true" && -f "$DMG" ]]; then
+            echo "DMG_PATH=$DMG" >> "$GITHUB_ENV"
+            echo "DMG_NAME=$DMG_NAME" >> "$GITHUB_ENV"
+            echo "✓ DMG: $(du -sh "$DMG" | cut -f1)"
+          elif [[ "$REQUIRE_DMG" == "true" ]]; then
+            echo "::error::DMG creation failed after 3 attempts."
+            exit 1
+          else
+            echo "::warning::DMG creation failed after 3 attempts. Continuing pull_request build with .app artifact only."
+          fi
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: BenchFlow-Qt-macOS
-          path: dist/mac_qt/BenchFlow-Qt-v*-macOS.dmg
+          path: |
+            dist/mac_qt/BenchFlow.app
+            dist/mac_qt/BenchFlow-Qt-v*-macOS.dmg
           retention-days: 30
           if-no-files-found: error
 
