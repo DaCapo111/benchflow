@@ -3,7 +3,9 @@ DataService
 ===========
 Singleton that owns all BenchFlow persistence.
 
-Data directory:  ~/Library/Application Support/BenchFlow/
+Data directory:  ~/Library/Application Support/BenchFlow/  (macOS)
+                 %APPDATA%/BenchFlow/  (Windows)
+                 ~/.local/share/BenchFlow/  (Linux)
 Templates:       <repo>/templates/*.json  (read-only, shipped with app)
 
 Design
@@ -26,6 +28,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import sys
 import zipfile
@@ -34,7 +37,25 @@ from pathlib import Path
 from typing import Any
 
 # ── Data directory ─────────────────────────────────────────────────────────────
-APP_DIR = Path.home() / "Library" / "Application Support" / "BenchFlow"
+def _resolve_app_dir() -> Path:
+    """Return platform-appropriate data directory.
+
+    - macOS:   ~/Library/Application Support/BenchFlow/
+    - Windows: %APPDATA%/BenchFlow/  (falls back to ~/AppData/Roaming/BenchFlow/)
+    - Linux:   ~/.local/share/BenchFlow/
+    """
+    if sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        return base / "BenchFlow"
+    elif sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "BenchFlow"
+    else:
+        # Linux / other POSIX
+        xdg = os.environ.get("XDG_DATA_HOME", "")
+        base = Path(xdg) if xdg else Path.home() / ".local" / "share"
+        return base / "BenchFlow"
+
+APP_DIR = _resolve_app_dir()
 APP_DIR.mkdir(parents=True, exist_ok=True)
 
 PROTOCOLS_FILE        = APP_DIR / "protocols.json"
@@ -185,7 +206,12 @@ class DataService:
     # ── Templates (built-in, read-only) ───────────────────────────────────────
 
     def load_templates(self) -> list[dict[str, Any]]:
-        """Load all *.json files from the templates/ directory."""
+        """Load all *.json files from the templates/ directory.
+
+        Injects a stable ``id`` (``tmpl_<slugified-name>``) for templates
+        that don't carry one — so the rest of the app can reference them
+        by ID (e.g. for flowchart auto-select or use-template workflows).
+        """
         if not TEMPLATES_DIR.exists():
             return []
         templates: list[dict[str, Any]] = []
@@ -193,6 +219,11 @@ class DataService:
             try:
                 t = json.loads(f.read_text(encoding="utf-8"))
                 if isinstance(t, dict) and t.get("name"):
+                    # Inject stable id if missing
+                    if not t.get("id"):
+                        slug = re.sub(r"[^a-z0-9]+", "_",
+                                      t["name"].lower()).strip("_")
+                        t["id"] = f"tmpl_{slug}"
                     templates.append(t)
             except Exception:
                 pass

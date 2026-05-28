@@ -892,7 +892,7 @@ class RunModePage(BasePage):
                     "stepType":    sd.get("type", ""),
                     "status":      state.status,
                     "plannedSecs": state.original_planned_secs,
-                    "usedSecs":    state.accumulated_elapsed_secs,
+                    "usedSecs":    state.elapsed_secs(),  # includes running time
                     "notes":       state.notes,
                 })
 

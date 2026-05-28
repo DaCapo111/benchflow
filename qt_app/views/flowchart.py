@@ -849,10 +849,14 @@ class FlowchartPage(BasePage):
     # ── Data loading ──────────────────────────────────────────────────────────
 
     def _load_protocols(self) -> None:
-        self._protocols = self.app.data.load_protocols()
+        # User protocols first, then built-in templates (visually separated)
+        user_protos = self.app.data.load_protocols()
+        templates   = self.app.data.load_templates()
+        self._protocols = user_protos + templates
         self._rebuild_list()
 
     def _rebuild_list(self) -> None:
+        from PySide6.QtGui import QColor as _QColor
         q = self._search_str.lower()
         items = [
             p for p in self._protocols
@@ -866,15 +870,20 @@ class FlowchartPage(BasePage):
         self._proto_list.clear()
         for p in items:
             n_steps = len(p.get("steps", []))
-            item = QListWidgetItem(f"  {p.get('name','Untitled')}  ({n_steps})")
+            is_tmpl = p.get("id", "").startswith("tmpl_")
+            prefix  = "⊞ " if is_tmpl else "  "
+            label   = f"{prefix}{p.get('name','Untitled')}  ({n_steps})"
+            item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, p)
+            if is_tmpl:
+                item.setForeground(_QColor(Colors.TEXT_MUTED))
             self._proto_list.addItem(item)
 
         # Restore selection
         if current_id:
             for i in range(self._proto_list.count()):
                 it = self._proto_list.item(i)
-                if it and it.data(Qt.ItemDataRole.UserRole).get("id") == current_id:
+                if it and (it.data(Qt.ItemDataRole.UserRole) or {}).get("id") == current_id:
                     self._proto_list.setCurrentItem(it)
                     break
         self._proto_list.blockSignals(False)
@@ -994,7 +1003,8 @@ class FlowchartPage(BasePage):
                     # Highlight in list
                     for i in range(self._proto_list.count()):
                         it = self._proto_list.item(i)
-                        if it and it.data(Qt.ItemDataRole.UserRole).get("id") == wanted_id:
+                        pd = it.data(Qt.ItemDataRole.UserRole) if it else None
+                        if pd and pd.get("id") == wanted_id:
                             self._proto_list.setCurrentItem(it)
                             break
                     self._open_protocol(p)
