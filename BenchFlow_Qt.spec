@@ -116,7 +116,7 @@ app = BUNDLE(
     icon=_ICON,
     bundle_identifier="com.benchflow.app",
     info_plist={
-        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleShortVersionString": "0.1.1",
         "NSHighResolutionCapable": True,
         "NSRequiresAquaSystemAppearance": False,  # allow dark mode
     },

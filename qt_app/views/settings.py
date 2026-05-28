@@ -34,17 +34,18 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QFileDialog, QFrame, QHBoxLayout, QLabel,
+    QApplication, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
     QMessageBox, QPushButton, QScrollArea,
     QSizePolicy, QSpinBox, QVBoxLayout, QWidget,
 )
 
-from qt_app.theme import Colors, Fonts, Radii
+from qt_app.theme import Colors, Fonts, Radii, apply_theme, current_theme
 from qt_app.components.widgets import (
     HSeparator, PageTitle, PrimaryButton, SubLabel,
 )
 from qt_app.components.toast import ToastManager
 from qt_app.services.data import APP_DIR, _APP_VERSION
+from qt_app.services.event_bus import bus
 from qt_app.views.base_page import BasePage
 
 
@@ -195,7 +196,9 @@ class SettingsPage(BasePage):
     def __init__(self, app: "BenchFlowApp", parent: "QWidget | None" = None) -> None:  # type: ignore[name-defined]
         super().__init__(app, parent)
         self._autosave_spin: QSpinBox | None = None
+        self._theme_combo: QComboBox | None = None
         self._build()
+        self._last_theme = current_theme()  # mark as fresh after first build
 
     def _build(self) -> None:
         outer = QVBoxLayout()
@@ -268,8 +271,21 @@ class SettingsPage(BasePage):
         # ── Section: Preferences ──────────────────────────────────────────────
         content_lay.addWidget(_section_header("Preferences"))
 
-        theme_lbl = _lbl("Dark (default)", Colors.TEXT_MUTED, Fonts.SIZE_SM)
-        theme_note = "Light theme coming in a future update"
+        self._theme_combo = QComboBox()
+        self._theme_combo.addItem("Dark",   "dark")
+        self._theme_combo.addItem("Light",  "light")
+        self._theme_combo.addItem("System", "system")
+        self._theme_combo.setFixedHeight(32)
+        self._theme_combo.setFixedWidth(140)
+        self._theme_combo.setStyleSheet(
+            f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  padding: 0 8px; font-size: {Fonts.SIZE_SM}px; }}"
+        )
+        # Set current selection
+        _theme_idx = {"dark": 0, "light": 1, "system": 2}.get(current_theme(), 0)
+        self._theme_combo.setCurrentIndex(_theme_idx)
+        self._theme_combo.currentIndexChanged.connect(self._on_theme_combo_changed)
 
         self._autosave_spin = QSpinBox()
         self._autosave_spin.setRange(5, 300)
@@ -289,7 +305,8 @@ class SettingsPage(BasePage):
         recovery_lbl = _lbl("Enabled", Colors.SUCCESS, Fonts.SIZE_SM)
 
         pref_card = _card_with_rows([
-            _build_row("Theme", theme_lbl, note=theme_note),
+            _build_row("Theme", self._theme_combo,
+                       note="Applies immediately"),
             _build_row("Autosave interval", self._autosave_spin,
                        note="Active run session saved every N seconds"),
             _build_row("Session recovery", recovery_lbl,
@@ -384,6 +401,24 @@ class SettingsPage(BasePage):
         else:
             subprocess.Popen(["xdg-open", path])
 
+    def _on_theme_combo_changed(self, index: int) -> None:
+        """Switch theme immediately and persist to settings.json."""
+        if self._theme_combo is None:
+            return
+        name = self._theme_combo.itemData(index) or "dark"
+        if name == "system":
+            ToastManager.show_success("System theme will be supported in a future update.")
+            return
+        try:
+            app = QApplication.instance()
+            apply_theme(app, name)
+            bus.publish("theme_changed", theme=name)
+            s = self.app.data.load_settings()
+            s["theme"] = name
+            self.app.data.save_settings(s)
+        except Exception as exc:
+            ToastManager.show_error(f"Theme switch failed: {exc}")
+
     def _on_autosave_changed(self, value: int) -> None:
         try:
             self.app.state.autosave_interval_s = value
@@ -474,3 +509,10 @@ class SettingsPage(BasePage):
             self._autosave_spin.blockSignals(True)
             self._autosave_spin.setValue(val)
             self._autosave_spin.blockSignals(False)
+        # Refresh theme combo to current active theme
+        if self._theme_combo is not None:
+            t = current_theme()
+            idx = {"dark": 0, "light": 1, "system": 2}.get(t, 0)
+            self._theme_combo.blockSignals(True)
+            self._theme_combo.setCurrentIndex(idx)
+            self._theme_combo.blockSignals(False)

@@ -75,6 +75,7 @@ All user data files are 100% compatible — switching between versions uses the 
 | 8B | Export (PDF/DOCX/JSON/MD) + Import (JSON/paste text) | ✅ |
 | 9 | Settings, backup/restore, PyInstaller packaging | ✅ |
 | Polish | App icon, settings persistence, CI Qt build, flowchart text | ✅ |
+| v0.1.1 | Light Theme + runtime theme switching | ✅ |
 
 ### Run the Qt version
 

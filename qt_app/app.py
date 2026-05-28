@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from qt_app.theme import Colors
 from qt_app.services.data import DataService
+from qt_app.services.event_bus import bus
 from qt_app.services.app_state import AppState
 from qt_app.services.background import init_bg
 from qt_app.components.sidebar import Sidebar
@@ -106,6 +107,9 @@ class BenchFlowApp(QMainWindow):
         self._pages: dict[str, "BasePage"] = {}  # type: ignore[name-defined]
         self._register_pages()
 
+        # ── Subscribe to theme changes → refresh container border ────────────────
+        bus.subscribe("theme_changed", self._on_theme_changed)
+
         # Mark app as ready
         self.state.app_ready = True
         _app_logger.info("BenchFlowApp started")
@@ -134,11 +138,27 @@ class BenchFlowApp(QMainWindow):
 
     # ── Navigation ────────────────────────────────────────────────────────────
 
+    def _on_theme_changed(self, theme: str = "dark", **_kw) -> None:
+        """Re-apply theme-sensitive styles on the app window chrome."""
+        central = self.centralWidget()
+        if central:
+            central.setStyleSheet(f"background: {Colors.BG_DARK};")
+        self._stack.setStyleSheet(
+            f"QStackedWidget#PageContainer {{"
+            f"  background: {Colors.BG_DARK};"
+            f"  border-radius: 20px;"
+            f"  border: 1px solid {Colors.BORDER};"
+            f"}}"
+        )
+
     def navigate(self, page_id: str) -> None:
         """Switch to *page_id*.  Editor and Import alias to Library in sidebar."""
         page = self._pages.get(page_id)
         if page is None:
             return
+
+        # Ensure theme is fresh before showing (lazy rebuild if theme changed)
+        page._ensure_fresh_theme()
 
         # Raise the page
         self._stack.setCurrentWidget(page)

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from qt_app.theme import Colors, Fonts
 from qt_app.components.widgets import HSeparator
+from qt_app.services.event_bus import bus
 
 
 # Nav items: (page_id, emoji, label)
@@ -39,7 +40,11 @@ class Sidebar(QWidget):
         self.setFixedWidth(196)
         self._nav_buttons: dict[str, QPushButton] = {}
         self._active_page: str = ""
+        self._logo_title: QLabel | None = None
+        self._logo_sub: QLabel | None = None
+        self._footer: QLabel | None = None
         self._build()
+        bus.subscribe("theme_changed", self._on_theme_changed)
 
     # ── Build ─────────────────────────────────────────────────────────────────
 
@@ -73,6 +78,7 @@ class Sidebar(QWidget):
         footer.setStyleSheet(
             f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
         )
+        self._footer = footer
         root.addWidget(footer)
 
     def _make_logo(self) -> QWidget:
@@ -89,12 +95,14 @@ class Sidebar(QWidget):
             f"font-size: {Fonts.SIZE_XL}px;"
             f"font-weight: 700;"
         )
+        self._logo_title = title
 
         subtitle = QLabel("Wet Lab Manager")
         subtitle.setObjectName("SidebarSubtitle")
         subtitle.setStyleSheet(
             f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px;"
         )
+        self._logo_sub = subtitle
 
         lay.addWidget(title)
         lay.addWidget(subtitle)
@@ -123,6 +131,30 @@ class Sidebar(QWidget):
             btn.setProperty("active", active)
             btn.setStyleSheet(self._nav_style(active))
         self._active_page = page_id
+
+    # ── Theme refresh ─────────────────────────────────────────────────────────
+
+    def _on_theme_changed(self, theme: str = "dark", **_kw) -> None:
+        """Re-apply all inline styles when the theme changes."""
+        # Logo
+        if self._logo_title:
+            self._logo_title.setStyleSheet(
+                f"color: {Colors.ACCENT_LIGHT};"
+                f"font-size: {Fonts.SIZE_XL}px; font-weight: 700;"
+            )
+        if self._logo_sub:
+            self._logo_sub.setStyleSheet(
+                f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px;"
+            )
+        # Nav buttons
+        for pid, btn in self._nav_buttons.items():
+            active = pid == self._active_page
+            btn.setStyleSheet(self._nav_style(active))
+        # Footer
+        if self._footer:
+            self._footer.setStyleSheet(
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 

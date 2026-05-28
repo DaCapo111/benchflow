@@ -167,6 +167,20 @@ class RunModePage(BasePage):
 
         self._build()
 
+    # ── Theme override ────────────────────────────────────────────────────────
+
+    def _ensure_fresh_theme(self) -> None:
+        """Skip rebuild if a session is active to protect timer state."""
+        from qt_app.theme import current_theme as _ct
+        t = _ct()
+        if self._last_theme == t:
+            return
+        if self._session is not None:
+            # Active session: mark dirty so we rebuild on next idle visit
+            self._last_theme = ""
+            return
+        self._rebuild_theme()
+
     # ── UI construction ───────────────────────────────────────────────────────
 
     def _build(self) -> None:

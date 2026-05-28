@@ -24,15 +24,23 @@ from PySide6.QtCore import Qt
 
 from qt_app.theme import apply_theme
 from qt_app.app import BenchFlowApp
+from qt_app.services.data import DataService
 
 
 def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("BenchFlow")
     app.setOrganizationName("BenchFlow")
-    app.setApplicationVersion("2.0.0-qt")
+    app.setApplicationVersion("0.1.1")
 
-    apply_theme(app)
+    # Load persisted theme preference before creating the window
+    _ds = DataService()
+    _prefs = _ds.load_settings()
+    _theme = _prefs.get("theme", "dark")
+    if _theme == "system":
+        _theme = "dark"   # system theme not yet implemented → fall back
+
+    apply_theme(app, _theme)
 
     window = BenchFlowApp()
     window.show()
