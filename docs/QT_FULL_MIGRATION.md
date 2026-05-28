@@ -18,7 +18,8 @@
 | Phase 4.5 | Schedule polish — week view, right-panel drag-reorder, context menu | ✅ **Done** |
 | Phase 4.75 | App-wide stabilization — AppState, EventBus, Toast, BackgroundMgr, Perf | ✅ **Done** |
 | Phase 5 | Library + Templates — cards, search/filter/sort, New Protocol dialog, detail panel | ✅ **Done** |
-| Phase 6 | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
+| Phase 6 | Protocol Editor — metadata, step CRUD, reagents, conditions, reorder, save | ✅ **Done** |
+| Phase 6b | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
 | Phase 7 | Lab Notebook — rich text (QTextEdit), PDF/DOCX export | 🔲 |
 | Phase 8 | Settings, Categories/Tags manager | 🔲 |
 | Phase 9 | Cutover — remove CTk from distribution, update BenchFlow.spec | 🔲 |
@@ -512,6 +513,85 @@ Three creation methods — toggled by method buttons:
 
 ---
 
+## Phase 6 — Protocol Editor ✅
+
+**Commit**: `feat(phase-6): Protocol Editor — full step CRUD, reagents, reorder, save`
+
+### New file
+
+| File | Purpose |
+|---|---|
+| `qt_app/views/editor.py` | Full `EditorPage` — metadata card, step list, step form |
+
+### Architecture
+
+```
+EditorPage (BasePage)
+├── Top bar: ← Library  [protocol name]  [● Unsaved]  [Save Protocol]
+├── _MetaCard
+│   ├── Protocol Name (QLineEdit, bold)
+│   ├── Category (QLineEdit)
+│   ├── Description (QPlainTextEdit)
+│   └── Tags  (_TagChip chips + add-tag input)
+└── QSplitter (horizontal)
+    ├── Left: step list (QScrollArea)
+    │   ├── Header row + [＋ Add Step]
+    │   └── _StepRow × N
+    │       ├── Type-color dot, number, title, duration
+    │       └── ▲ ▼ ⧉ ✕ action buttons
+    └── Right: _StepForm (QScrollArea)
+        ├── Title + Type (QComboBox, 25 types)
+        ├── Timing  — Hands-on / Wait / Buffer (QDoubleSpinBox)
+        ├── Conditions — Temperature / Centrifuge / Shaking (QLineEdit)
+        ├── Description, Notes, Warnings (QPlainTextEdit)
+        ├── Reagents  — _ReagentRow (name / amount / unit / ×)
+        ├── Equipment — _ListItemRow items
+        ├── Checklist — _ListItemRow items
+        └── Substeps  — _ListItemRow items
+```
+
+### Step types supported (25)
+
+`preparation`, `reagent_addition`, `pipetting`, `mixing`, `incubation`, `heating`,
+`cooling`, `waiting`, `centrifuge`, `wash`, `transfer`, `resuspension`, `lysis`,
+`measurement`, `staining`, `blocking`, `gel_running`, `electrophoresis`,
+`membrane_transfer`, `imaging`, `harvest`, `sample_collection`, `storage`, `note`, `other`
+
+### Save behavior
+
+1. "Save Protocol" collects all form values (meta + current step) into the working copy
+2. Finds the protocol by ID in `protocols.json`, replaces it, writes atomically
+3. Emits `protocol_updated` on EventBus → Library refreshes
+4. "Unsaved changes" indicator (orange ●) shown when any field is modified
+
+### Unsaved-changes guard
+
+Clicking "← Library" when dirty shows a dialog: **Save & Leave / Discard / Cancel**
+
+### Library integration
+
+- `_DetailPanel` "Edit Protocol" button (primary, blue) → `edit_requested` signal
+- `LibraryPage._on_edit()` sets `app.state.selected_protocol_id` and navigates to "editor"
+- New blank protocols created from Library jump directly into the editor
+- "✎ Edit Protocol" is now the primary action for user protocols (was placeholder)
+
+### CTk JSON compatibility
+
+All saved fields use original CTk key names:
+`handsOnMinutes`, `waitMinutes`, `bufferMinutes`, `centrifugeCondition`, `shakingRotation`,
+`createdAt`, `updatedAt` — fully compatible with CTk `app.py` on `main`.
+
+### Known limitations
+
+- No drag-and-drop reorder (use ▲▼ buttons)
+- No inline substep nesting (substeps stored as plain strings)
+- No image/file attachment support
+- Flowchart view deferred to Phase 6b
+
+### Next: Phase 7 — Lab Notebook (QTextEdit, PDF export)
+
+---
+
 ## File Structure
 
 ```
@@ -558,7 +638,7 @@ qt_app/
     ├── run_mode.py          # ✅ Full run mode — timers, sequential, autosave
     ├── schedule.py          # ✅ Calendar + timeline editor
     ├── history.py           # ✅ Lab Notebook (run records)
-    ├── editor.py            # Placeholder → Phase 6
+    ├── editor.py            # ✅ Full Protocol Editor (Phase 6)
     ├── flowchart.py         # Placeholder → Phase 6
     ├── import_page.py       # Placeholder (future)
     └── settings.py          # Placeholder → Phase 8

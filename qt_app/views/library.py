@@ -182,6 +182,7 @@ class _DetailPanel(QWidget):
     duplicate_requested     = Signal(dict)
     delete_requested        = Signal(dict)
     use_template_requested  = Signal(dict)
+    edit_requested          = Signal(dict)   # opens Protocol Editor (Phase 6)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -340,13 +341,18 @@ class _DetailPanel(QWidget):
             )
         else:
             self._add_action_btn(
+                "✎  Edit Protocol",
+                Colors.ACCENT, True,
+                lambda p=proto: self.edit_requested.emit(p),
+            )
+            self._add_action_btn(
                 "▶  Open in Run Mode",
-                Colors.SUCCESS, True,
+                Colors.SUCCESS, False,
                 lambda p=proto: self.run_requested.emit(p),
             )
             self._add_action_btn(
                 "🗓  Schedule Experiment",
-                Colors.ACCENT, False,
+                Colors.TEXT_SECOND, False,
                 lambda p=proto: self.schedule_requested.emit(p),
             )
             self._add_action_btn(
@@ -359,14 +365,6 @@ class _DetailPanel(QWidget):
                 Colors.DANGER, False,
                 lambda p=proto: self.delete_requested.emit(p),
             )
-
-        # Phase 6 placeholder
-        edit_lbl = QLabel("✎  Edit protocol steps — available in Phase 6")
-        edit_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
-            f"font-style: italic; padding: 4px 0;"
-        )
-        lay.addWidget(edit_lbl)
 
         lay.addStretch()
 
@@ -567,6 +565,7 @@ class LibraryPage(BasePage):
         self._detail.duplicate_requested.connect(self._on_duplicate)
         self._detail.delete_requested.connect(self._on_delete)
         self._detail.use_template_requested.connect(self._on_use_template)
+        self._detail.edit_requested.connect(self._on_edit)
 
         self._splitter.addWidget(list_w)
         self._splitter.addWidget(self._detail)
@@ -828,6 +827,11 @@ class LibraryPage(BasePage):
         self._selected_is_template = False
         self._detail.show_protocol(proto, False)
 
+        # For blank protocols, jump straight into the editor
+        if method == "blank":
+            self.app.state.selected_protocol_id = proto["id"]
+            self.app.navigate("editor")
+
     def _on_use_template(self, tmpl: dict) -> None:
         """Copy template → new editable protocol in My Protocols."""
         import copy, time, uuid
@@ -895,6 +899,10 @@ class LibraryPage(BasePage):
         self._selected_proto = None
         self._detail.show_placeholder()
         self._load_data()
+
+    def _on_edit(self, proto: dict) -> None:
+        self.app.state.selected_protocol_id = proto.get("id", "")
+        self.app.navigate("editor")
 
     def _on_run_mode(self, proto: dict) -> None:
         self.app.state.selected_protocol_id = proto.get("id", "")
