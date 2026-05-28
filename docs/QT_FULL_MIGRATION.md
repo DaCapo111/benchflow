@@ -17,7 +17,7 @@
 | Phase 4 | Schedule — calendar grid, drag session blocks, timeline editor | ✅ **Done** |
 | Phase 4.5 | Schedule polish — week view, right-panel drag-reorder, context menu | ✅ **Done** |
 | Phase 4.75 | App-wide stabilization — AppState, EventBus, Toast, BackgroundMgr, Perf | ✅ **Done** |
-| Phase 5 | Library + Protocol Editor + Import | 🔲 |
+| Phase 5 | Library + Templates — cards, search/filter/sort, New Protocol dialog, detail panel | ✅ **Done** |
 | Phase 6 | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
 | Phase 7 | Lab Notebook — rich text (QTextEdit), PDF/DOCX export | 🔲 |
 | Phase 8 | Settings, Categories/Tags manager | 🔲 |
@@ -441,6 +441,77 @@ Module-level singleton. Supported events:
 
 ---
 
+## Phase 5 — Library and Templates ✅
+
+**Commit**: `feat(phase-5): Library page — protocol cards, templates, New Protocol dialog`
+
+### New files
+
+| File | Purpose |
+|---|---|
+| `qt_app/dialogs/new_protocol.py` | `NewProtocolDialog` — Blank / From Template / Duplicate Existing |
+| `qt_app/views/library.py` | Full `LibraryPage` rewrite with `_ProtocolCard` and `_DetailPanel` |
+
+### Architecture
+
+```
+LibraryPage (QSplitter)
+├── Left panel (QScrollArea)
+│   ├── Header row: "Protocol Library" title + "＋ New Protocol" button
+│   ├── Toolbar: search QLineEdit + category QComboBox + sort QComboBox
+│   ├── "My Protocols" section header
+│   ├── _ProtocolCard × N  (click → _DetailPanel.show_protocol)
+│   ├── "Templates" section header
+│   └── _ProtocolCard × M  (click → _DetailPanel.show_protocol, is_template=True)
+└── Right panel (_DetailPanel)
+    ├── show_placeholder(): "Select a protocol to see details"
+    └── show_protocol(proto, is_template):
+        ├── Name, category badge, tags
+        ├── Stats: steps / total time / hands-on / wait
+        ├── Step list (up to 30)
+        └── Action buttons:
+            Protocol: Open in Run Mode (primary), Schedule Experiment, Duplicate, Delete
+            Template:  Use Template (primary), Duplicate as Protocol
+```
+
+### NewProtocolDialog
+
+Three creation methods — toggled by method buttons:
+
+| Method | UI shown | Output |
+|---|---|---|
+| Blank Protocol | Name + Category fields | Fresh dict with empty steps |
+| From Template | Name + Source combo (templates list) | Deep copy, new UUID + step UUIDs |
+| Duplicate Existing | Name + Source combo (protocols list) | Deep copy, new UUID + step UUIDs |
+
+### Search / Filter / Sort
+
+- **Search**: live filtering on name, tags, category (case-insensitive)
+- **Category filter**: combo auto-populated from all loaded protocols+templates
+- **Sort options**: Name A→Z, Name Z→A, Most Recent (updatedAt), Most Steps, Fewest Steps
+
+### EventBus events emitted
+
+| Event | Trigger |
+|---|---|
+| `protocol_created` | New blank, use template, or duplicate |
+| `protocol_deleted` | Confirmed delete |
+
+### Run Mode integration
+
+`run_mode.py` `on_show()` now checks `app.state.selected_protocol_id`. If set (e.g. navigated from Library "Open in Run Mode"), the matching protocol is auto-selected in the left-panel list and `selected_protocol_id` is cleared.
+
+### Known limitations
+
+- Protocol Editor (`editor.py`) is still a placeholder — editing steps deferred to Phase 6.
+- "Edit" action in detail panel shows a "Coming in Phase 6" info dialog.
+- Import page (`import_page.py`) deferred to a later phase.
+- Flowchart view deferred to Phase 6.
+
+### Next: Phase 6 — Protocol Editor (QFormLayout step builder)
+
+---
+
 ## File Structure
 
 ```
@@ -458,24 +529,37 @@ qt_app/
 │
 ├── services/
 │   ├── __init__.py
-│   └── data.py              # DataService — all JSON I/O
+│   ├── data.py              # DataService — all JSON I/O
+│   ├── app_state.py         # AppState(QObject) — cross-page state + signals  [4.75]
+│   ├── event_bus.py         # _EventBus singleton (bus) — pub/sub dispatcher  [4.75]
+│   ├── background.py        # BackgroundTaskManager (bg) — debounce + flush   [4.75]
+│   ├── error_handler.py     # _ErrorHandler (eh) — safe_call, log_exception   [4.75]
+│   ├── perf.py              # _Perf (perf) — context-manager perf logging      [4.75]
+│   └── run_service.py       # RunModeSession, StepRunState helpers
 │
 ├── components/
 │   ├── __init__.py
 │   ├── sidebar.py           # Sidebar(QWidget) with nav_requested signal
-│   └── widgets.py           # PrimaryButton, Card, Badge, HSeparator, etc.
+│   ├── widgets.py           # PrimaryButton, Card, Badge, HSeparator, etc.
+│   ├── step_card.py         # StepCard — run-mode step widget
+│   └── toast.py             # ToastManager — floating bottom-right toasts      [4.75]
+│
+├── dialogs/
+│   ├── new_protocol.py      # NewProtocolDialog (Blank/Template/Duplicate)     [5]
+│   ├── add_block.py         # AddBlockDialog — add temp block in Run Mode
+│   └── restore_session.py   # RestoreSessionDialog — resume active session
 │
 └── views/
     ├── __init__.py
     ├── base_page.py         # BasePage(QWidget) — app ref + on_show() hook
     ├── _placeholder.py      # Generic placeholder for unimplemented pages
-    ├── dashboard.py         # ✅ Real data
-    ├── library.py           # ✅ Protocols + Templates
-    ├── run_mode.py          # ✅ Protocol list + read-only step cards
-    ├── schedule.py          # ✅ Schedule list
+    ├── dashboard.py         # ✅ Real data, EventBus reactive refresh
+    ├── library.py           # ✅ Protocols + Templates (full Phase 5)          [5]
+    ├── run_mode.py          # ✅ Full run mode — timers, sequential, autosave
+    ├── schedule.py          # ✅ Calendar + timeline editor
     ├── history.py           # ✅ Lab Notebook (run records)
-    ├── editor.py            # Placeholder → Phase 5
+    ├── editor.py            # Placeholder → Phase 6
     ├── flowchart.py         # Placeholder → Phase 6
-    ├── import_page.py       # Placeholder → Phase 5
+    ├── import_page.py       # Placeholder (future)
     └── settings.py          # Placeholder → Phase 8
 ```

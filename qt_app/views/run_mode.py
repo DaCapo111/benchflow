@@ -380,6 +380,18 @@ class RunModePage(BasePage):
         logger.info("enter_run_mode")
         self._load_protocol_list()
 
+        # Auto-select protocol if one was requested (e.g. from Library "Open in Run Mode")
+        wanted_id = getattr(self.app.state, "selected_protocol_id", "")
+        if wanted_id:
+            for i in range(self._proto_list.count()):
+                item = self._proto_list.item(i)
+                proto = item.data(Qt.ItemDataRole.UserRole) if item else None
+                if proto and proto.get("id") == wanted_id:
+                    self._proto_list.setCurrentItem(item)
+                    break
+            # Clear so a subsequent on_show() doesn't re-select stale value
+            self.app.state.selected_protocol_id = ""
+
         # Check for existing session
         existing = self.app.data.load_active_session()
         if existing and existing.get("version", 0) == 3:
