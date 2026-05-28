@@ -183,6 +183,7 @@ class _DetailPanel(QWidget):
     delete_requested        = Signal(dict)
     use_template_requested  = Signal(dict)
     edit_requested          = Signal(dict)   # opens Protocol Editor (Phase 6)
+    flowchart_requested     = Signal(dict)   # opens Flowchart (Phase 8A)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -335,6 +336,11 @@ class _DetailPanel(QWidget):
                 lambda p=proto: self.use_template_requested.emit(p),
             )
             self._add_action_btn(
+                "⎇  View Flowchart",
+                Colors.TEXT_SECOND, False,
+                lambda p=proto: self.flowchart_requested.emit(p),
+            )
+            self._add_action_btn(
                 "⧉  Duplicate as Protocol",
                 Colors.TEXT_SECOND, False,
                 lambda p=proto: self.duplicate_requested.emit(p),
@@ -349,6 +355,11 @@ class _DetailPanel(QWidget):
                 "▶  Open in Run Mode",
                 Colors.SUCCESS, False,
                 lambda p=proto: self.run_requested.emit(p),
+            )
+            self._add_action_btn(
+                "⎇  View Flowchart",
+                Colors.TEXT_SECOND, False,
+                lambda p=proto: self.flowchart_requested.emit(p),
             )
             self._add_action_btn(
                 "🗓  Schedule Experiment",
@@ -566,6 +577,7 @@ class LibraryPage(BasePage):
         self._detail.delete_requested.connect(self._on_delete)
         self._detail.use_template_requested.connect(self._on_use_template)
         self._detail.edit_requested.connect(self._on_edit)
+        self._detail.flowchart_requested.connect(self._on_flowchart)
 
         self._splitter.addWidget(list_w)
         self._splitter.addWidget(self._detail)
@@ -903,6 +915,10 @@ class LibraryPage(BasePage):
     def _on_edit(self, proto: dict) -> None:
         self.app.state.selected_protocol_id = proto.get("id", "")
         self.app.navigate("editor")
+
+    def _on_flowchart(self, proto: dict) -> None:
+        self.app.state.selected_protocol_id = proto.get("id", "")
+        self.app.navigate("flowchart")
 
     def _on_run_mode(self, proto: dict) -> None:
         self.app.state.selected_protocol_id = proto.get("id", "")

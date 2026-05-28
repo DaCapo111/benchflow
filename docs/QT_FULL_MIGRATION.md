@@ -19,7 +19,7 @@
 | Phase 4.75 | App-wide stabilization — AppState, EventBus, Toast, BackgroundMgr, Perf | ✅ **Done** |
 | Phase 5 | Library + Templates — cards, search/filter/sort, New Protocol dialog, detail panel | ✅ **Done** |
 | Phase 6 | Protocol Editor — metadata, step CRUD, reagents, conditions, reorder, save | ✅ **Done** |
-| Phase 6b | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
+| Phase 8A | Flowchart — QGraphicsScene nodes, arrows, zoom/pan, step detail panel | ✅ **Done** |
 | Phase 7 | Lab Notebook — date-grouped list, detail panel, step table, edit notes, search | ✅ **Done** |
 | Phase 8 | Settings, Categories/Tags manager | 🔲 |
 | Phase 9 | Cutover — remove CTk from distribution, update BenchFlow.spec | 🔲 |
@@ -676,6 +676,97 @@ No other CTk fields (`stepRecords`, `timeline`, `protocolSnapshot`, etc.) are mo
 
 ---
 
+## Phase 8A — Flowchart ✅
+
+**Commit**: `Implement PySide6 Flowchart view`
+
+### Rewritten file
+
+| File | Change |
+|---|---|
+| `qt_app/views/flowchart.py` | Full implementation — `_StepNode`, `_ArrowItem`, `_FlowchartView`, `_StepDetailPanel`, `FlowchartPage` |
+
+### Architecture
+
+```
+FlowchartPage (BasePage)  —  3-pane QSplitter
+│
+├── Left (200 px): Protocol Selector
+│   ├── "Protocols" header
+│   ├── 🔍 search QLineEdit (live filter)
+│   ├── QListWidget (protocol name + step count)
+│   └── step count footer label
+│
+├── Center (stretch): Canvas
+│   ├── Top bar: [⊞ Fit] [⊙ Center] [−] [zoom%] [＋] [1:1]
+│   └── _FlowchartView (QGraphicsView + QGraphicsScene)
+│       ├── _StepNode × N  (clickable)
+│       └── _ArrowItem × N-1  (downward arrows)
+│
+└── Right (300 px): _StepDetailPanel
+    ├── Placeholder (no step selected)
+    └── Full step detail (title, type, timing, conditions,
+        description/notes/warnings, reagents, equipment,
+        checklist, substeps)
+```
+
+### _StepNode (264 × 90 px)
+
+```
+┌──────────────────────────────────────────────┐
+║  ①  Step Title Here, wrapped to 2 lines max  ║
+║     Preparation   ⏱ 45m                      ║
+║     ● 37°C                                    ║
+└──────────────────────────────────────────────┘
+ ↑ 6 px type-color left accent strip
+ ↑ Circular number badge (type-color background, white number)
+```
+
+- Accent strip and badge color comes from step type (25 types, same palette as editor)
+- Title pre-wrapped to ≤2 lines using QFontMetrics; long lines elided with `…`
+- Blue border highlight when selected (`_sel = True`)
+- Tooltip shows full step title
+
+### _ArrowItem
+
+Simple downward `QPainterPath` line with an arrowhead (8px wide, 10px tip) pointing toward the next node. Rendered at Z = −1 (behind nodes).
+
+### _FlowchartView
+
+| Feature | How |
+|---|---|
+| Pan | `ScrollHandDrag` mode (drag canvas) |
+| Zoom with wheel | `wheelEvent` → `scale()` |
+| Fit View | `fitInView(bounding_rect + 24px margin, KeepAspectRatio)` |
+| Center | `centerOn(scene.itemsBoundingRect().center())` |
+| 1:1 reset | `setTransform(QTransform())` |
+| Zoom range | 10%–500% |
+
+### Library integration
+
+`_DetailPanel` now has a **"⎇ View Flowchart"** secondary button for both user protocols and templates:
+- `flowchart_requested = Signal(dict)` → `LibraryPage._on_flowchart()`
+- Sets `app.state.selected_protocol_id` and navigates to `"flowchart"`
+
+`FlowchartPage.on_show()` reads `selected_protocol_id`, auto-selects the matching item in the left list and renders its workflow.
+
+### EventBus subscriptions
+
+| Event | Action |
+|---|---|
+| `protocol_created/updated/deleted` | Reload protocol list; re-render if current protocol changed |
+
+### Known limitations
+
+- Linear layout only (no branch / decision nodes)
+- No drag-to-edit or rearrange nodes
+- No horizontal / swimlane layouts yet
+- Export (PNG/PDF) deferred to Phase 8B
+
+### Next: Phase 8B — Settings page, Tags manager, PDF export
+
+---
+
 ## File Structure
 
 ```
@@ -723,7 +814,7 @@ qt_app/
     ├── schedule.py          # ✅ Calendar + timeline editor
     ├── history.py           # ✅ Lab Notebook — full Phase 7 (date list, detail, edit)
     ├── editor.py            # ✅ Full Protocol Editor (Phase 6)
-    ├── flowchart.py         # Placeholder → Phase 6
+    ├── flowchart.py         # ✅ Flowchart — QGraphicsScene (Phase 8A)
     ├── import_page.py       # Placeholder (future)
     └── settings.py          # Placeholder → Phase 8
 ```
