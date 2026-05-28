@@ -20,7 +20,7 @@
 | Phase 5 | Library + Templates — cards, search/filter/sort, New Protocol dialog, detail panel | ✅ **Done** |
 | Phase 6 | Protocol Editor — metadata, step CRUD, reagents, conditions, reorder, save | ✅ **Done** |
 | Phase 6b | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
-| Phase 7 | Lab Notebook — rich text (QTextEdit), PDF/DOCX export | 🔲 |
+| Phase 7 | Lab Notebook — date-grouped list, detail panel, step table, edit notes, search | ✅ **Done** |
 | Phase 8 | Settings, Categories/Tags manager | 🔲 |
 | Phase 9 | Cutover — remove CTk from distribution, update BenchFlow.spec | 🔲 |
 
@@ -588,7 +588,91 @@ All saved fields use original CTk key names:
 - No image/file attachment support
 - Flowchart view deferred to Phase 6b
 
-### Next: Phase 7 — Lab Notebook (QTextEdit, PDF export)
+### Next: Phase 7 — Lab Notebook
+
+---
+
+## Phase 7 — Lab Notebook ✅
+
+**Commit**: `Implement PySide6 Lab Notebook`
+
+### Rewritten file
+
+| File | Change |
+|---|---|
+| `qt_app/views/history.py` | Full rewrite — `_RecordCard`, `_DetailPanel`, `HistoryPage` |
+
+### Architecture
+
+```
+HistoryPage (BasePage)
+├── Header: "Lab Notebook" title + subtitle + [Export All (disabled)]
+├── Toolbar: 🔍 search QLineEdit  |  Protocol filter QComboBox  |  count label
+├── HSeparator
+└── QSplitter (horizontal)
+    ├── Left: record list (QScrollArea)
+    │   ├── Date group headers (Today / Yesterday / Weekday · Month DD, YYYY)
+    │   ├── session count badge per group
+    │   └── _RecordCard × N
+    │       ├── Title (bold) + actual duration
+    │       ├── Protocol badge + HH:MM–HH:MM time range
+    │       ├── Step dots (up to 24, color-coded) + completion %
+    │       └── Observations snippet (first 90 chars)
+    └── Right: _DetailPanel
+        ├── Editable session title (QLineEdit)
+        ├── Date/time range · duration
+        ├── Protocol badge + category + tags
+        ├── Stats row: Steps · Completed · Skipped · Incomplete (4 columns)
+        ├── Progress bar (proportional, green at 100%)
+        ├── Editable Observations/Summary (QPlainTextEdit)
+        ├── Editable Additional Notes (QPlainTextEdit)
+        ├── [Save Notes] button with ● Unsaved indicator
+        ├── Step Records table: # | Title | Planned | Actual | Status
+        ├── Timeline log (all events with timestamps)
+        └── [Duplicate] [Delete] [Export (disabled)]
+```
+
+### Step Records table
+
+| Column | Source | Notes |
+|---|---|---|
+| # | row index | |
+| Step | `stepTitle` | |
+| Planned | `plannedSecs` | formatted as Xh Ym |
+| Actual | `usedSecs` | green if ≤ 110% planned; orange if over |
+| Status | `status` | colored icon + label |
+
+Step notes (from `stepRecord.notes`) shown as indented sub-row when non-empty.
+
+### Search / Filter
+
+- **Search**: live substring match across title, protocolName, observations, notes, tags
+- **Protocol filter**: combo auto-populated from all loaded records
+
+### Editing (backwards-compatible)
+
+Fields written on "Save Notes":
+- `title` — editable session title
+- `observations` — primary notes (CTk reads this)
+- `notes` — mirror of observations (CTk compat)
+- `summary` — additional notes field (new, ignored by CTk)
+
+No other CTk fields (`stepRecords`, `timeline`, `protocolSnapshot`, etc.) are modified.
+
+### EventBus subscriptions
+
+| Event | Action |
+|---|---|
+| `run_session_saved` | Reload if visible; restore selection |
+| `notebook_record_created` | Reload if visible |
+
+### Known limitations
+
+- Export (PDF/DOCX) button is present but disabled — Phase 8
+- No inline rich-text (bold/italic) in notes fields — Phase 8
+- No tag editing in the detail panel — Phase 8
+
+### Next: Phase 8 — Settings, PDF export, Tags manager
 
 ---
 
@@ -637,7 +721,7 @@ qt_app/
     ├── library.py           # ✅ Protocols + Templates (full Phase 5)          [5]
     ├── run_mode.py          # ✅ Full run mode — timers, sequential, autosave
     ├── schedule.py          # ✅ Calendar + timeline editor
-    ├── history.py           # ✅ Lab Notebook (run records)
+    ├── history.py           # ✅ Lab Notebook — full Phase 7 (date list, detail, edit)
     ├── editor.py            # ✅ Full Protocol Editor (Phase 6)
     ├── flowchart.py         # Placeholder → Phase 6
     ├── import_page.py       # Placeholder (future)
