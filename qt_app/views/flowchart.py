@@ -350,7 +350,9 @@ class _ArrowItem(QGraphicsPathItem):
 # ── _FlowchartView ────────────────────────────────────────────────────────────
 
 class _FlowchartView(QGraphicsView):
-    """QGraphicsView with Ctrl+wheel zoom and drag-to-pan."""
+    """QGraphicsView with modifier-wheel zoom and drag-to-pan."""
+
+    zoom_changed = Signal()
 
     def __init__(self, scene: QGraphicsScene,
                  parent: QWidget | None = None) -> None:
@@ -366,8 +368,22 @@ class _FlowchartView(QGraphicsView):
         self._zoom_level = 1.0
 
     def wheelEvent(self, event) -> None:
-        factor = 1.20 if event.angleDelta().y() > 0 else (1 / 1.20)
-        self._do_zoom(factor)
+        mods = event.modifiers()
+        zoom_requested = bool(
+            mods & (
+                Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.MetaModifier
+            )
+        )
+        if zoom_requested:
+            delta = event.angleDelta().y() or event.pixelDelta().y()
+            if delta:
+                factor = 1.20 if delta > 0 else (1 / 1.20)
+                self._do_zoom(factor)
+                event.accept()
+                return
+
+        super().wheelEvent(event)
 
     def zoom_in(self) -> None:
         self._do_zoom(1.25)
@@ -382,6 +398,7 @@ class _FlowchartView(QGraphicsView):
         padded = rect.adjusted(-24, -24, 24, 24)
         self.fitInView(padded, Qt.AspectRatioMode.KeepAspectRatio)
         self._zoom_level = self.transform().m11()
+        self.zoom_changed.emit()
 
     def center_view(self) -> None:
         rect = self.scene().itemsBoundingRect()
@@ -391,6 +408,7 @@ class _FlowchartView(QGraphicsView):
     def reset_zoom(self) -> None:
         self.setTransform(QTransform())
         self._zoom_level = 1.0
+        self.zoom_changed.emit()
 
     def zoom_level_pct(self) -> int:
         return int(self.transform().m11() * 100)
@@ -401,6 +419,7 @@ class _FlowchartView(QGraphicsView):
             return
         self.scale(factor, factor)
         self._zoom_level = new_z
+        self.zoom_changed.emit()
 
 
 # ── _StepDetailPanel ──────────────────────────────────────────────────────────
@@ -802,6 +821,7 @@ class FlowchartPage(BasePage):
         center_lay.setSpacing(0)
 
         self._view = _FlowchartView(self._scene)
+        self._view.zoom_changed.connect(self._update_zoom_label)
         center_lay.addWidget(self._view, stretch=1)
 
         # Empty state overlay

@@ -93,28 +93,34 @@ class _ProtocolCard(QFrame):
 
     clicked = Signal(dict, bool)   # (protocol_dict, is_template)
 
-    _STYLE = (
-        f"QFrame {{ background: {Colors.BG_CARD};"
-        f"  border-radius: {Radii.LG}px;"
-        f"  border: 1px solid {Colors.BORDER}; }}"
-        f"QFrame:hover {{ border: 1px solid {Colors.ACCENT}; }}"
-    )
-    _STYLE_SEL = (
-        f"QFrame {{ background: rgba(59,130,246,0.10);"
-        f"  border-radius: {Radii.LG}px;"
-        f"  border: 2px solid {Colors.ACCENT}; }}"
-    )
-
     def __init__(self, proto: dict, is_template: bool = False,
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._proto       = proto
         self._is_template = is_template
         self._sel         = False
-        self.setStyleSheet(self._STYLE)
+        self.setStyleSheet(self._style(False))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._build()
+
+    @staticmethod
+    def _style(selected: bool) -> str:
+        if selected:
+            return (
+                f"QFrame {{ background: {Colors.BG_CARD_HOV};"
+                f"  border-radius: {Radii.MD}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-left: 4px solid {Colors.ACCENT}; }}"
+                f"QFrame:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+            )
+        return (
+            f"QFrame {{ background: {Colors.BG_CARD};"
+            f"  border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"QFrame:hover {{ background: {Colors.BG_CARD_HOV};"
+            f"  border-color: {Colors.BORDER}; }}"
+        )
 
     def _build(self) -> None:
         p   = self._proto
@@ -141,11 +147,11 @@ class _ProtocolCard(QFrame):
         r2.setSpacing(6)
         cat = p.get("category", "")
         if cat:
-            r2.addWidget(_badge(cat, Colors.ACCENT, "rgba(59,130,246,0.15)"))
+            r2.addWidget(_badge(cat, Colors.ACCENT, Colors.ACCENT_BG))
         n = len(p.get("steps", []))
         r2.addWidget(_badge(f"{n} step{'s' if n!=1 else ''}", Colors.TEXT_SECOND, Colors.BG_CARD_HOV))
         if self._is_template:
-            r2.addWidget(_badge("Template", Colors.WARNING, "rgba(249,115,22,0.15)"))
+            r2.addWidget(_badge("Template", Colors.WARNING, Colors.WARNING_BG))
         r2.addStretch()
         lay.addLayout(r2)
 
@@ -163,7 +169,7 @@ class _ProtocolCard(QFrame):
 
     def set_selected(self, sel: bool) -> None:
         self._sel = sel
-        self.setStyleSheet(self._STYLE_SEL if sel else self._STYLE)
+        self.setStyleSheet(self._style(sel))
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -225,11 +231,11 @@ class _DetailPanel(QWidget):
 
         # Type badge
         if is_template:
-            lay.addWidget(_badge("Built-in Template", Colors.WARNING, "rgba(249,115,22,0.15)"))
+            lay.addWidget(_badge("Built-in Template", Colors.WARNING, Colors.WARNING_BG))
         else:
             cat = proto.get("category", "")
             if cat:
-                lay.addWidget(_badge(cat, Colors.ACCENT, "rgba(59,130,246,0.15)"))
+                lay.addWidget(_badge(cat, Colors.ACCENT, Colors.ACCENT_BG))
 
         # Tags
         tags = proto.get("tags", [])
@@ -794,7 +800,7 @@ class LibraryPage(BasePage):
         count_text = str(count) if (total < 0 or count == total) else f"{count}/{total}"
         cnt = QLabel(count_text)
         cnt.setStyleSheet(
-            f"color: {Colors.ACCENT_LIGHT}; background: rgba(59,130,246,0.15);"
+            f"color: {Colors.ACCENT}; background: {Colors.ACCENT_BG};"
             f"border-radius: 8px; padding: 2px 10px;"
             f"font-size: {Fonts.SIZE_SM}px; font-weight: 700;"
         )
@@ -952,7 +958,11 @@ class LibraryPage(BasePage):
         self._load_data()
 
     def _on_edit(self, proto: dict) -> None:
-        self.app.state.selected_protocol_id = proto.get("id", "")
+        proto_id = proto.get("id", "")
+        if not proto_id:
+            ToastManager.show_error("Cannot edit this protocol: missing protocol ID.")
+            return
+        self.app.state.selected_protocol_id = proto_id
         self.app.navigate("editor")
 
     def _on_flowchart(self, proto: dict) -> None:

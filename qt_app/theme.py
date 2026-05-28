@@ -49,6 +49,7 @@ _DARK: dict[str, object] = {
     "ACCENT":       "#3b82f6",
     "ACCENT_HOVER": "#2563eb",
     "ACCENT_LIGHT": "#60a5fa",
+    "ACCENT_BG":    "rgba(59,130,246,0.15)",
 
     "SUCCESS":      "#22c55e",
     "SUCCESS_BG":   "#14532d",
@@ -106,6 +107,7 @@ _LIGHT: dict[str, object] = {
     "ACCENT":       "#2563EB",   # slightly darker blue for contrast on white
     "ACCENT_HOVER": "#1D4ED8",
     "ACCENT_LIGHT": "#3B82F6",
+    "ACCENT_BG":    "#E8F1FF",
 
     "SUCCESS":      "#16A34A",   # darker green
     "SUCCESS_BG":   "#DCFCE7",   # light green background
@@ -172,6 +174,7 @@ class Colors:
     ACCENT:       str = _DARK["ACCENT"]        # type: ignore[assignment]
     ACCENT_HOVER: str = _DARK["ACCENT_HOVER"]  # type: ignore[assignment]
     ACCENT_LIGHT: str = _DARK["ACCENT_LIGHT"]  # type: ignore[assignment]
+    ACCENT_BG:    str = _DARK["ACCENT_BG"]     # type: ignore[assignment]
 
     SUCCESS:      str = _DARK["SUCCESS"]       # type: ignore[assignment]
     SUCCESS_BG:   str = _DARK["SUCCESS_BG"]    # type: ignore[assignment]

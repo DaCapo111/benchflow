@@ -180,17 +180,6 @@ class _StepRow(QFrame):
     duplicate    = Signal(int)
     deleted      = Signal(int)
 
-    _STYLE = (
-        f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
-        f"  border: 1px solid {Colors.BORDER}; }}"
-        f"QFrame:hover {{ border-color: {Colors.ACCENT}; }}"
-    )
-    _STYLE_SEL = (
-        f"QFrame {{ background: rgba(59,130,246,0.12);"
-        f"  border-radius: {Radii.MD}px;"
-        f"  border: 2px solid {Colors.ACCENT}; }}"
-    )
-
     def __init__(self, index: int, step: dict,
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -199,8 +188,22 @@ class _StepRow(QFrame):
         self._sel   = False
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet(self._STYLE)
+        self.setStyleSheet(self._style(False))
         self._build()
+
+    @staticmethod
+    def _style(selected: bool) -> str:
+        if selected:
+            return (
+                f"QFrame {{ background: {Colors.ACCENT_BG};"
+                f"  border-radius: {Radii.MD}px;"
+                f"  border: 1px solid {Colors.ACCENT}; }}"
+            )
+        return (
+            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"QFrame:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+        )
 
     def _build(self) -> None:
         lay = QHBoxLayout(self)
@@ -264,7 +267,7 @@ class _StepRow(QFrame):
 
     def set_selected(self, sel: bool) -> None:
         self._sel = sel
-        self.setStyleSheet(self._STYLE_SEL if sel else self._STYLE)
+        self.setStyleSheet(self._style(sel))
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -349,12 +352,12 @@ class _TagChip(QFrame):
         lay.setContentsMargins(8, 3, 4, 3)
         lay.setSpacing(4)
         self.setStyleSheet(
-            f"QFrame {{ background: rgba(59,130,246,0.15);"
+            f"QFrame {{ background: {Colors.ACCENT_BG};"
             f"  border-radius: {Radii.SM}px;"
             f"  border: 1px solid {Colors.ACCENT}; }}"
         )
         lbl = QLabel(f"#{tag}")
-        lbl.setStyleSheet(f"color: {Colors.ACCENT_LIGHT}; font-size: {Fonts.SIZE_XS}px;")
+        lbl.setStyleSheet(f"color: {Colors.ACCENT}; font-size: {Fonts.SIZE_XS}px;")
         rm = QPushButton("×")
         rm.setFixedSize(16, 16)
         rm.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -409,6 +412,13 @@ class _StepForm(QScrollArea):
 
     def load_step(self, step: dict) -> None:
         """Populate form from step dict."""
+        self.blockSignals(True)
+        try:
+            self._load_step(step)
+        finally:
+            self.blockSignals(False)
+
+    def _load_step(self, step: dict) -> None:
         self._step = step
         self._clear()
         lay = self._lay
@@ -586,7 +596,7 @@ class _StepForm(QScrollArea):
             f"QPushButton {{ background: transparent; color: {Colors.ACCENT};"
             f"  border: 1px solid {Colors.ACCENT}; border-radius: {Radii.XS}px;"
             f"  font-size: {Fonts.SIZE_XS}px; font-weight: 600; }}"
-            f"QPushButton:hover {{ background: rgba(59,130,246,0.15); }}"
+            f"QPushButton:hover {{ background: {Colors.ACCENT_BG}; }}"
         )
         hdr.addWidget(add_btn)
         lay.addLayout(hdr)
@@ -654,7 +664,7 @@ class _StepForm(QScrollArea):
             f"QPushButton {{ background: transparent; color: {Colors.ACCENT};"
             f"  border: 1px solid {Colors.ACCENT}; border-radius: {Radii.XS}px;"
             f"  font-size: {Fonts.SIZE_XS}px; font-weight: 600; }}"
-            f"QPushButton:hover {{ background: rgba(59,130,246,0.15); }}"
+            f"QPushButton:hover {{ background: {Colors.ACCENT_BG}; }}"
         )
         hdr.addWidget(add_btn)
         lay.addLayout(hdr)
@@ -769,7 +779,7 @@ class _MetaCard(QFrame):
             f"  padding: 0 10px; font-size: {Fonts.SIZE_MD}px; font-weight: 700; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
-        self._name_edit.textChanged.connect(self.changed.emit)
+        self._name_edit.textChanged.connect(lambda *_: self.changed.emit())
         name_col.addWidget(self._name_edit)
         r1.addLayout(name_col, stretch=2)
 
@@ -777,7 +787,7 @@ class _MetaCard(QFrame):
         cat_col.setSpacing(3)
         cat_col.addWidget(_field_label("Category"))
         self._cat_edit = _mk_input("e.g. Cell Biology, Biochemistry")
-        self._cat_edit.textChanged.connect(self.changed.emit)
+        self._cat_edit.textChanged.connect(lambda *_: self.changed.emit())
         cat_col.addWidget(self._cat_edit)
         r1.addLayout(cat_col, stretch=1)
 
@@ -788,7 +798,7 @@ class _MetaCard(QFrame):
         desc_col.setSpacing(3)
         desc_col.addWidget(_field_label("Description"))
         self._desc_edit = _mk_textarea("Short description of this protocol…", min_h=52)
-        self._desc_edit.textChanged.connect(self.changed.emit)
+        self._desc_edit.textChanged.connect(lambda *_: self.changed.emit())
         desc_col.addWidget(self._desc_edit)
         outer.addLayout(desc_col)
 
@@ -826,15 +836,19 @@ class _MetaCard(QFrame):
         outer.addLayout(tag_col)
 
     def load(self, proto: dict) -> None:
-        self._name_edit.setText(proto.get("name", ""))
-        self._cat_edit.setText(proto.get("category", ""))
-        self._desc_edit.setPlainText(proto.get("description", ""))
-        # Clear chips
-        for chip in list(self._tag_chips):
-            chip.deleteLater()
-        self._tag_chips.clear()
-        for tag in proto.get("tags", []):
-            self._add_chip(tag, emit=False)
+        self.blockSignals(True)
+        try:
+            self._name_edit.setText(proto.get("name", ""))
+            self._cat_edit.setText(proto.get("category", ""))
+            self._desc_edit.setPlainText(proto.get("description", ""))
+            # Clear chips
+            for chip in list(self._tag_chips):
+                chip.deleteLater()
+            self._tag_chips.clear()
+            for tag in proto.get("tags", []):
+                self._add_chip(tag, emit=False)
+        finally:
+            self.blockSignals(False)
 
     def collect(self) -> tuple[str, str, str, list[str]]:
         """Return (name, category, description, tags)."""
@@ -1064,6 +1078,13 @@ class EditorPage(BasePage):
     def on_show(self) -> None:
         wanted_id = getattr(self.app.state, "selected_protocol_id", "")
         if wanted_id:
+            current_id = self._proto.get("id", "") if self._proto else ""
+            if wanted_id != current_id and not self._confirm_replace_current_protocol():
+                self.app.state.selected_protocol_id = ""
+                if self._proto is None:
+                    self._editor_w.hide()
+                    self._placeholder_w.show()
+                return
             self._load_protocol_by_id(wanted_id)
             self.app.state.selected_protocol_id = ""
         elif self._proto is None:
@@ -1073,13 +1094,35 @@ class EditorPage(BasePage):
 
     # ── Protocol loading ──────────────────────────────────────────────────────
 
-    def _load_protocol_by_id(self, proto_id: str) -> None:
+    def _load_protocol_by_id(self, proto_id: str) -> bool:
         all_protos = self.app.data.load_protocols()
         proto = next((p for p in all_protos if p.get("id") == proto_id), None)
         if proto is None:
             ToastManager.show_error(f"Protocol not found: {proto_id}")
-            return
+            return False
         self._open_proto(proto)
+        return True
+
+    def _confirm_replace_current_protocol(self) -> bool:
+        """Ask before replacing an editor buffer with unsaved changes."""
+        if not self._dirty:
+            return True
+
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("Unsaved Changes")
+        dlg.setText("You have unsaved changes. Save before opening another protocol?")
+        save_btn = dlg.addButton("Save & Open", QMessageBox.ButtonRole.AcceptRole)
+        discard_btn = dlg.addButton("Discard", QMessageBox.ButtonRole.DestructiveRole)
+        dlg.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+        dlg.exec()
+
+        clicked = dlg.clickedButton()
+        if clicked is save_btn:
+            self._on_save()
+            return not self._dirty
+        if clicked is discard_btn:
+            return True
+        return False
 
     def _open_proto(self, proto: dict) -> None:
         self._proto       = copy.deepcopy(proto)
