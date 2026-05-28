@@ -132,9 +132,9 @@ def _btn(text: str, color: str = Colors.ACCENT, hover: str | None = None,
     b.setCursor(Qt.CursorShape.PointingHandCursor)
     b.setStyleSheet(
         f"QPushButton {{ background: {color}; color: white; border: none;"
-        f"  border-radius: {Radii.SM}px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
+        f"  border-radius: {Radii.LG}px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
         f"QPushButton:hover {{ background: {hover}; }}"
-        f"QPushButton:disabled {{ background: {Colors.BORDER}; color: {Colors.TEXT_MUTED}; }}"
+        f"QPushButton:disabled {{ background: {Colors.BORDER_LIGHT}; color: {Colors.TEXT_MUTED}; }}"
     )
     return b
 
@@ -146,8 +146,8 @@ def _ghost_btn(text: str, fg: str = Colors.TEXT_SECOND, h: int = 32,
     b.setMinimumWidth(min_w)
     b.setCursor(Qt.CursorShape.PointingHandCursor)
     b.setStyleSheet(
-        f"QPushButton {{ background: transparent; color: {fg}; border: 1px solid {Colors.BORDER};"
-        f"  border-radius: {Radii.SM}px; font-size: {Fonts.SIZE_SM}px; }}"
+        f"QPushButton {{ background: {Colors.BG_CARD}; color: {fg}; border: 1px solid {Colors.BORDER_LIGHT};"
+        f"  border-radius: {Radii.LG}px; font-size: {Fonts.SIZE_SM}px; }}"
         f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; color: {Colors.TEXT_PRIMARY}; }}"
     )
     return b
@@ -182,14 +182,15 @@ class StepCard(QFrame):
         self._is_countdown = is_countdown_step(step)
         self._is_temp = state.is_temp
         self._focused = False
+        self.setObjectName("StepCard")
 
         accent = _accent(self._stype)
         bg     = _bg(self._stype)
         self.setStyleSheet(
-            f"QFrame {{"
+            f"QFrame#StepCard {{"
             f"  background: {bg};"
             f"  border-radius: {Radii.LG}px;"
-            f"  border: 1px solid {accent}40;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT};"
             f"}}"
         )
         self._accent = accent
@@ -291,7 +292,7 @@ class StepCard(QFrame):
             self._progress.setFixedHeight(4)
             self._progress.setTextVisible(False)
             self._progress.setStyleSheet(
-                f"QProgressBar {{ background: rgba(255,255,255,0.08);"
+                f"QProgressBar {{ background: {Colors.BORDER_LIGHT};"
                 f"  border-radius: 2px; border: none; }}"
                 f"QProgressBar::chunk {{ background: {accent};"
                 f"  border-radius: 2px; }}"
@@ -337,10 +338,10 @@ class StepCard(QFrame):
         self._notes.setFixedHeight(56)
         self._notes.setStyleSheet(
             f"QPlainTextEdit {{"
-            f"  background: rgba(0,0,0,0.2);"
+            f"  background: {Colors.BG_INPUT};"
             f"  color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER};"
-            f"  border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border-radius: {Radii.MD}px;"
             f"  padding: 4px 8px;"
             f"  font-size: {Fonts.SIZE_SM}px;"
             f"}}"
@@ -394,34 +395,36 @@ class StepCard(QFrame):
         accent = self._accent
         if status == "running":
             self.setStyleSheet(
-                f"QFrame {{ background: {_bg(self._stype)};"
+                f"QFrame#StepCard {{ background: {Colors.SELECTED_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 2px solid {accent}; }}"
+                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-left: 3px solid {accent}; }}"
             )
         elif status == "completed":
             self.setStyleSheet(
-                f"QFrame {{ background: rgba(34,197,94,0.08);"
+                f"QFrame#StepCard {{ background: {Colors.SUCCESS_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.SUCCESS}80; }}"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
             )
         elif status == "skipped":
             self.setStyleSheet(
-                f"QFrame {{ background: rgba(100,116,139,0.10);"
+                f"QFrame#StepCard {{ background: {Colors.BG_SURFACE_ALT};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {Colors.BORDER}; }}"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
             )
         elif self._focused:
             # Idle/paused + focused — dim accent glow
             self.setStyleSheet(
-                f"QFrame {{ background: {_bg(self._stype)};"
+                f"QFrame#StepCard {{ background: {Colors.SELECTED_BG};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 2px solid {accent}80; }}"
+                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-left: 3px solid {accent}; }}"
             )
         else:
             self.setStyleSheet(
-                f"QFrame {{ background: {_bg(self._stype)};"
+                f"QFrame#StepCard {{ background: {_bg(self._stype)};"
                 f"  border-radius: {Radii.LG}px;"
-                f"  border: 1px solid {accent}40; }}"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
             )
 
     # ── apply_state — updates all visual elements in-place ────────────────────
@@ -436,7 +439,7 @@ class StepCard(QFrame):
             "idle":      (f"color: {Colors.TEXT_MUTED};",    "●  idle"),
             "running":   (f"color: {Colors.SUCCESS};",       "▶  running"),
             "paused":    (f"color: {Colors.WARNING};",       "⏸  paused"),
-            "completed": (f"color: {Colors.ACCENT_LIGHT};",  "✓  done"),
+            "completed": (f"color: {Colors.SUCCESS};",       "✓  done"),
             "skipped":   (f"color: {Colors.TEXT_MUTED};",    "⟩  skipped"),
         }
         badge_style, badge_text = badge_map.get(status, ("", ""))

@@ -96,7 +96,7 @@ def _mk_input(placeholder: str = "", height: int = 36) -> QLineEdit:
     e.setFixedHeight(height)
     e.setStyleSheet(
         f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
         f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
         f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
     )
@@ -110,7 +110,7 @@ def _mk_textarea(placeholder: str = "", min_h: int = 64) -> QPlainTextEdit:
     t.setMaximumHeight(min_h * 2)
     t.setStyleSheet(
         f"QPlainTextEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
         f"  padding: 8px 10px; font-size: {Fonts.SIZE_SM}px; }}"
         f"QPlainTextEdit:focus {{ border-color: {Colors.ACCENT}; }}"
     )
@@ -126,7 +126,7 @@ def _mk_spinbox(max_val: float = 9999, decimals: int = 1) -> QDoubleSpinBox:
     sb.setFixedWidth(110)
     sb.setStyleSheet(
         f"QDoubleSpinBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
         f"  padding: 0 8px; font-size: {Fonts.SIZE_SM}px; }}"
         f"QDoubleSpinBox:focus {{ border-color: {Colors.ACCENT}; }}"
         f"QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{"
@@ -195,14 +195,15 @@ class _StepRow(QFrame):
     def _style(selected: bool) -> str:
         if selected:
             return (
-                f"QFrame {{ background: {Colors.ACCENT_BG};"
-                f"  border-radius: {Radii.MD}px;"
-                f"  border: 1px solid {Colors.ACCENT}; }}"
+                f"QFrame {{ background: {Colors.SELECTED_BG};"
+                f"  border-radius: {Radii.LG}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-left: 3px solid {Colors.ACCENT}; }}"
             )
         return (
-            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
+            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
             f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
-            f"QFrame:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+            f"QFrame:hover {{ background: {Colors.HOVER_BG}; }}"
         )
 
     def _build(self) -> None:
@@ -353,8 +354,8 @@ class _TagChip(QFrame):
         lay.setSpacing(4)
         self.setStyleSheet(
             f"QFrame {{ background: {Colors.ACCENT_BG};"
-            f"  border-radius: {Radii.SM}px;"
-            f"  border: 1px solid {Colors.ACCENT}; }}"
+            f"  border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         lbl = QLabel(f"#{tag}")
         lbl.setStyleSheet(f"color: {Colors.ACCENT}; font-size: {Fonts.SIZE_XS}px;")
@@ -437,12 +438,12 @@ class _StepForm(QScrollArea):
             self._type_cb.addItem(t.replace("_", " ").title(), userData=t)
         self._type_cb.setStyleSheet(
             f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 6px 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
-            f"QComboBox QAbstractItemView {{ background: {Colors.BG_SIDEBAR};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER};"
-            f"  selection-background-color: {Colors.ACCENT}; }}"
+            f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         idx = self._type_cb.findData(step.get("type", "other"))
         self._type_cb.setCurrentIndex(max(0, idx))
@@ -510,7 +511,7 @@ class _StepForm(QScrollArea):
         self._warn_edit = _mk_textarea("Safety notes, critical pitfalls…", min_h=56)
         self._warn_edit.setStyleSheet(
             f"QPlainTextEdit {{ background: {Colors.BG_INPUT}; color: {Colors.WARNING};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 8px 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPlainTextEdit:focus {{ border-color: {Colors.WARNING}; }}"
         )
@@ -593,8 +594,8 @@ class _StepForm(QScrollArea):
         add_btn.setFixedWidth(70)
         add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.ACCENT};"
-            f"  border: 1px solid {Colors.ACCENT}; border-radius: {Radii.XS}px;"
+            f"QPushButton {{ background: {Colors.ACCENT_BG}; color: {Colors.ACCENT};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_XS}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_BG}; }}"
         )
@@ -661,8 +662,8 @@ class _StepForm(QScrollArea):
         add_btn.setFixedWidth(70)
         add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.ACCENT};"
-            f"  border: 1px solid {Colors.ACCENT}; border-radius: {Radii.XS}px;"
+            f"QPushButton {{ background: {Colors.ACCENT_BG}; color: {Colors.ACCENT};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_XS}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_BG}; }}"
         )
@@ -752,8 +753,8 @@ class _MetaCard(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setStyleSheet(
-            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
-            f"  border: 1px solid {Colors.BORDER}; }}"
+            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         self._tag_chips: list[_TagChip] = []
         self._build()
@@ -775,7 +776,7 @@ class _MetaCard(QFrame):
         self._name_edit.setFixedHeight(36)
         self._name_edit.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_MD}px; font-weight: 700; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -817,7 +818,7 @@ class _MetaCard(QFrame):
         add_tag_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_tag_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-            f"  border: none; border-radius: {Radii.SM}px; font-size: 14px; }}"
+            f"  border: none; border-radius: {Radii.LG}px; font-size: 14px; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
         add_tag_btn.clicked.connect(self._on_add_tag)
@@ -956,8 +957,8 @@ class EditorPage(BasePage):
         self._export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._export_btn.setToolTip("Export this protocol as JSON, Markdown, or PDF")
         self._export_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -988,7 +989,7 @@ class EditorPage(BasePage):
         ph_open.setCursor(Qt.CursorShape.PointingHandCursor)
         ph_open.setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-            f"  border: none; border-radius: {Radii.MD}px; font-size: {Fonts.SIZE_SM}px; }}"
+            f"  border: none; border-radius: {Radii.LG}px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
         ph_open.clicked.connect(lambda: self.app.navigate("library"))
@@ -1010,7 +1011,7 @@ class EditorPage(BasePage):
         # Splitter: step list | step form
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         # ── Left: step list ───────────────────────────────────────────────────
@@ -1032,7 +1033,7 @@ class EditorPage(BasePage):
         add_step_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_step_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-            f"  border: none; border-radius: {Radii.SM}px;"
+            f"  border: none; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
@@ -1227,7 +1228,7 @@ class EditorPage(BasePage):
             self._dirty_lbl.setText("● Unsaved changes")
             self._save_btn.setStyleSheet(
                 f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-                f"  border: none; border-radius: {Radii.MD}px;"
+                f"  border: none; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_MD}px; font-weight: 600; padding: 8px 20px; }}"
                 f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
             )
@@ -1235,7 +1236,7 @@ class EditorPage(BasePage):
             self._dirty_lbl.setText("")
             self._save_btn.setStyleSheet(
                 f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_MD}px; padding: 8px 20px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV};"
                 f"  color: {Colors.TEXT_PRIMARY}; }}"
@@ -1454,11 +1455,11 @@ class EditorPage(BasePage):
         proto = self._proto
         menu = QMenu(self._export_btn)
         menu.setStyleSheet(
-            f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QMenu {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 4px 0; }}"
             f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
-            f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+            f"QMenu::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY}; }}"
         )
         menu.addAction("{ }  JSON").triggered.connect(
             lambda: self._do_export(proto, "json")

@@ -26,7 +26,7 @@ class HSeparator(QFrame):
         self.setFrameShape(QFrame.Shape.HLine)
         self.setFrameShadow(QFrame.Shadow.Plain)
         self.setFixedHeight(1)
-        self.setStyleSheet(f"background-color: {Colors.BORDER};")
+        self.setStyleSheet(f"background-color: {Colors.BORDER_LIGHT};")
 
 
 # ── Labels ────────────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ class IconButton(QPushButton):
 # ── Card ─────────────────────────────────────────────────────────────────────
 
 class Card(QFrame):
-    """Rounded dark card container."""
+    """Rounded themed card container."""
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("Card")

@@ -168,11 +168,11 @@ class _StepNode(QGraphicsObject):
         bg_path.addRoundedRect(QRectF(0, 0, w, h), NODE_RAD, NODE_RAD)
 
         if self._sel:
-            bg_color = QColor(Colors.BG_CARD_HOV)
-            border_pen = QPen(QColor(Colors.ACCENT), 2)
+            bg_color = QColor(Colors.SELECTED_BG)
+            border_pen = QPen(QColor(Colors.ACCENT), 1.4)
         else:
             bg_color = QColor(Colors.BG_CARD)
-            border_pen = QPen(QColor(Colors.BORDER), 1)
+            border_pen = QPen(QColor(Colors.BORDER_LIGHT), 1)
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(bg_color)
@@ -340,7 +340,7 @@ class _ArrowItem(QGraphicsPathItem):
         self.setPath(path)
         self.setPos(x_center, y_start)
 
-        pen = QPen(QColor(Colors.BORDER), 1.5)
+        pen = QPen(QColor(Colors.BORDER), 1.2)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         self.setPen(pen)
@@ -364,7 +364,7 @@ class _FlowchartView(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
-        self.setStyleSheet(f"background: {Colors.BG_PAGE}; border: none;")
+        self.setStyleSheet(f"background: {Colors.BG_SURFACE_ALT}; border: none;")
         self._zoom_level = 1.0
 
     def wheelEvent(self, event) -> None:
@@ -430,7 +430,10 @@ class _StepDetailPanel(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMinimumWidth(280)
-        self.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-left: 1px solid {Colors.BORDER_LIGHT};"
+        )
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -440,11 +443,11 @@ class _StepDetailPanel(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._scroll.setStyleSheet(f"background: {Colors.BG_CARD};")
         outer.addWidget(self._scroll)
 
         self._inner = QWidget()
-        self._inner.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._inner.setStyleSheet(f"background: {Colors.BG_CARD};")
         self._lay = QVBoxLayout(self._inner)
         self._lay.setContentsMargins(16, 16, 16, 24)
         self._lay.setSpacing(6)
@@ -488,7 +491,7 @@ class _StepDetailPanel(QWidget):
         # Type badge
         type_lbl = QLabel(stype.replace("_", " ").title())
         type_lbl.setStyleSheet(
-            f"color: {tcolor}; background: rgba(0,0,0,0.25);"
+            f"color: {tcolor}; background: {Colors.BG_SURFACE_ALT};"
             f"border-radius: 6px; padding: 2px 8px;"
             f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
         )
@@ -696,7 +699,7 @@ class FlowchartPage(BasePage):
         self._search_str:  str = ""
 
         self._scene  = QGraphicsScene()
-        self._scene.setBackgroundBrush(QBrush(QColor(Colors.BG_PAGE)))
+        self._scene.setBackgroundBrush(QBrush(QColor(Colors.BG_SURFACE_ALT)))
 
         self._build()
         self._subscribe_events()
@@ -765,7 +768,7 @@ class FlowchartPage(BasePage):
         # ── 3-pane splitter ───────────────────────────────────────────────────
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         # ── Left: protocol list ───────────────────────────────────────────────
@@ -787,7 +790,7 @@ class FlowchartPage(BasePage):
         self._search_box.setFixedHeight(32)
         self._search_box.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -799,8 +802,8 @@ class FlowchartPage(BasePage):
             f"QListWidget {{ background: transparent; color: {Colors.TEXT_PRIMARY};"
             f"  border: none; outline: none; font-size: {Fonts.SIZE_SM}px; }}"
             f"QListWidget::item {{ padding: 7px 8px; border-radius: {Radii.SM}px; }}"
-            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QListWidget::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+            f"QListWidget::item:hover {{ background: {Colors.HOVER_BG}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY}; }}"
         )
         self._proto_list.currentItemChanged.connect(self._on_list_selection)
         left_lay.addWidget(self._proto_list, stretch=1)
@@ -857,7 +860,7 @@ class FlowchartPage(BasePage):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 8px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV};"
             f"  color: {Colors.TEXT_PRIMARY}; }}"

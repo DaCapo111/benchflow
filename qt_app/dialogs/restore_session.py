@@ -28,7 +28,7 @@ class RestoreSessionDialog(QDialog):
 
     def _apply_style(self) -> None:
         self.setStyleSheet(
-            f"QDialog {{ background: {Colors.BG_SIDEBAR}; border-radius: {Radii.XL}px; }}"
+            f"QDialog {{ background: {Colors.BG_CARD}; border-radius: {Radii.XL}px; }}"
             f"QLabel {{ color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; }}"
         )
 
@@ -63,7 +63,7 @@ class RestoreSessionDialog(QDialog):
         info.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_MD}px;"
             f"background: {Colors.BG_CARD}; border-radius: {Radii.MD}px; padding: 12px 14px;"
-            f"border: 1px solid {Colors.BORDER};"
+            f"border: 1px solid {Colors.BORDER_LIGHT};"
         )
         info.setWordWrap(True)
         root.addWidget(info)
@@ -101,7 +101,7 @@ class RestoreSessionDialog(QDialog):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(
             f"QPushButton {{ background: {color}; color: white; border: none;"
-            f"  border-radius: {Radii.MD}px; padding: 8px 14px;"
+            f"  border-radius: {Radii.LG}px; padding: 8px 14px;"
             f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {hover}; }}"
         )

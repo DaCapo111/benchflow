@@ -35,6 +35,9 @@ _DARK: dict[str, object] = {
     "BG_CARD_HOV":  "#263548",
     "BG_INPUT":     "#0f172a",
     "BG_PAGE":      "#0f172a",
+    "BG_SURFACE_ALT": "#111827",
+    "SELECTED_BG":  "rgba(59,130,246,0.18)",
+    "HOVER_BG":     "#263548",
 
     "SB_ACTIVE":    "#3b82f6",
     "SB_HOVER":     "#334155",
@@ -87,27 +90,30 @@ _DARK: dict[str, object] = {
 }
 
 _LIGHT: dict[str, object] = {
-    "BG_DARK":      "#EDF2F9",   # app window / outer frame
-    "BG_SIDEBAR":   "#E2EAF6",   # sidebar background
+    "BG_DARK":      "#F7F8FA",   # app window / outer frame
+    "BG_SIDEBAR":   "#F3F4F6",   # sidebar background
     "BG_CARD":      "#FFFFFF",   # card / panel surface
-    "BG_CARD_HOV":  "#EDF1F9",   # card hover
-    "BG_INPUT":     "#F8FAFD",   # input field
-    "BG_PAGE":      "#F2F6FB",   # page body
+    "BG_CARD_HOV":  "#F2F4F7",   # card hover
+    "BG_INPUT":     "#FFFFFF",   # input field
+    "BG_PAGE":      "#F7F8FA",   # page body
+    "BG_SURFACE_ALT": "#F1F3F5",
+    "SELECTED_BG":  "#EAF1FF",
+    "HOVER_BG":     "#F2F4F7",
 
-    "SB_ACTIVE":    "#3b82f6",   # selected nav (same accent)
-    "SB_HOVER":     "#D4DCE9",   # nav hover
-    "SB_TEXT":      "#64748B",   # inactive nav text
-    "SB_TEXT_ACT":  "#FFFFFF",   # active nav text
-    "SB_BORDER":    "#D0D9E8",   # sidebar/border
+    "SB_ACTIVE":    "#EAF1FF",   # selected nav pill
+    "SB_HOVER":     "#F2F4F7",   # nav hover
+    "SB_TEXT":      "#6B7280",   # inactive nav text
+    "SB_TEXT_ACT":  "#111827",   # active nav text
+    "SB_BORDER":    "#E5E7EB",   # sidebar/border
 
-    "TEXT_PRIMARY": "#1E2430",   # main text
-    "TEXT_SECOND":  "#5A6475",   # secondary text
-    "TEXT_MUTED":   "#8A94A8",   # muted / placeholder
+    "TEXT_PRIMARY": "#111827",   # main text
+    "TEXT_SECOND":  "#6B7280",   # secondary text
+    "TEXT_MUTED":   "#9CA3AF",   # muted / placeholder
 
-    "ACCENT":       "#2563EB",   # slightly darker blue for contrast on white
+    "ACCENT":       "#2563EB",
     "ACCENT_HOVER": "#1D4ED8",
-    "ACCENT_LIGHT": "#3B82F6",
-    "ACCENT_BG":    "#E8F1FF",
+    "ACCENT_LIGHT": "#2563EB",
+    "ACCENT_BG":    "#EAF1FF",
 
     "SUCCESS":      "#16A34A",   # darker green
     "SUCCESS_BG":   "#DCFCE7",   # light green background
@@ -116,11 +122,11 @@ _LIGHT: dict[str, object] = {
     "DANGER":       "#DC2626",   # darker red
     "DANGER_BG":    "#FEE2E2",   # light red background
 
-    "BORDER":       "#D8DEE8",
-    "BORDER_LIGHT": "#E4EAF3",
+    "BORDER":       "#E5E7EB",
+    "BORDER_LIGHT": "#EEF0F2",
 
-    "SCROLL_HANDLE": "#B0BAC8",
-    "SCROLL_HOV":    "#8A94A8",
+    "SCROLL_HANDLE": "#D1D5DB",
+    "SCROLL_HOV":    "#9CA3AF",
 
     "STEP_COLORS": {
         "preparation":       ("#EBF3FF", "#3b82f6"),
@@ -160,6 +166,9 @@ class Colors:
     BG_CARD_HOV:  str = _DARK["BG_CARD_HOV"]  # type: ignore[assignment]
     BG_INPUT:     str = _DARK["BG_INPUT"]      # type: ignore[assignment]
     BG_PAGE:      str = _DARK["BG_PAGE"]       # type: ignore[assignment]
+    BG_SURFACE_ALT: str = _DARK.get("BG_SURFACE_ALT", _DARK["BG_CARD_HOV"])  # type: ignore[assignment]
+    SELECTED_BG:  str = _DARK.get("SELECTED_BG", _DARK["ACCENT_BG"])  # type: ignore[assignment]
+    HOVER_BG:     str = _DARK.get("HOVER_BG", _DARK["BG_CARD_HOV"])  # type: ignore[assignment]
 
     SB_ACTIVE:    str = _DARK["SB_ACTIVE"]     # type: ignore[assignment]
     SB_HOVER:     str = _DARK["SB_HOVER"]      # type: ignore[assignment]
@@ -259,13 +268,13 @@ QMainWindow, QWidget#CentralWidget {{
 /* ── Sidebar ─────────────────────────────────── */
 QWidget#Sidebar {{
     background-color: {c.BG_SIDEBAR};
-    border-right: 1px solid {c.BORDER_LIGHT};
+    border-right: 1px solid {c.SB_BORDER};
     border-radius: {r.LG}px;
 }}
 QLabel#SidebarTitle {{
-    color: {c.ACCENT_LIGHT};
-    font-size: {f.SIZE_XL}px;
-    font-weight: 700;
+    color: {c.TEXT_PRIMARY};
+    font-size: {f.SIZE_LG}px;
+    font-weight: 650;
 }}
 QLabel#SidebarSubtitle {{
     color: {c.SB_TEXT};
@@ -275,11 +284,11 @@ QPushButton#NavButton {{
     background-color: transparent;
     color: {c.SB_TEXT};
     text-align: left;
-    padding: 0px 14px;
-    border-radius: {r.MD}px;
+    padding: 0px 12px;
+    border-radius: {r.LG}px;
     border: none;
     font-size: {f.SIZE_MD}px;
-    height: 42px;
+    height: 38px;
 }}
 QPushButton#NavButton:hover {{
     background-color: {c.SB_HOVER};
@@ -297,19 +306,20 @@ QLabel#SidebarFooter {{
 
 /* ── Page container ───────────────────────────── */
 QWidget#PageContainer {{
-    background-color: {c.BG_DARK};
+    background-color: {c.BG_PAGE};
     border-radius: {r.XL}px;
-    border: 1px solid {c.BORDER};
+    border: 1px solid {c.BORDER_LIGHT};
 }}
 
 /* ── Cards ───────────────────────────────────── */
 QFrame#Card {{
     background-color: {c.BG_CARD};
     border-radius: {r.LG}px;
-    border: 1px solid {c.BORDER};
+    border: 1px solid {c.BORDER_LIGHT};
 }}
 QFrame#Card:hover {{
-    border: 1px solid {c.ACCENT};
+    background-color: {c.BG_CARD_HOV};
+    border: 1px solid {c.BORDER};
 }}
 
 /* ── Labels ──────────────────────────────────── */
@@ -337,7 +347,7 @@ QPushButton#PrimaryButton {{
     background-color: {c.ACCENT};
     color: #ffffff;
     border: none;
-    border-radius: {r.MD}px;
+    border-radius: {r.LG}px;
     padding: 8px 20px;
     font-size: {f.SIZE_MD}px;
     font-weight: 600;
@@ -346,17 +356,17 @@ QPushButton#PrimaryButton:hover {{ background-color: {c.ACCENT_HOVER}; }}
 QPushButton#PrimaryButton:pressed {{ background-color: {c.ACCENT_HOVER}; }}
 
 QPushButton#SecondaryButton {{
-    background-color: transparent;
-    color: {c.TEXT_SECOND};
-    border: 1px solid {c.BORDER};
-    border-radius: {r.MD}px;
+    background-color: {c.BG_CARD};
+    color: {c.TEXT_PRIMARY};
+    border: 1px solid {c.BORDER_LIGHT};
+    border-radius: {r.LG}px;
     padding: 8px 20px;
     font-size: {f.SIZE_MD}px;
 }}
 QPushButton#SecondaryButton:hover {{
     background-color: {c.BG_CARD_HOV};
     color: {c.TEXT_PRIMARY};
-    border-color: {c.ACCENT};
+    border-color: {c.BORDER};
 }}
 
 QPushButton#DangerButton {{
@@ -396,7 +406,7 @@ QPushButton#IconButton:hover {{
 QLineEdit, QTextEdit, QPlainTextEdit {{
     background-color: {c.BG_INPUT};
     color: {c.TEXT_PRIMARY};
-    border: 1px solid {c.BORDER};
+    border: 1px solid {c.BORDER_LIGHT};
     border-radius: {r.MD}px;
     padding: 8px 12px;
     font-size: {f.SIZE_MD}px;
@@ -406,13 +416,13 @@ QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
     border-color: {c.ACCENT};
 }}
 QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover {{
-    border-color: {c.TEXT_MUTED};
+    border-color: {c.BORDER};
 }}
 
 QComboBox {{
     background-color: {c.BG_INPUT};
     color: {c.TEXT_PRIMARY};
-    border: 1px solid {c.BORDER};
+    border: 1px solid {c.BORDER_LIGHT};
     border-radius: {r.MD}px;
     padding: 7px 12px;
     font-size: {f.SIZE_MD}px;
@@ -420,11 +430,12 @@ QComboBox {{
 QComboBox:focus {{ border-color: {c.ACCENT}; }}
 QComboBox::drop-down {{ border: none; width: 24px; }}
 QComboBox QAbstractItemView {{
-    background-color: {c.BG_SIDEBAR};
+    background-color: {c.BG_CARD};
     color: {c.TEXT_PRIMARY};
     border: 1px solid {c.BORDER};
     border-radius: {r.SM}px;
-    selection-background-color: {c.ACCENT};
+    selection-background-color: {c.SELECTED_BG};
+    selection-color: {c.TEXT_PRIMARY};
     outline: none;
 }}
 
@@ -466,7 +477,7 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
 
 /* ── Separator ───────────────────────────────── */
 QFrame#Separator {{
-    background-color: {c.BORDER};
+    background-color: {c.BORDER_LIGHT};
     max-height: 1px;
     min-height: 1px;
 }}
@@ -485,8 +496,8 @@ QListWidget::item, QListView::item, QTableWidget::item {{
 }}
 QListWidget::item:hover, QListView::item:hover {{ background-color: {c.BG_CARD_HOV}; }}
 QListWidget::item:selected, QListView::item:selected {{
-    background-color: {c.ACCENT};
-    color: #ffffff;
+    background-color: {c.SELECTED_BG};
+    color: {c.TEXT_PRIMARY};
 }}
 QHeaderView::section {{
     background-color: {c.BG_SIDEBAR};
@@ -509,13 +520,13 @@ QToolTip {{
 
 /* ── Dialogs ─────────────────────────────────── */
 QDialog {{
-    background-color: {c.BG_SIDEBAR};
+    background-color: {c.BG_CARD};
     border-radius: {r.XL}px;
 }}
 
 /* ── Progress bar ────────────────────────────── */
 QProgressBar {{
-    background-color: {c.BORDER};
+    background-color: {c.BORDER_LIGHT};
     border-radius: 4px;
     text-align: center;
     color: transparent;

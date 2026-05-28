@@ -65,24 +65,29 @@ class NewProtocolDialog(QDialog):
         ("duplicate", "Duplicate Existing",  "Clone one of your own protocols."),
     ]
 
-    _BTN_ACTIVE = (
-        f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-        f"  border: 2px solid {Colors.ACCENT}; border-radius: {Radii.MD}px;"
-        f"  font-size: {Fonts.SIZE_SM}px; font-weight: 700; padding: 10px 16px; }}"
-    )
-    _BTN_IDLE = (
-        f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
-        f"  font-size: {Fonts.SIZE_SM}px; padding: 10px 16px; }}"
-        f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; color: {Colors.TEXT_PRIMARY}; }}"
-    )
+    @staticmethod
+    def _btn_active_style() -> str:
+        return (
+            f"QPushButton {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
+            f"  font-size: {Fonts.SIZE_SM}px; font-weight: 700; padding: 10px 16px; }}"
+        )
+
+    @staticmethod
+    def _btn_idle_style() -> str:
+        return (
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
+            f"  font-size: {Fonts.SIZE_SM}px; padding: 10px 16px; }}"
+            f"QPushButton:hover {{ background: {Colors.HOVER_BG}; color: {Colors.TEXT_PRIMARY}; }}"
+        )
 
     def __init__(self, protocols: list[dict], templates: list[dict],
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("New Protocol")
         self.setMinimumWidth(460)
-        self.setStyleSheet(f"QDialog {{ background: {Colors.BG_SIDEBAR}; }}")
+        self.setStyleSheet(f"QDialog {{ background: {Colors.BG_CARD}; }}")
         self._protocols  = protocols
         self._templates  = templates
         self._method     = "blank"
@@ -128,7 +133,7 @@ class NewProtocolDialog(QDialog):
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
         sep.setFixedHeight(1)
-        sep.setStyleSheet(f"background: {Colors.BORDER};")
+        sep.setStyleSheet(f"background: {Colors.BORDER_LIGHT};")
         root.addWidget(sep)
 
         # ── Dynamic form area ─────────────────────────────────────────────────
@@ -163,12 +168,12 @@ class NewProtocolDialog(QDialog):
         self._src_cb = QComboBox()
         self._src_cb.setStyleSheet(
             f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 7px 12px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
-            f"QComboBox QAbstractItemView {{ background: {Colors.BG_SIDEBAR};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER};"
-            f"  selection-background-color: {Colors.ACCENT}; }}"
+            f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         self._src_cb.currentIndexChanged.connect(self._on_source_changed)
         self._form_l.addWidget(self._src_lbl)
@@ -184,8 +189,8 @@ class NewProtocolDialog(QDialog):
         cancel.setMinimumWidth(80)
         cancel.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 16px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -198,7 +203,7 @@ class NewProtocolDialog(QDialog):
         self._ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._ok_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-            f"  border: none; border-radius: {Radii.MD}px;"
+            f"  border: none; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; padding: 0 16px; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
@@ -216,7 +221,7 @@ class NewProtocolDialog(QDialog):
         e.setFixedHeight(38)
         e.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 12px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -228,7 +233,9 @@ class NewProtocolDialog(QDialog):
         self._method = method
 
         for key, btn in self._method_btns.items():
-            btn.setStyleSheet(self._BTN_ACTIVE if key == method else self._BTN_IDLE)
+            btn.setStyleSheet(
+                self._btn_active_style() if key == method else self._btn_idle_style()
+            )
 
         desc = next((d for k, _, d in self._METHODS if k == method), "")
         self._desc_lbl.setText(desc)

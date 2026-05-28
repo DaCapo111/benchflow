@@ -190,19 +190,19 @@ class _MethodCard(QFrame):
     def _update_style(self) -> None:
         if self._selected:
             self.setStyleSheet(
-                f"QFrame {{ background: {Colors.ACCENT}; border-radius: {Radii.MD}px;"
-                f"  border: none; }}"
+                f"QFrame {{ background: {Colors.SELECTED_BG}; border-radius: {Radii.LG}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-left: 3px solid {Colors.ACCENT}; }}"
             )
             self._name_lbl.setStyleSheet(
-                f"color: white; font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
+                f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
                 f"background: transparent;"
             )
         else:
-            hover = (f"QFrame:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+            hover = (f"QFrame:hover {{ background: {Colors.HOVER_BG}; }}"
                      if self._active else "")
             self.setStyleSheet(
-                f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
-                f"  border: 1px solid {Colors.BORDER}; }}" + hover
+                f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; }}" + hover
             )
             self._name_lbl.setStyleSheet(
                 f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
@@ -237,7 +237,7 @@ class _PreviewPanel(QWidget):
         self._name_edit.setPlaceholderText("Protocol name…")
         self._name_edit.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -254,8 +254,8 @@ class _PreviewPanel(QWidget):
         self._steps_scroll.setWidgetResizable(True)
         self._steps_scroll.setMaximumHeight(220)
         self._steps_scroll.setStyleSheet(
-            f"background: {Colors.BG_CARD}; border: 1px solid {Colors.BORDER};"
-            f"border-radius: {Radii.SM}px;"
+            f"background: {Colors.BG_CARD}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"border-radius: {Radii.LG}px;"
         )
         self._steps_w = QWidget()
         self._steps_w.setStyleSheet(f"background: {Colors.BG_CARD};")
@@ -359,7 +359,7 @@ class _JsonPanel(QWidget):
         pick_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         pick_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 16px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -436,7 +436,7 @@ class _PastePanel(QWidget):
         )
         self._text_edit.setStyleSheet(
             f"QPlainTextEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPlainTextEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -572,12 +572,15 @@ class ImportPage(BasePage):
         # ── Splitter ──────────────────────────────────────────────────────────
         main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         # ── Left: method selector ─────────────────────────────────────────────
         left_w = QWidget()
-        left_w.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        left_w.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-right: 1px solid {Colors.BORDER_LIGHT};"
+        )
         left_w.setMinimumWidth(180)
         left_w.setMaximumWidth(250)
         left_lay = QVBoxLayout(left_w)
@@ -604,7 +607,7 @@ class ImportPage(BasePage):
 
         right_splitter = QSplitter(Qt.Orientation.Vertical)
         right_splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; height: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; height: 1px; }}"
         )
 
         # Input stack
@@ -628,8 +631,8 @@ class ImportPage(BasePage):
         # Preview
         preview_w = QWidget()
         preview_w.setStyleSheet(
-            f"background: {Colors.BG_SIDEBAR};"
-            f"border-top: 1px solid {Colors.BORDER};"
+            f"background: {Colors.BG_CARD};"
+            f"border-top: 1px solid {Colors.BORDER_LIGHT};"
         )
         preview_lay = QVBoxLayout(preview_w)
         preview_lay.setContentsMargins(28, 0, 28, 24)

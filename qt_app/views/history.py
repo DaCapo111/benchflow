@@ -184,15 +184,20 @@ class _RecordCard(QFrame):
 
     clicked = Signal(dict)
 
-    _STYLE = (
-        f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
-        f"  border: 1px solid {Colors.BORDER}; }}"
-        f"QFrame:hover {{ border-color: {Colors.ACCENT}; }}"
-    )
-    _STYLE_SEL = (
-        f"QFrame {{ background: rgba(59,130,246,0.10);"
-        f"  border-radius: {Radii.LG}px; border: 2px solid {Colors.ACCENT}; }}"
-    )
+    @staticmethod
+    def _style(selected: bool) -> str:
+        if selected:
+            return (
+                f"QFrame {{ background: {Colors.SELECTED_BG};"
+                f"  border-radius: {Radii.LG}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-left: 3px solid {Colors.ACCENT}; }}"
+            )
+        return (
+            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"QFrame:hover {{ background: {Colors.HOVER_BG}; border-color: {Colors.BORDER}; }}"
+        )
 
     def __init__(self, record: dict, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -200,7 +205,7 @@ class _RecordCard(QFrame):
         self._sel    = False
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet(self._STYLE)
+        self.setStyleSheet(self._style(False))
         self._build()
 
     def _build(self) -> None:
@@ -234,7 +239,7 @@ class _RecordCard(QFrame):
         r2.setSpacing(6)
         proto = r.get("protocolName", "")
         if proto:
-            r2.addWidget(_badge(proto, Colors.ACCENT_LIGHT, "rgba(59,130,246,0.10)"))
+            r2.addWidget(_badge(proto, Colors.ACCENT, Colors.ACCENT_BG))
         t_start = _fmt_ts(r.get("startedAt"))
         t_end   = _fmt_ts(r.get("endedAt"))
         if t_start != "—":
@@ -283,7 +288,7 @@ class _RecordCard(QFrame):
 
     def set_selected(self, sel: bool) -> None:
         self._sel = sel
-        self.setStyleSheet(self._STYLE_SEL if sel else self._STYLE)
+        self.setStyleSheet(self._style(sel))
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -304,7 +309,10 @@ class _DetailPanel(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMinimumWidth(320)
-        self.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-left: 1px solid {Colors.BORDER_LIGHT};"
+        )
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -314,11 +322,11 @@ class _DetailPanel(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._scroll.setStyleSheet(f"background: {Colors.BG_CARD};")
         outer.addWidget(self._scroll)
 
         self._inner = QWidget()
-        self._inner.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._inner.setStyleSheet(f"background: {Colors.BG_CARD};")
         self._lay = QVBoxLayout(self._inner)
         self._lay.setContentsMargins(20, 20, 20, 32)
         self._lay.setSpacing(0)
@@ -352,7 +360,7 @@ class _DetailPanel(QWidget):
         self._title_edit.setFixedHeight(38)
         self._title_edit.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_MD}px; font-weight: 700; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -383,12 +391,11 @@ class _DetailPanel(QWidget):
             p_row = QHBoxLayout()
             p_row.setSpacing(6)
             p_row.addWidget(_lbl("Protocol:", Colors.TEXT_MUTED, Fonts.SIZE_XS))
-            p_row.addWidget(_badge(proto_name, Colors.ACCENT_LIGHT,
-                                   "rgba(59,130,246,0.15)"))
+            p_row.addWidget(_badge(proto_name, Colors.ACCENT, Colors.ACCENT_BG))
             snap = record.get("protocolSnapshot", {})
             cat  = snap.get("category", "")
             if cat:
-                p_row.addWidget(_badge(cat, Colors.TEXT_SECOND, Colors.BG_CARD_HOV))
+                p_row.addWidget(_badge(cat, Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
             p_row.addStretch()
             lay.addLayout(p_row)
             lay.addSpacing(8)
@@ -399,7 +406,7 @@ class _DetailPanel(QWidget):
             t_row = QHBoxLayout()
             t_row.setSpacing(4)
             for tag in tags:
-                t_row.addWidget(_badge(f"#{tag}", Colors.TEXT_MUTED, Colors.BG_CARD_HOV))
+                t_row.addWidget(_badge(f"#{tag}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
             t_row.addStretch()
             lay.addLayout(t_row)
             lay.addSpacing(8)
@@ -441,7 +448,7 @@ class _DetailPanel(QWidget):
         prog_bg = QFrame()
         prog_bg.setFixedHeight(8)
         prog_bg.setStyleSheet(
-            f"QFrame {{ background: {Colors.BORDER}; border-radius: 4px; }}"
+            f"QFrame {{ background: {Colors.BORDER_LIGHT}; border-radius: 4px; }}"
         )
         prog_fg = QFrame(prog_bg)
         prog_fg.setFixedHeight(8)
@@ -484,7 +491,7 @@ class _DetailPanel(QWidget):
         self._obs_edit.setMaximumHeight(180)
         self._obs_edit.setStyleSheet(
             f"QPlainTextEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 8px 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPlainTextEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -503,7 +510,7 @@ class _DetailPanel(QWidget):
         self._notes_edit.setMaximumHeight(120)
         self._notes_edit.setStyleSheet(
             f"QPlainTextEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 8px 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPlainTextEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -523,8 +530,8 @@ class _DetailPanel(QWidget):
         self._save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._save_btn.setEnabled(False)
         self._save_btn.setStyleSheet(
-            f"QPushButton {{ background: {Colors.BORDER}; color: {Colors.TEXT_MUTED};"
-            f"  border: none; border-radius: {Radii.SM}px; font-size: {Fonts.SIZE_SM}px; }}"
+            f"QPushButton {{ background: {Colors.BORDER_LIGHT}; color: {Colors.TEXT_MUTED};"
+            f"  border: none; border-radius: {Radii.LG}px; font-size: {Fonts.SIZE_SM}px; }}"
         )
         self._save_btn.clicked.connect(self._on_save_notes)
         save_row.addWidget(self._save_btn)
@@ -557,8 +564,8 @@ class _DetailPanel(QWidget):
         dup_btn.setFixedHeight(34)
         dup_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         dup_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -582,8 +589,8 @@ class _DetailPanel(QWidget):
         export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         export_btn.setToolTip("Export this session as PDF, Word, or JSON")
         export_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -595,11 +602,11 @@ class _DetailPanel(QWidget):
                 return
             menu = QMenu(export_btn)
             menu.setStyleSheet(
-                f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"QMenu {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
                 f"  padding: 4px 0; }}"
                 f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
-                f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+                f"QMenu::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY}; }}"
             )
             menu.addAction("📄  PDF Report").triggered.connect(
                 lambda: self.export_requested.emit(_rec, "pdf")
@@ -900,7 +907,7 @@ class HistoryPage(BasePage):
         imp_btn.setToolTip("Import a session from JSON")
         imp_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -920,7 +927,7 @@ class HistoryPage(BasePage):
         self._search_box.setFixedHeight(34)
         self._search_box.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 12px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -932,12 +939,12 @@ class HistoryPage(BasePage):
         self._proto_cb.setMinimumWidth(160)
         self._proto_cb.setStyleSheet(
             f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
-            f"QComboBox QAbstractItemView {{ background: {Colors.BG_SIDEBAR};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER};"
-            f"  selection-background-color: {Colors.ACCENT}; }}"
+            f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         self._proto_cb.addItem("All Protocols", userData="")
         self._proto_cb.currentIndexChanged.connect(self._on_proto_filter)
@@ -955,7 +962,7 @@ class HistoryPage(BasePage):
         # ── Splitter ──────────────────────────────────────────────────────────
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         # ── Left list ─────────────────────────────────────────────────────────
@@ -1094,7 +1101,7 @@ class HistoryPage(BasePage):
                 dh_lay.addWidget(dh_lbl)
                 cnt_lbl = QLabel(str(len(by_date[date_key])))
                 cnt_lbl.setStyleSheet(
-                    f"color: {Colors.ACCENT_LIGHT}; background: rgba(59,130,246,0.15);"
+                    f"color: {Colors.ACCENT}; background: {Colors.ACCENT_BG};"
                     f"border-radius: 8px; padding: 1px 8px;"
                     f"font-size: {Fonts.SIZE_XS}px; font-weight: 700;"
                 )

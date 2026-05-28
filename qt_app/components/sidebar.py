@@ -37,7 +37,7 @@ class Sidebar(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("Sidebar")
-        self.setFixedWidth(196)
+        self.setFixedWidth(188)
         self._nav_buttons: dict[str, QPushButton] = {}
         self._active_page: str = ""
         self._logo_title: QLabel | None = None
@@ -50,21 +50,21 @@ class Sidebar(QWidget):
 
     def _build(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 20, 10, 16)
+        root.setContentsMargins(10, 18, 10, 14)
         root.setSpacing(0)
 
         # Logo
         root.addWidget(self._make_logo())
-        root.addSpacing(12)
+        root.addSpacing(14)
         root.addWidget(HSeparator())
-        root.addSpacing(8)
+        root.addSpacing(10)
 
         # Nav buttons
         for page_id, emoji, label in NAV_ITEMS:
             btn = self._make_nav_button(page_id, emoji, label)
             self._nav_buttons[page_id] = btn
             root.addWidget(btn)
-            root.addSpacing(2)
+            root.addSpacing(3)
 
         # Spacer pushes footer to bottom
         root.addStretch(1)
@@ -72,7 +72,7 @@ class Sidebar(QWidget):
         root.addSpacing(8)
 
         # Footer
-        footer = QLabel("Local · No cloud · No account")
+        footer = QLabel("Local workspace")
         footer.setObjectName("SidebarFooter")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet(
@@ -85,15 +85,15 @@ class Sidebar(QWidget):
         w = QWidget()
         w.setObjectName("SidebarLogo")
         lay = QVBoxLayout(w)
-        lay.setContentsMargins(6, 0, 0, 0)
+        lay.setContentsMargins(8, 0, 0, 0)
         lay.setSpacing(2)
 
         title = QLabel("BenchFlow")
         title.setObjectName("SidebarTitle")
         title.setStyleSheet(
-            f"color: {Colors.ACCENT_LIGHT};"
-            f"font-size: {Fonts.SIZE_XL}px;"
-            f"font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY};"
+            f"font-size: {Fonts.SIZE_LG}px;"
+            f"font-weight: 650;"
         )
         self._logo_title = title
 
@@ -112,7 +112,7 @@ class Sidebar(QWidget):
         btn = QPushButton(f"  {emoji}   {label}")
         btn.setObjectName("NavButton")
         btn.setProperty("active", False)
-        btn.setMinimumHeight(42)
+        btn.setMinimumHeight(38)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(self._nav_style(False))
         btn.clicked.connect(lambda checked=False, pid=page_id: self.nav_requested.emit(pid))
@@ -139,8 +139,8 @@ class Sidebar(QWidget):
         # Logo
         if self._logo_title:
             self._logo_title.setStyleSheet(
-                f"color: {Colors.ACCENT_LIGHT};"
-                f"font-size: {Fonts.SIZE_XL}px; font-weight: 700;"
+                f"color: {Colors.TEXT_PRIMARY};"
+                f"font-size: {Fonts.SIZE_LG}px; font-weight: 650;"
             )
         if self._logo_sub:
             self._logo_sub.setStyleSheet(
@@ -166,8 +166,8 @@ class Sidebar(QWidget):
                 f"  background-color: {Colors.SB_ACTIVE};"
                 f"  color: {Colors.SB_TEXT_ACT};"
                 f"  text-align: left;"
-                f"  padding: 0px 14px;"
-                f"  border-radius: 12px;"
+                f"  padding: 0px 12px;"
+                f"  border-radius: 14px;"
                 f"  border: none;"
                 f"  font-size: {Fonts.SIZE_MD}px;"
                 f"  font-weight: 600;"
@@ -178,8 +178,8 @@ class Sidebar(QWidget):
             f"  background-color: transparent;"
             f"  color: {Colors.SB_TEXT};"
             f"  text-align: left;"
-            f"  padding: 0px 14px;"
-            f"  border-radius: 12px;"
+            f"  padding: 0px 12px;"
+            f"  border-radius: 14px;"
             f"  border: none;"
             f"  font-size: {Fonts.SIZE_MD}px;"
             "}"

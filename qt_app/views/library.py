@@ -55,7 +55,7 @@ from qt_app.views.base_page import BasePage
 def _badge(text: str, fg: str, bg: str, parent: QWidget | None = None) -> QLabel:
     lbl = QLabel(text, parent)
     lbl.setStyleSheet(
-        f"color: {fg}; background: {bg}; border-radius: 6px;"
+        f"color: {fg}; background: {bg}; border-radius: 9px;"
         f"padding: 2px 8px; font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
     )
     return lbl
@@ -99,6 +99,7 @@ class _ProtocolCard(QFrame):
         self._proto       = proto
         self._is_template = is_template
         self._sel         = False
+        self.setObjectName("ProtocolCard")
         self.setStyleSheet(self._style(False))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -108,25 +109,25 @@ class _ProtocolCard(QFrame):
     def _style(selected: bool) -> str:
         if selected:
             return (
-                f"QFrame {{ background: {Colors.BG_CARD_HOV};"
-                f"  border-radius: {Radii.MD}px;"
+                f"QFrame#ProtocolCard {{ background: {Colors.SELECTED_BG};"
+                f"  border-radius: {Radii.LG}px;"
                 f"  border: 1px solid {Colors.BORDER_LIGHT};"
-                f"  border-left: 4px solid {Colors.ACCENT}; }}"
-                f"QFrame:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+                f"  border-left: 3px solid {Colors.ACCENT}; }}"
+                f"QFrame#ProtocolCard:hover {{ background: {Colors.SELECTED_BG}; }}"
             )
         return (
-            f"QFrame {{ background: {Colors.BG_CARD};"
-            f"  border-radius: {Radii.MD}px;"
+            f"QFrame#ProtocolCard {{ background: {Colors.BG_CARD};"
+            f"  border-radius: {Radii.LG}px;"
             f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
-            f"QFrame:hover {{ background: {Colors.BG_CARD_HOV};"
+            f"QFrame#ProtocolCard:hover {{ background: {Colors.HOVER_BG};"
             f"  border-color: {Colors.BORDER}; }}"
         )
 
     def _build(self) -> None:
         p   = self._proto
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 12, 16, 12)
-        lay.setSpacing(5)
+        lay.setContentsMargins(16, 13, 16, 13)
+        lay.setSpacing(6)
 
         # Row 1: name + duration
         r1 = QHBoxLayout()
@@ -149,7 +150,7 @@ class _ProtocolCard(QFrame):
         if cat:
             r2.addWidget(_badge(cat, Colors.ACCENT, Colors.ACCENT_BG))
         n = len(p.get("steps", []))
-        r2.addWidget(_badge(f"{n} step{'s' if n!=1 else ''}", Colors.TEXT_SECOND, Colors.BG_CARD_HOV))
+        r2.addWidget(_badge(f"{n} step{'s' if n!=1 else ''}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
         if self._is_template:
             r2.addWidget(_badge("Template", Colors.WARNING, Colors.WARNING_BG))
         r2.addStretch()
@@ -161,9 +162,9 @@ class _ProtocolCard(QFrame):
             r3 = QHBoxLayout()
             r3.setSpacing(4)
             for tag in tags[:3]:
-                r3.addWidget(_badge(f"#{tag}", Colors.TEXT_MUTED, Colors.BG_CARD_HOV))
+                r3.addWidget(_badge(f"#{tag}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
             if len(tags) > 3:
-                r3.addWidget(_badge(f"+{len(tags)-3}", Colors.TEXT_MUTED, Colors.BG_CARD_HOV))
+                r3.addWidget(_badge(f"+{len(tags)-3}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
             r3.addStretch()
             lay.addLayout(r3)
 
@@ -195,7 +196,10 @@ class _DetailPanel(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMinimumWidth(280)
-        self.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-left: 1px solid {Colors.BORDER_LIGHT};"
+        )
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -205,11 +209,11 @@ class _DetailPanel(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._scroll.setStyleSheet(f"background: {Colors.BG_CARD};")
         outer.addWidget(self._scroll)
 
         self._inner = QWidget()
-        self._inner.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._inner.setStyleSheet(f"background: {Colors.BG_CARD};")
         self._lay = QVBoxLayout(self._inner)
         self._lay.setContentsMargins(20, 20, 20, 24)
         self._lay.setSpacing(10)
@@ -243,7 +247,7 @@ class _DetailPanel(QWidget):
             trow = QHBoxLayout()
             trow.setSpacing(4)
             for t in tags:
-                trow.addWidget(_badge(f"#{t}", Colors.TEXT_MUTED, Colors.BG_CARD_HOV))
+                trow.addWidget(_badge(f"#{t}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
             trow.addStretch()
             lay.addLayout(trow)
 
@@ -414,14 +418,14 @@ class _DetailPanel(QWidget):
         if primary:
             btn.setStyleSheet(
                 f"QPushButton {{ background: {color}; color: white;"
-                f"  border: none; border-radius: {Radii.MD}px;"
+                f"  border: none; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; padding: 0 14px; }}"
                 f"QPushButton:hover {{ opacity: 0.9; }}"
             )
         else:
             btn.setStyleSheet(
-                f"QPushButton {{ background: transparent; color: {color};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+                f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
             )
@@ -434,8 +438,8 @@ class _DetailPanel(QWidget):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setToolTip("Export this protocol as JSON, Markdown, or PDF")
         btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -443,11 +447,11 @@ class _DetailPanel(QWidget):
         def _show_menu():
             menu = QMenu(btn)
             menu.setStyleSheet(
-                f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"QMenu {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
                 f"  padding: 4px 0; }}"
                 f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
-                f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+                f"QMenu::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY}; }}"
             )
             menu.addAction("{ }  JSON").triggered.connect(
                 lambda: self.export_requested.emit(proto, "json")
@@ -564,7 +568,7 @@ class LibraryPage(BasePage):
         self._search_box.setFixedHeight(34)
         self._search_box.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 12px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -639,12 +643,12 @@ class LibraryPage(BasePage):
         cb.setMinimumWidth(140)
         cb.setStyleSheet(
             f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
-            f"QComboBox QAbstractItemView {{ background: {Colors.BG_SIDEBAR};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER};"
-            f"  selection-background-color: {Colors.ACCENT}; }}"
+            f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         return cb
 

@@ -50,8 +50,8 @@ class _PlaceholderPage(BasePage):
         badge = QLabel(f"Planned for {phase}")
         badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         badge.setStyleSheet(
-            f"color: {Colors.ACCENT_LIGHT};"
-            f"background: rgba(59,130,246,0.15);"
+            f"color: {Colors.ACCENT};"
+            f"background: {Colors.ACCENT_BG};"
             f"border-radius: 8px;"
             f"padding: 4px 14px;"
             f"font-size: {Fonts.SIZE_SM}px;"

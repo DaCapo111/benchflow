@@ -86,9 +86,9 @@ class _UndoSnackbar(QFrame):
         self._on_undo = on_undo
         self._remaining = 9
         self.setStyleSheet(
-            f"QFrame {{ background: {Colors.BG_SIDEBAR};"
+            f"QFrame {{ background: {Colors.BG_CARD};"
             f"  border-radius: {Radii.MD}px;"
-            f"  border: 1px solid {Colors.SUCCESS}80; }}"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         lay = QHBoxLayout(self)
         lay.setContentsMargins(14, 10, 14, 10)
@@ -264,12 +264,12 @@ class RunModePage(BasePage):
         self._seq_btn.setVisible(False)
         self._seq_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 6px 16px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QPushButton:checked {{ background: {Colors.ACCENT}; color: white;"
-            f"  border-color: {Colors.ACCENT}; }}"
-            f"QPushButton:checked:hover {{ background: {Colors.ACCENT_HOVER}; }}"
+            f"QPushButton:checked {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY};"
+            f"  border-color: {Colors.BORDER_LIGHT}; }}"
+            f"QPushButton:checked:hover {{ background: {Colors.SELECTED_BG}; }}"
         )
         self._seq_btn.toggled.connect(self._on_sequential_toggled)
         hdr_lay.addWidget(self._seq_btn)
@@ -289,7 +289,7 @@ class RunModePage(BasePage):
         self._save_btn.setVisible(False)
         self._save_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 6px 16px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -302,7 +302,7 @@ class RunModePage(BasePage):
         self._end_run_btn.setVisible(False)
         self._end_run_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.DANGER}; color: white; border: none;"
-            f"  border-radius: {Radii.MD}px; padding: 8px 20px;"
+            f"  border-radius: {Radii.LG}px; padding: 8px 20px;"
             f"  font-size: {Fonts.SIZE_MD}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: #dc2626; }}"
         )
@@ -315,7 +315,7 @@ class RunModePage(BasePage):
         # Main splitter
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         self._splitter.addWidget(self._build_left_panel())
@@ -328,7 +328,10 @@ class RunModePage(BasePage):
 
     def _build_left_panel(self) -> QWidget:
         w = QWidget()
-        w.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        w.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-right: 1px solid {Colors.BORDER_LIGHT};"
+        )
         w.setMinimumWidth(180)
         w.setMaximumWidth(280)
         lay = QVBoxLayout(w)
@@ -347,8 +350,8 @@ class RunModePage(BasePage):
             f"QListWidget {{ background: transparent; border: none; outline: none;"
             f"  font-size: {Fonts.SIZE_MD}px; color: {Colors.TEXT_PRIMARY}; }}"
             f"QListWidget::item {{ padding: 9px 8px; border-radius: 10px; margin: 1px 0; }}"
-            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QListWidget::item:selected {{ background: {Colors.ACCENT}; color: white;"
+            f"QListWidget::item:hover {{ background: {Colors.HOVER_BG}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY};"
             f"  border-radius: 10px; }}"
         )
         self._proto_list.currentItemChanged.connect(self._on_proto_selected)
@@ -370,8 +373,8 @@ class RunModePage(BasePage):
             f"QListWidget {{ background: transparent; border: none; outline: none;"
             f"  font-size: {Fonts.SIZE_XS}px; }}"
             f"QListWidget::item {{ padding: 3px 4px; border-radius: 6px; margin: 1px 0; }}"
-            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QListWidget::item:selected {{ background: {Colors.ACCENT}20; }}"
+            f"QListWidget::item:hover {{ background: {Colors.HOVER_BG}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.SELECTED_BG}; }}"
         )
         self._step_status_list.setVisible(False)
         self._step_status_list.setMaximumHeight(220)
@@ -393,7 +396,7 @@ class RunModePage(BasePage):
         # Info bar (protocol name, step counts)
         self._info_bar = QWidget()
         self._info_bar.setStyleSheet(
-            f"background: {Colors.BG_SIDEBAR}; border-bottom: 1px solid {Colors.BORDER};"
+            f"background: {Colors.BG_CARD}; border-bottom: 1px solid {Colors.BORDER_LIGHT};"
         )
         info_lay = QHBoxLayout(self._info_bar)
         info_lay.setContentsMargins(20, 10, 20, 10)
@@ -414,7 +417,7 @@ class RunModePage(BasePage):
 
         self._session_badge = QLabel("")
         self._session_badge.setStyleSheet(
-            f"color: {Colors.SUCCESS}; background: rgba(34,197,94,0.12);"
+            f"color: {Colors.SUCCESS}; background: {Colors.SUCCESS_BG};"
             f"border-radius: 8px; padding: 3px 10px;"
             f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
         )

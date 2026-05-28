@@ -78,7 +78,7 @@ def _card() -> QFrame:
     card = QFrame()
     card.setStyleSheet(
         f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
-        f"  border: 1px solid {Colors.BORDER}; }}"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
     )
     return card
 
@@ -86,7 +86,7 @@ def _card() -> QFrame:
 def _row_style() -> str:
     return (
         f"QFrame {{ background: transparent; border: none; }}"
-        f"QFrame + QFrame {{ border-top: 1px solid {Colors.BORDER}; }}"
+        f"QFrame + QFrame {{ border-top: 1px solid {Colors.BORDER_LIGHT}; }}"
     )
 
 
@@ -115,15 +115,15 @@ def _action_btn(label: str, color: str = Colors.TEXT_SECOND,
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     if danger:
         btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.DANGER};"
-            f"  border: 1px solid {Colors.DANGER}; border-radius: {Radii.SM}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.DANGER};"
+            f"  border: 1px solid {Colors.DANGER_BG}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.DANGER_BG}; }}"
         )
     else:
         btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {color};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -279,7 +279,7 @@ class SettingsPage(BasePage):
         self._theme_combo.setFixedWidth(140)
         self._theme_combo.setStyleSheet(
             f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 8px; font-size: {Fonts.SIZE_SM}px; }}"
         )
         # Set current selection
@@ -297,7 +297,7 @@ class SettingsPage(BasePage):
         self._autosave_spin.setFixedWidth(140)
         self._autosave_spin.setStyleSheet(
             f"QSpinBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 8px; font-size: {Fonts.SIZE_SM}px; }}"
         )
         self._autosave_spin.valueChanged.connect(self._on_autosave_changed)
