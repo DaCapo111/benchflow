@@ -37,6 +37,7 @@ class TimelineBlock:
     is_temporary: bool = False
     is_parallel_task: bool = False
     parallel_with_block_id: str = ""
+    retains_time: bool = False   # if True, skipped/canceled block still occupies its slot
 
     @classmethod
     def new(cls, title: str, block_type: str, start_time_ms: int,
@@ -68,6 +69,7 @@ class TimelineBlock:
             "isTemporary":           self.is_temporary,
             "isParallelTask":        self.is_parallel_task,
             "parallelWithBlockId":   self.parallel_with_block_id,
+            "retainsTime":           self.retains_time,
         }
 
     @classmethod
@@ -87,6 +89,7 @@ class TimelineBlock:
             is_temporary=bool(d.get("isTemporary", False)),
             is_parallel_task=bool(d.get("isParallelTask", False)),
             parallel_with_block_id=d.get("parallelWithBlockId", ""),
+            retains_time=bool(d.get("retainsTime", False)),
         )
 
 
@@ -109,15 +112,16 @@ class ScheduledExperiment:
 
     def recalculate_times(self) -> None:
         """Recalculate all block start/end times from planned_start.
-        Skipped/canceled blocks consume zero time in the timeline.
+
+        Skipped/canceled blocks with retains_time=False consume zero time.
+        Skipped/canceled blocks with retains_time=True keep their slot duration.
         """
         cursor = self.planned_start
         for block in self.timeline_blocks:
-            if block.status in ("skipped", "canceled"):
-                block.start_time = cursor
-                block.end_time = cursor
+            block.start_time = cursor
+            if block.status in ("skipped", "canceled") and not block.retains_time:
+                block.end_time = cursor          # zero-width slot
             else:
-                block.start_time = cursor
                 block.end_time = cursor + int(block.duration_minutes * 60 * 1000)
                 cursor = block.end_time
         self.planned_end = cursor

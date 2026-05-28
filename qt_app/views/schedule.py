@@ -20,12 +20,15 @@ _SessionBlock tracks global mouse position delta → moves within _CalendarGrid.
 On release, emits drag_finished(exp_id, new_start_ms).
 SchedulePage receives → update experiment, recalculate_times(), save, refresh.
 
-Phase 4.5 (deferred)
----------------------
-- Week view (7 days)
-- Right-panel drag-reorder of timeline blocks
-- Right-click context menu
-- Parallel task support
+Phase 4.5 (implemented)
+-----------------------
+- Week view (7 days Mon–Sun)
+- Right-click context menu: Edit, Duplicate, Insert Before/After,
+  Mark Skipped, Mark Canceled (Keep/Remove Time), Restore, Move Up/Down, Delete
+- Move Up / Move Down buttons on each block row
+- Date picker (click date label → QCalendarWidget popup)
+- Selected experiment preserved across on_show() reloads
+- retains_time support for canceled blocks
 """
 from __future__ import annotations
 
@@ -35,11 +38,11 @@ from datetime import date, datetime, timedelta, time as time_t
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt, QSize, QTimer, Signal
+from PySide6.QtCore import Qt, QDate, QSize, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QSizePolicy, QSplitter, QVBoxLayout, QWidget,
+    QCalendarWidget, QDialog, QFrame, QHBoxLayout, QLabel, QMenu,
+    QPushButton, QScrollArea, QSizePolicy, QSplitter, QVBoxLayout, QWidget,
 )
 
 from qt_app.theme import Colors, Fonts, Radii
@@ -324,16 +327,21 @@ class _CalendarGrid(QWidget):
 
     @property
     def _n_cols(self) -> int:
-        return 1 if self._view_mode == "day" else 5
+        if self._view_mode == "day":
+            return 1
+        if self._view_mode == "week":
+            return 7
+        return 5   # workweek
 
     def _col_width(self) -> int:
-        return max(80, (self.width() - self.GUTTER_W) // max(1, self._n_cols))
+        return max(60, (self.width() - self.GUTTER_W) // max(1, self._n_cols))
 
     def _dates(self) -> list[date]:
         if self._view_mode == "day":
             return [self._base_date]
         mon = week_start(self._base_date)
-        return [mon + timedelta(days=i) for i in range(5)]
+        n = 7 if self._view_mode == "week" else 5
+        return [mon + timedelta(days=i) for i in range(n)]
 
     def _date_to_col(self, date_str: str) -> int | None:
         try:
@@ -522,12 +530,34 @@ class _CalendarGrid(QWidget):
 
 # ── _TimelineBlockRow ─────────────────────────────────────────────────────────
 
+_CONTEXT_MENU_QSS = """
+QMenu {
+    background: #1e2030; color: #e2e8f0;
+    border: 1px solid #334155; border-radius: 6px;
+    padding: 4px 0;
+}
+QMenu::item { padding: 6px 18px 6px 14px; font-size: 13px; }
+QMenu::item:selected { background: #334155; color: #f1f5f9; }
+QMenu::item:disabled { color: #475569; }
+QMenu::separator { height: 1px; background: #334155; margin: 3px 0; }
+QMenu::indicator { width: 0; }
+"""
+
+
 class _TimelineBlockRow(QFrame):
     """One row in the right-panel timeline — shows one TimelineBlock."""
 
-    edit_requested   = Signal(str)   # block_id
-    skip_requested   = Signal(str)   # block_id
-    delete_requested = Signal(str)   # block_id
+    # ── Signals ───────────────────────────────────────────────────────────────
+    edit_requested          = Signal(str)        # block_id
+    skip_requested          = Signal(str)        # block_id
+    delete_requested        = Signal(str)        # block_id
+    duplicate_requested     = Signal(str)        # block_id
+    cancel_requested        = Signal(str, bool)  # block_id, retains_time
+    restore_requested       = Signal(str)        # block_id
+    move_up_requested       = Signal(str)        # block_id
+    move_down_requested     = Signal(str)        # block_id
+    insert_before_requested = Signal(str, str)   # block_id, block_type
+    insert_after_requested  = Signal(str, str)   # block_id, block_type
 
     def __init__(self, block: TimelineBlock, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -535,31 +565,41 @@ class _TimelineBlockRow(QFrame):
         self._build()
 
     def _build(self) -> None:
-        block  = self._block
-        accent = _block_accent(block.type)
-        is_done    = block.status == "done"
-        is_skipped = block.status in ("skipped", "canceled")
-        opacity = "80" if is_skipped else "ff"
+        block     = self._block
+        accent    = _block_accent(block.type)
+        is_done      = block.status == "done"
+        is_inactive  = block.status in ("skipped", "canceled")
 
         self.setStyleSheet(
-            f"QFrame {{ background: {Colors.BG_CARD};"
+            f"_TimelineBlockRow {{ background: {Colors.BG_CARD};"
             f"  border-radius: {Radii.MD}px;"
             f"  border-left: 3px solid {accent};"
             f"  border-top: 1px solid {Colors.BORDER};"
             f"  border-right: 1px solid {Colors.BORDER};"
             f"  border-bottom: 1px solid {Colors.BORDER}; }}"
+            f"_TimelineBlockRow:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
 
         row = QHBoxLayout(self)
-        row.setContentsMargins(12, 8, 10, 8)
-        row.setSpacing(10)
+        row.setContentsMargins(4, 8, 10, 8)
+        row.setSpacing(6)
+
+        # Drag handle (visual only)
+        handle = QLabel("⠿")
+        handle.setFixedWidth(16)
+        handle.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: 14px; padding: 0;"
+        )
+        handle.setToolTip("Drag to reorder (use ▲▼ buttons)")
+        row.addWidget(handle)
 
         # Time column
         t_col = QVBoxLayout()
         t_col.setSpacing(1)
         t_col.setContentsMargins(0, 0, 0, 0)
-
         t_start_lbl = QLabel(format_time_ms(block.start_time))
         t_start_lbl.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
@@ -570,9 +610,8 @@ class _TimelineBlockRow(QFrame):
         )
         t_col.addWidget(t_start_lbl)
         t_col.addWidget(t_end_lbl)
-
         time_w = QWidget()
-        time_w.setFixedWidth(72)
+        time_w.setFixedWidth(68)
         time_w.setLayout(t_col)
         row.addWidget(time_w)
 
@@ -581,14 +620,11 @@ class _TimelineBlockRow(QFrame):
         content.setSpacing(2)
         content.setContentsMargins(0, 0, 0, 0)
 
-        title_text = block.title
-        if is_skipped:
-            title_text = f"~~{title_text}~~"
         title_lbl = QLabel(block.title)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED if is_skipped else Colors.TEXT_PRIMARY};"
+            f"color: {Colors.TEXT_MUTED if is_inactive else Colors.TEXT_PRIMARY};"
             f"font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
-            + ("text-decoration: line-through;" if is_skipped else "")
+            + ("text-decoration: line-through;" if is_inactive else "")
         )
         title_lbl.setWordWrap(False)
         content.addWidget(title_lbl)
@@ -617,13 +653,13 @@ class _TimelineBlockRow(QFrame):
         row.addLayout(content, stretch=1)
 
         # Status badge
-        status_colors = {
-            "planned":  (Colors.ACCENT,    "rgba(59,130,246,0.15)"),
-            "done":     (Colors.SUCCESS,   "rgba(34,197,94,0.15)"),
-            "skipped":  (Colors.WARNING,   "rgba(249,115,22,0.15)"),
-            "canceled": (Colors.DANGER,    "rgba(239,68,68,0.15)"),
+        _STATUS_BADGE = {
+            "planned":  (Colors.ACCENT,   "rgba(59,130,246,0.15)"),
+            "done":     (Colors.SUCCESS,  "rgba(34,197,94,0.15)"),
+            "skipped":  (Colors.WARNING,  "rgba(249,115,22,0.15)"),
+            "canceled": (Colors.DANGER,   "rgba(239,68,68,0.15)"),
         }
-        sc, sbg = status_colors.get(block.status, (Colors.TEXT_MUTED, Colors.BG_CARD))
+        sc, sbg = _STATUS_BADGE.get(block.status, (Colors.TEXT_MUTED, Colors.BG_CARD))
         s_lbl = QLabel(block.status)
         s_lbl.setStyleSheet(
             f"color: {sc}; background: {sbg};"
@@ -632,23 +668,161 @@ class _TimelineBlockRow(QFrame):
         )
         row.addWidget(s_lbl)
 
-        # Action buttons
+        # Move Up / Move Down
+        up_btn = self._action_btn("▲", Colors.TEXT_MUTED)
+        up_btn.setToolTip("Move up")
+        up_btn.clicked.connect(lambda: self.move_up_requested.emit(self._block.id))
+        row.addWidget(up_btn)
+
+        down_btn = self._action_btn("▼", Colors.TEXT_MUTED)
+        down_btn.setToolTip("Move down")
+        down_btn.clicked.connect(lambda: self.move_down_requested.emit(self._block.id))
+        row.addWidget(down_btn)
+
+        # Edit / Restore / Skip / Delete
         if not is_done:
             edit_btn = self._action_btn("✎", Colors.TEXT_SECOND)
             edit_btn.setToolTip("Edit block")
             edit_btn.clicked.connect(lambda: self.edit_requested.emit(self._block.id))
             row.addWidget(edit_btn)
 
-            if block.status == "planned":
-                skip_btn = self._action_btn("⟩", Colors.WARNING)
-                skip_btn.setToolTip("Skip block")
-                skip_btn.clicked.connect(lambda: self.skip_requested.emit(self._block.id))
-                row.addWidget(skip_btn)
+        if is_inactive:
+            restore_btn = self._action_btn("↩", Colors.SUCCESS)
+            restore_btn.setToolTip("Restore block")
+            restore_btn.clicked.connect(lambda: self.restore_requested.emit(self._block.id))
+            row.addWidget(restore_btn)
+        elif not is_done and block.status == "planned":
+            skip_btn = self._action_btn("⟩", Colors.WARNING)
+            skip_btn.setToolTip("Skip block")
+            skip_btn.clicked.connect(lambda: self.skip_requested.emit(self._block.id))
+            row.addWidget(skip_btn)
 
         del_btn = self._action_btn("✕", Colors.DANGER)
         del_btn.setToolTip("Delete block")
         del_btn.clicked.connect(lambda: self.delete_requested.emit(self._block.id))
         row.addWidget(del_btn)
+
+    # ── Context menu ──────────────────────────────────────────────────────────
+
+    def _show_context_menu(self, local_pos) -> None:
+        block = self._block
+        is_inactive = block.status in ("skipped", "canceled")
+        menu = QMenu(self)
+        menu.setStyleSheet(_CONTEXT_MENU_QSS)
+
+        # Edit
+        a_edit = menu.addAction("✎  Edit…")
+        a_edit.triggered.connect(lambda: self.edit_requested.emit(block.id))
+
+        # Duplicate
+        a_dup = menu.addAction("⧉  Duplicate")
+        a_dup.triggered.connect(lambda: self.duplicate_requested.emit(block.id))
+
+        menu.addSeparator()
+
+        # Insert Before submenu
+        ins_before = menu.addMenu("↑  Insert Before")
+        ins_before.setStyleSheet(_CONTEXT_MENU_QSS)
+        for btype, label in [("break", "Break"), ("task", "Task"),
+                              ("note", "Note"), ("custom", "Custom")]:
+            a = ins_before.addAction(label)
+            a.triggered.connect(
+                lambda chk=False, bt=btype: self.insert_before_requested.emit(block.id, bt)
+            )
+
+        # Insert After submenu
+        ins_after = menu.addMenu("↓  Insert After")
+        ins_after.setStyleSheet(_CONTEXT_MENU_QSS)
+        for btype, label in [("break", "Break"), ("task", "Task"),
+                              ("note", "Note"), ("custom", "Custom")]:
+            a = ins_after.addAction(label)
+            a.triggered.connect(
+                lambda chk=False, bt=btype: self.insert_after_requested.emit(block.id, bt)
+            )
+
+        menu.addSeparator()
+
+        # Status changes
+        if block.status == "planned":
+            a_skip = menu.addAction("⟩  Mark Skipped")
+            a_skip.triggered.connect(lambda: self.skip_requested.emit(block.id))
+            a_cancel = menu.addAction("✕  Mark Canceled…")
+            a_cancel.triggered.connect(lambda: self._ask_cancel())
+        elif block.status == "done":
+            a_restore = menu.addAction("↩  Restore to Planned")
+            a_restore.triggered.connect(lambda: self.restore_requested.emit(block.id))
+        else:
+            a_restore = menu.addAction("↩  Restore to Planned")
+            a_restore.triggered.connect(lambda: self.restore_requested.emit(block.id))
+
+        menu.addSeparator()
+
+        # Reorder
+        a_up = menu.addAction("▲  Move Up")
+        a_up.triggered.connect(lambda: self.move_up_requested.emit(block.id))
+        a_down = menu.addAction("▼  Move Down")
+        a_down.triggered.connect(lambda: self.move_down_requested.emit(block.id))
+
+        menu.addSeparator()
+
+        a_del = menu.addAction("🗑  Delete")
+        a_del.triggered.connect(lambda: self.delete_requested.emit(block.id))
+
+        menu.exec(self.mapToGlobal(local_pos))
+
+    def _ask_cancel(self) -> None:
+        """Show 'Keep Time / Remove Time / Don't Cancel' dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Cancel block")
+        dlg.setStyleSheet(
+            f"QDialog {{ background: {Colors.BG_CARD}; }}"
+            f"QLabel {{ color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; }}"
+        )
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(20, 16, 20, 16)
+        lay.setSpacing(12)
+
+        lbl = QLabel(
+            f"Cancel  <b>{self._block.title}</b>?<br>"
+            "Choose how the block's time slot is handled:"
+        )
+        lbl.setWordWrap(True)
+        lay.addWidget(lbl)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        def _mk_btn(text: str, color: str) -> QPushButton:
+            b = QPushButton(text)
+            b.setFixedHeight(34)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setStyleSheet(
+                f"QPushButton {{ background: {Colors.BG_CARD_HOV}; color: {color};"
+                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
+                f"QPushButton:hover {{ background: {Colors.BORDER}; }}"
+            )
+            return b
+
+        b_keep   = _mk_btn("Keep Time",   Colors.WARNING)
+        b_remove = _mk_btn("Remove Time", Colors.DANGER)
+        b_dont   = _mk_btn("Don't Cancel", Colors.TEXT_SECOND)
+
+        b_keep.clicked.connect(lambda: (
+            self.cancel_requested.emit(self._block.id, True),  # retains_time=True
+            dlg.accept(),
+        ))
+        b_remove.clicked.connect(lambda: (
+            self.cancel_requested.emit(self._block.id, False),  # retains_time=False
+            dlg.accept(),
+        ))
+        b_dont.clicked.connect(dlg.reject)
+
+        btn_row.addWidget(b_keep)
+        btn_row.addWidget(b_remove)
+        btn_row.addWidget(b_dont)
+        lay.addLayout(btn_row)
+        dlg.exec()
 
     @staticmethod
     def _action_btn(text: str, color: str) -> QPushButton:
@@ -745,36 +919,41 @@ class SchedulePage(BasePage):
         self._next_btn.clicked.connect(self._go_next)
         hdr_lay.addWidget(self._next_btn)
 
-        self._date_lbl = QLabel("")
-        self._date_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
+        # Clickable date label (opens date picker)
+        self._date_btn = QPushButton("")
+        self._date_btn.setFixedHeight(32)
+        self._date_btn.setMinimumWidth(140)
+        self._date_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._date_btn.setStyleSheet(
+            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
+            f"  border: none; font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
+            f"  text-align: left; padding: 0 4px; }}"
+            f"QPushButton:hover {{ color: {Colors.TEXT_PRIMARY}; }}"
         )
-        self._date_lbl.setMinimumWidth(140)
-        hdr_lay.addWidget(self._date_lbl)
+        self._date_btn.clicked.connect(self._on_date_picker)
+        hdr_lay.addWidget(self._date_btn)
 
-        # View toggle
-        for mode, label in [("day", "Day"), ("workweek", "Work Week")]:
+        # View toggle (Day | Work Week | Week)
+        self._view_btns: list[QPushButton] = []
+        for mode, label in [("day", "Day"), ("workweek", "Work Week"), ("week", "Week")]:
             b = QPushButton(label)
             b.setCheckable(True)
             b.setChecked(mode == self._view_mode)
             b.setFixedHeight(32)
-            b.setMinimumWidth(80)
+            b.setMinimumWidth(70)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setObjectName(f"view_{mode}")
             b.setStyleSheet(
                 f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
                 f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
-                f"  padding: 0 12px; font-size: {Fonts.SIZE_SM}px; }}"
+                f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
                 f"QPushButton:checked {{ background: {Colors.ACCENT}; color: white;"
                 f"  border-color: {Colors.ACCENT}; font-weight: 600; }}"
                 f"QPushButton:hover:!checked {{ background: {Colors.BG_CARD_HOV}; }}"
             )
             b.toggled.connect(lambda checked, m=mode, btn=b: self._on_view_toggled(m, checked, btn))
             hdr_lay.addWidget(b)
-            if mode == "day":
-                self._day_btn = b
-            else:
-                self._week_btn = b
+            self._view_btns.append(b)
 
         # + Schedule Experiment
         self._add_exp_btn = PrimaryButton("＋ Experiment")
@@ -863,8 +1042,23 @@ class SchedulePage(BasePage):
 
     def on_show(self) -> None:
         logger.info("enter_schedule")
+        # Remember selected experiment ID before reloading
+        prev_id = self._selected_exp.id if self._selected_exp else None
+
         self._load_experiments()
         self._refresh_calendar()
+
+        # Restore selection after reload (new objects, same ID)
+        if prev_id:
+            restored = self._find_exp(prev_id)
+            if restored:
+                self._selected_exp = restored
+                self._grid.highlight_block(prev_id)
+                self._show_experiment_detail(restored)
+            else:
+                self._selected_exp = None
+                self._show_detail_placeholder()
+
         # Scroll to ~1 hour before now
         now = datetime.now()
         target_h = max(self._grid.MIN_HOUR, now.hour - 1)
@@ -905,19 +1099,20 @@ class SchedulePage(BasePage):
     def _update_date_label(self) -> None:
         dates = self._grid._dates()
         if not dates:
-            self._date_lbl.setText("")
+            self._date_btn.setText("")
             return
         if len(dates) == 1:
-            self._date_lbl.setText(dates[0].strftime("%B %-d, %Y"))
+            d = dates[0]
+            self._date_btn.setText(f"{d.strftime('%B')} {d.day}, {d.year}")
         else:
             d0, d1 = dates[0], dates[-1]
             if d0.month == d1.month:
-                self._date_lbl.setText(
+                self._date_btn.setText(
                     f"{d0.strftime('%b')} {d0.day}–{d1.day}, {d0.year}"
                 )
             else:
-                self._date_lbl.setText(
-                    f"{d0.strftime('%b %-d')} – {d1.strftime('%b %-d')}, {d0.year}"
+                self._date_btn.setText(
+                    f"{d0.strftime('%b')} {d0.day} – {d1.strftime('%b')} {d1.day}, {d0.year}"
                 )
 
     # ── Navigation ────────────────────────────────────────────────────────────
@@ -936,11 +1131,49 @@ class SchedulePage(BasePage):
         self._base_date += delta
         self._refresh_calendar()
 
+    def _on_date_picker(self) -> None:
+        """Open a QCalendarWidget popup so the user can jump to any date."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Go to date")
+        dlg.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
+        dlg.setStyleSheet(
+            f"QDialog {{ background: {Colors.BG_CARD};"
+            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px; }}"
+            f"QCalendarWidget QAbstractItemView:enabled {{"
+            f"  color: {Colors.TEXT_PRIMARY}; background: {Colors.BG_CARD};"
+            f"  selection-background-color: {Colors.ACCENT}; selection-color: white; }}"
+            f"QCalendarWidget QWidget {{ color: {Colors.TEXT_PRIMARY};"
+            f"  background: {Colors.BG_CARD}; }}"
+            f"QCalendarWidget QToolButton {{ color: {Colors.TEXT_PRIMARY};"
+            f"  background: {Colors.BG_CARD}; }}"
+        )
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(8, 8, 8, 8)
+        cal = QCalendarWidget(dlg)
+        cal.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
+        cal.setGridVisible(False)
+        cal.setNavigationBarVisible(True)
+        # Set current selection
+        cal.setSelectedDate(QDate(self._base_date.year, self._base_date.month, self._base_date.day))
+
+        def _accept(qdate: QDate) -> None:
+            self._base_date = date(qdate.year(), qdate.month(), qdate.day())
+            self._refresh_calendar()
+            dlg.accept()
+
+        cal.activated.connect(_accept)
+        lay.addWidget(cal)
+
+        # Position below the date button
+        btn_pos = self._date_btn.mapToGlobal(self._date_btn.rect().bottomLeft())
+        dlg.move(btn_pos)
+        dlg.exec()
+
     def _on_view_toggled(self, mode: str, checked: bool, btn: QPushButton) -> None:
         if not checked:
             return
         # Uncheck sibling buttons
-        for b in (self._day_btn, self._week_btn):
+        for b in self._view_btns:
             if b is not btn:
                 b.blockSignals(True)
                 b.setChecked(False)
@@ -1072,14 +1305,25 @@ class SchedulePage(BasePage):
         for block in exp.timeline_blocks:
             row_w = _TimelineBlockRow(block, parent=self._detail_content)
             row_w.edit_requested.connect(
-                lambda bid, e=exp: self._on_edit_block(e, bid)
-            )
+                lambda bid, e=exp: self._on_edit_block(e, bid))
             row_w.skip_requested.connect(
-                lambda bid, e=exp: self._on_skip_block(e, bid)
-            )
+                lambda bid, e=exp: self._on_skip_block(e, bid))
             row_w.delete_requested.connect(
-                lambda bid, e=exp: self._on_delete_block(e, bid)
-            )
+                lambda bid, e=exp: self._on_delete_block(e, bid))
+            row_w.duplicate_requested.connect(
+                lambda bid, e=exp: self._on_duplicate_block(e, bid))
+            row_w.cancel_requested.connect(
+                lambda bid, rt, e=exp: self._on_cancel_block(e, bid, rt))
+            row_w.restore_requested.connect(
+                lambda bid, e=exp: self._on_restore_block(e, bid))
+            row_w.move_up_requested.connect(
+                lambda bid, e=exp: self._on_move_up(e, bid))
+            row_w.move_down_requested.connect(
+                lambda bid, e=exp: self._on_move_down(e, bid))
+            row_w.insert_before_requested.connect(
+                lambda bid, bt, e=exp: self._on_insert_before(e, bid, bt))
+            row_w.insert_after_requested.connect(
+                lambda bid, bt, e=exp: self._on_insert_after(e, bid, bt))
             self._detail_layout.addWidget(row_w)
 
         self._detail_layout.addWidget(HSeparator())
@@ -1118,18 +1362,21 @@ class SchedulePage(BasePage):
         self._detail_layout.addWidget(lbl)
         self._detail_layout.addStretch()
 
-    def _clear_detail(self) -> None:
-        while self._detail_layout.count():
-            item = self._detail_layout.takeAt(0)
+    @staticmethod
+    def _clear_layout(layout) -> None:
+        """Recursively clear all items from a layout."""
+        while layout.count():
+            item = layout.takeAt(0)
             w = item.widget()
-            if w:
+            if w is not None:
                 w.deleteLater()
-            if item.layout():
-                # Delete nested layout items
-                while item.layout().count():
-                    li = item.layout().takeAt(0)
-                    if li.widget():
-                        li.widget().deleteLater()
+            else:
+                sub = item.layout()
+                if sub is not None:
+                    SchedulePage._clear_layout(sub)
+
+    def _clear_detail(self) -> None:
+        self._clear_layout(self._detail_layout)
 
     # ── Timeline block actions ────────────────────────────────────────────────
 
@@ -1194,6 +1441,112 @@ class SchedulePage(BasePage):
         self._show_experiment_detail(exp)
         self._schedule_save()
         logger.info(f"add_block: exp={exp.id} type={block_type} dur={dur}m")
+
+    def _on_duplicate_block(self, exp: ScheduledExperiment, block_id: str) -> None:
+        import copy
+        block = self._find_block(exp, block_id)
+        if block is None:
+            return
+        dup = copy.deepcopy(block)
+        dup.id = str(uuid.uuid4())
+        dup.status = "planned"
+        dup.retains_time = False
+        idx = next((i for i, b in enumerate(exp.timeline_blocks) if b.id == block_id), -1)
+        if idx >= 0:
+            exp.timeline_blocks.insert(idx + 1, dup)
+        else:
+            exp.timeline_blocks.append(dup)
+        exp.recalculate_times()
+        self._grid.update_experiment(exp)
+        self._show_experiment_detail(exp)
+        self._schedule_save()
+        logger.info(f"duplicate_block: exp={exp.id} orig={block_id} new={dup.id}")
+
+    def _on_insert_before(self, exp: ScheduledExperiment,
+                          ref_id: str, block_type: str) -> None:
+        self._do_insert(exp, ref_id, block_type, after=False)
+
+    def _on_insert_after(self, exp: ScheduledExperiment,
+                         ref_id: str, block_type: str) -> None:
+        self._do_insert(exp, ref_id, block_type, after=True)
+
+    def _do_insert(self, exp: ScheduledExperiment, ref_id: str,
+                   block_type: str, after: bool) -> None:
+        dlg = EditBlockDialog(parent=self)
+        idx_cb = dlg._type_cb.findData(block_type)
+        if idx_cb >= 0:
+            dlg._type_cb.setCurrentIndex(idx_cb)
+        if dlg.exec() != EditBlockDialog.DialogCode.Accepted:
+            return
+        ref_idx = next((i for i, b in enumerate(exp.timeline_blocks) if b.id == ref_id), -1)
+        insert_at = (ref_idx + 1) if after else max(0, ref_idx)
+        new_block = TimelineBlock.new(
+            title=dlg.result_title(),
+            block_type=dlg.result_type(),
+            start_time_ms=exp.planned_start,  # recalculate_times will fix it
+            duration_minutes=dlg.result_duration(),
+            notes=dlg.result_notes(),
+        )
+        if ref_idx < 0:
+            exp.timeline_blocks.append(new_block)
+        else:
+            exp.timeline_blocks.insert(insert_at, new_block)
+        exp.recalculate_times()
+        self._grid.update_experiment(exp)
+        self._show_experiment_detail(exp)
+        self._schedule_save()
+        where = "after" if after else "before"
+        logger.info(f"insert_{where}: exp={exp.id} ref={ref_id} new={new_block.id}")
+
+    def _on_cancel_block(self, exp: ScheduledExperiment,
+                         block_id: str, retains_time: bool) -> None:
+        block = self._find_block(exp, block_id)
+        if block is None:
+            return
+        block.status = "canceled"
+        block.retains_time = retains_time
+        exp.recalculate_times()
+        self._grid.update_experiment(exp)
+        self._show_experiment_detail(exp)
+        self._schedule_save()
+        label = "retains_time" if retains_time else "removes_time"
+        logger.info(f"cancel_block: exp={exp.id} block={block_id} {label}")
+
+    def _on_restore_block(self, exp: ScheduledExperiment, block_id: str) -> None:
+        block = self._find_block(exp, block_id)
+        if block is None:
+            return
+        block.status = "planned"
+        block.retains_time = False
+        exp.recalculate_times()
+        self._grid.update_experiment(exp)
+        self._show_experiment_detail(exp)
+        self._schedule_save()
+        logger.info(f"restore_block: exp={exp.id} block={block_id}")
+
+    def _on_move_up(self, exp: ScheduledExperiment, block_id: str) -> None:
+        blocks = exp.timeline_blocks
+        idx = next((i for i, b in enumerate(blocks) if b.id == block_id), -1)
+        if idx <= 0:
+            return
+        blocks[idx - 1], blocks[idx] = blocks[idx], blocks[idx - 1]
+        exp.recalculate_times()
+        self._grid.update_experiment(exp)
+        self._show_experiment_detail(exp)
+        self._schedule_save()
+        logger.info(f"move_up: exp={exp.id} block={block_id}")
+
+    def _on_move_down(self, exp: ScheduledExperiment, block_id: str) -> None:
+        blocks = exp.timeline_blocks
+        idx = next((i for i, b in enumerate(blocks) if b.id == block_id), -1)
+        if idx < 0 or idx >= len(blocks) - 1:
+            return
+        blocks[idx], blocks[idx + 1] = blocks[idx + 1], blocks[idx]
+        exp.recalculate_times()
+        self._grid.update_experiment(exp)
+        self._show_experiment_detail(exp)
+        self._schedule_save()
+        logger.info(f"move_down: exp={exp.id} block={block_id}")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 

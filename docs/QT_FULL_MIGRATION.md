@@ -15,7 +15,7 @@
 | Phase 3 | Run Mode — QTimer, step cards, complete/pause/undo, autosave | ✅ **Done** |
 | Phase 3.5 | Run Mode polish — sequential, progress bars, remove block, focus scroll | ✅ **Done** |
 | Phase 4 | Schedule — calendar grid, drag session blocks, timeline editor | ✅ **Done** |
-| Phase 4.5 | Schedule polish — week view, right-panel drag-reorder, context menu | 🔲 |
+| Phase 4.5 | Schedule polish — week view, right-panel drag-reorder, context menu | ✅ **Done** |
 | Phase 5 | Library + Protocol Editor + Import | 🔲 |
 | Phase 6 | Flowchart (QGraphicsScene + arrow connectors) | 🔲 |
 | Phase 7 | Lab Notebook — rich text (QTextEdit), PDF/DOCX export | 🔲 |
@@ -248,15 +248,73 @@ CTk `schedule.json` is **not touched** — full compatibility preserved.
 | No add/edit | Full add/edit/skip/delete per block |
 | Reads `schedule.json` | New `scheduled_experiments.json` — no conflict |
 
-### Phase 4.5 plan
+---
 
-- Week view (Mon–Sun, 7 columns)
-- Right-panel drag-reorder (via QListWidget or manual drag)
-- Right-click context menu on blocks
-- "Mark done" quick action
-- Parallel task columns
+## Phase 4.5 — Schedule Polish ✅
 
-### Next: Phase 5 — Schedule
+**Commit**: `feat(phase-4.5): Schedule polish — week view, context menu, reorder, date picker`
+
+### What was built
+
+**`TimelineBlock` model changes** (`qt_app/models/schedule_experiment.py`):
+- New field: `retains_time: bool = False`
+  - `retains_time=False` (default): canceled/skipped block occupies zero time in timeline
+  - `retains_time=True`: block keeps its time slot (used by "Keep Time" cancel option)
+- `recalculate_times()` updated to respect `retains_time`
+- `to_dict` / `from_dict` round-trip the new field as `"retainsTime"`
+
+**`_TimelineBlockRow`** — full rebuild:
+- New signals: `duplicate_requested`, `cancel_requested(str, bool)`, `restore_requested`,
+  `move_up_requested`, `move_down_requested`, `insert_before_requested(str, str)`,
+  `insert_after_requested(str, str)`
+- Drag handle label (⠿) visual — indicates future drag-reorder
+- ▲ / ▼ Move Up / Move Down buttons — swap block with adjacent block
+- Restore button (↩) shown when block is skipped/canceled
+- Right-click context menu with dark QSS theme:
+  - Edit… / Duplicate
+  - Insert Before ▶ (Break/Task/Note/Custom submenu)
+  - Insert After ▶ (Break/Task/Note/Custom submenu)
+  - Mark Skipped / Mark Canceled… / Restore to Planned
+  - Move Up / Move Down
+  - Delete
+- **Mark Canceled dialog**: "Keep Time" vs "Remove Time" vs "Don't Cancel"
+
+**`_CalendarGrid`** week mode:
+- `_n_cols` returns 7 for "week" mode
+- `_dates()` returns Mon–Sun for "week" mode
+- Column min-width adjusted to 60px to accommodate 7 columns
+
+**`SchedulePage` header**:
+- Added "Week" toggle button (Day | Work Week | **Week**)
+- `_date_lbl` replaced by `_date_btn` (clickable QPushButton)
+- `_on_date_picker()`: frameless `QDialog` + `QCalendarWidget` anchored below the button
+- `_update_date_label()` uses `d.day` (integer) — no more `%-d` (macOS-only strftime)
+
+**`on_show()` — selection persistence**:
+- Saves `_selected_exp.id` before reloading
+- After `_load_experiments()`, re-finds experiment by ID
+- If found: re-highlights in grid + re-renders detail panel
+- If not found (deleted externally): shows placeholder
+
+**`_clear_detail()`** — bug fix:
+- Replaced buggy nested-layout teardown with recursive `_clear_layout(layout)` static method
+
+**New handlers**:
+| Method | Action |
+|---|---|
+| `_on_duplicate_block` | Deep-copy block, new UUID, insert after, recalculate |
+| `_on_insert_before` / `_on_insert_after` | Open EditBlockDialog, insert at position |
+| `_on_cancel_block(exp, bid, retains_time)` | Set status=canceled, set retains_time |
+| `_on_restore_block` | Set status=planned, retains_time=False |
+| `_on_move_up` / `_on_move_down` | Swap adjacent blocks, recalculate |
+
+### Known limitations (deferred to Phase 5+)
+
+- Full drag-reorder of timeline rows (handle is visual only; use ▲▼ for now)
+- Parallel task columns (separate track for overlapping blocks)
+- "Mark done" per individual block (status can be set via Edit dialog)
+
+### Next: Phase 5 — Library + Protocol Editor + Import
 
 ---
 
