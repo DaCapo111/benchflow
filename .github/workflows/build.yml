@@ -1,4 +1,4 @@
-name: Build & Release BenchFlow
+name: Build & Release BenchFlow Qt
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Trigger rules
@@ -42,7 +42,7 @@ jobs:
 
   # ── macOS build ────────────────────────────────────────────────────────────
   build-macos:
-    name: 🍎 macOS build
+    name: 🍎 macOS Qt build
     needs: version
     runs-on: macos-latest
 
@@ -55,67 +55,59 @@ jobs:
           python-version: '3.11'
           cache: pip
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install Qt dependencies
+        run: pip install -r requirements_qt.txt
 
-      - name: Build BenchFlow.app
+      - name: Build BenchFlow.app (Qt / PySide6)
         run: |
-          mkdir -p dist/mac
+          mkdir -p dist/mac_qt
           python -m PyInstaller --noconfirm \
-            --distpath dist/mac \
+            --distpath dist/mac_qt \
             --workpath build \
-            BenchFlow.spec
+            BenchFlow_Qt.spec
 
       - name: Verify .app
         run: |
-          test -d dist/mac/BenchFlow.app
-          echo "✓ BenchFlow.app OK  ($(du -sh dist/mac/BenchFlow.app | cut -f1))"
+          test -d dist/mac_qt/BenchFlow.app
+          echo "✓ BenchFlow.app OK  ($(du -sh dist/mac_qt/BenchFlow.app | cut -f1))"
 
       - name: Create DMG
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          DMG="dist/mac/BenchFlow-v${VERSION}-macOS.dmg"
+          DMG="dist/mac_qt/BenchFlow-Qt-v${VERSION}-macOS.dmg"
 
-          # 1. Give the OS a moment to release any file handles on the freshly
-          #    built .app before we try to image it.
-          sleep 5
-
-          # 2. Stage into a dedicated temp folder (avoids "Resource busy" on the
-          #    live dist/mac/ directory that PyInstaller may still have open).
+          # Stage into a temp folder to avoid "Resource busy" on dist/mac_qt/
           rm -rf release_temp
           mkdir -p release_temp
-          cp -R dist/mac/BenchFlow.app release_temp/
+          cp -R dist/mac_qt/BenchFlow.app release_temp/
 
-          # 3. Strip Finder / quarantine extended attributes that can cause
-          #    hdiutil to fail with "Resource busy" or metadata errors.
+          # Strip extended attributes that can cause hdiutil to fail
           xattr -cr release_temp/BenchFlow.app || true
 
-          # 4. Create the DMG from the clean staging folder.
           hdiutil create \
-            -volname "BenchFlow" \
+            -volname "BenchFlow Qt" \
             -srcfolder release_temp \
             -ov -format UDZO \
             "$DMG"
 
-          # 5. Clean up staging folder.
           rm -rf release_temp
 
           echo "DMG_PATH=$DMG" >> $GITHUB_ENV
-          echo "DMG_NAME=BenchFlow-v${VERSION}-macOS.dmg" >> $GITHUB_ENV
+          echo "DMG_NAME=BenchFlow-Qt-v${VERSION}-macOS.dmg" >> $GITHUB_ENV
           echo "✓ DMG: $(du -sh $DMG | cut -f1)"
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BenchFlow-macOS
-          path: dist/mac/BenchFlow-v*-macOS.dmg
+          name: BenchFlow-Qt-macOS
+          path: dist/mac_qt/BenchFlow-Qt-v*-macOS.dmg
           retention-days: 30
           if-no-files-found: error
 
   # ── Windows build ──────────────────────────────────────────────────────────
   build-windows:
-    name: 🪟 Windows build
+    name: 🪟 Windows Qt build
     needs: version
     runs-on: windows-latest
 
@@ -128,43 +120,46 @@ jobs:
           python-version: '3.11'
           cache: pip
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install Qt dependencies
+        run: pip install -r requirements_qt.txt
 
-      - name: Generate AppIcon.ico
+      - name: Generate AppIcon.ico from AppIcon.icns
         run: |
           python -c "
-          from PIL import Image
-          img = Image.open('AppIcon.icns')
-          img.save('AppIcon.ico', format='ICO',
-                   sizes=[(256,256),(128,128),(64,64),(32,32),(16,16)])
-          print('AppIcon.ico generated')
+          try:
+              from PIL import Image
+              img = Image.open('AppIcon.icns')
+              img.save('AppIcon.ico', format='ICO',
+                       sizes=[(256,256),(128,128),(64,64),(32,32),(16,16)])
+              print('AppIcon.ico generated')
+          except Exception as e:
+              print(f'Icon generation skipped: {e}')
           "
 
-      - name: Build BenchFlow.exe
+      - name: Build BenchFlow_Qt.exe
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist\windows | Out-Null
+          New-Item -ItemType Directory -Force -Path dist\win_qt | Out-Null
           python -m PyInstaller --noconfirm `
-            --distpath dist\windows `
+            --distpath dist\win_qt `
             --workpath build `
-            BenchFlow_windows.spec
+            BenchFlow_Qt.spec
 
       - name: Verify .exe
         shell: pwsh
         run: |
-          $exe = "dist\windows\BenchFlow\BenchFlow.exe"
-          if (-not (Test-Path $exe)) { throw "BenchFlow.exe not found" }
+          $exe = "dist\win_qt\BenchFlow_Qt\BenchFlow_Qt.exe"
+          if (-not (Test-Path $exe)) { throw "BenchFlow_Qt.exe not found" }
           $size = (Get-Item $exe).Length / 1MB
-          Write-Host ("✓ BenchFlow.exe  ({0:F1} MB)" -f $size)
+          Write-Host ("✓ BenchFlow_Qt.exe  ({0:F1} MB)" -f $size)
 
       - name: Create ZIP
         shell: pwsh
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          $ZIP = "dist\windows\BenchFlow-v${env:VERSION}-Windows.zip"
-          Compress-Archive -Path "dist\windows\BenchFlow\*" `
+          $ZIP = "dist\win_qt\BenchFlow-Qt-v${env:VERSION}-Windows.zip"
+          Compress-Archive -Path "dist\win_qt\BenchFlow_Qt\*" `
                            -DestinationPath $ZIP -Force
           $sizeMB = (Get-Item $ZIP).Length / 1MB
           Write-Host ("✓ ZIP: {0:F1} MB" -f $sizeMB)
@@ -172,8 +167,8 @@ jobs:
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BenchFlow-Windows
-          path: dist\windows\BenchFlow-v*-Windows.zip
+          name: BenchFlow-Qt-Windows
+          path: dist\win_qt\BenchFlow-Qt-v*-Windows.zip
           retention-days: 30
           if-no-files-found: error
 
@@ -191,19 +186,19 @@ jobs:
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
         with:
-          name: BenchFlow-macOS
+          name: BenchFlow-Qt-macOS
           path: release-assets/
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: BenchFlow-Windows
+          name: BenchFlow-Qt-Windows
           path: release-assets/
 
       - name: Generate checksums
         working-directory: release-assets
         run: |
-          sha256sum BenchFlow-*.dmg BenchFlow-*.zip > checksums.txt
+          sha256sum BenchFlow-Qt-*.dmg BenchFlow-Qt-*.zip > checksums.txt
           echo "── checksums ──"
           cat checksums.txt
 
@@ -254,12 +249,12 @@ jobs:
           fi
 
           gh release create "$TAG" \
-            --title "BenchFlow $TAG" \
+            --title "BenchFlow Qt $TAG" \
             --notes-file release_notes.md \
             --latest \
             $PRERELEASE \
-            release-assets/BenchFlow-*.dmg \
-            release-assets/BenchFlow-*.zip \
+            release-assets/BenchFlow-Qt-*.dmg \
+            release-assets/BenchFlow-Qt-*.zip \
             release-assets/checksums.txt
 
           echo "✓ Release $TAG published"

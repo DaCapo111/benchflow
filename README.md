@@ -56,12 +56,14 @@ Each release also includes `checksums.txt` (SHA-256) to verify your download.
 
 ---
 
-## PySide6 / Qt Version (qt-prototype branch)
+## PySide6 / Qt Version
 
-The `qt-prototype` branch is a full rewrite using **PySide6 (Qt 6)** instead of CustomTkinter.  
+> **Status: Merge candidate — ready to replace CTk on `main`.**
+
+The Qt rewrite uses **PySide6 (Qt 6)** instead of CustomTkinter.  
 All user data files are 100% compatible — switching between versions uses the same JSON files.
 
-### Features completed in the Qt version
+### Features
 
 | Phase | Feature | Status |
 |-------|---------|--------|
@@ -71,14 +73,12 @@ All user data files are 100% compatible — switching between versions uses the 
 | 7 | Lab Notebook (date-grouped, step table, edit notes) | ✅ |
 | 8A | Flowchart (QGraphicsScene nodes, zoom/pan) | ✅ |
 | 8B | Export (PDF/DOCX/JSON/MD) + Import (JSON/paste text) | ✅ |
-| 9 | Settings, backup/restore, packaging | ✅ |
+| 9 | Settings, backup/restore, PyInstaller packaging | ✅ |
+| Polish | App icon, settings persistence, CI Qt build, flowchart text | ✅ |
 
 ### Run the Qt version
 
 ```bash
-# Switch to the Qt branch
-git checkout qt-prototype
-
 # Install Qt dependencies
 pip install -r requirements_qt.txt
 
@@ -88,6 +88,16 @@ pip install reportlab python-docx
 # Run
 python3 qt_app/main.py
 ```
+
+User data and preferences are stored in:
+
+| Platform | Path |
+|----------|------|
+| macOS | `~/Library/Application Support/BenchFlow/` |
+| Windows | `%APPDATA%\BenchFlow\` |
+| Linux | `~/.local/share/BenchFlow/` |
+
+Preferences (`autosave_interval_s`, `theme`, `session_recovery_enabled`) are persisted in `settings.json` in that folder.
 
 ### Build the Qt version
 

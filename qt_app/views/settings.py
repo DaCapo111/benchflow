@@ -387,6 +387,10 @@ class SettingsPage(BasePage):
     def _on_autosave_changed(self, value: int) -> None:
         try:
             self.app.state.autosave_interval_s = value
+            # Persist to settings.json immediately
+            s = self.app.data.load_settings()
+            s["autosave_interval_s"] = value
+            self.app.data.save_settings(s)
         except Exception:
             pass
 

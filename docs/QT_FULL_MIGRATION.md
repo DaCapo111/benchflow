@@ -23,7 +23,8 @@
 | Phase 7 | Lab Notebook — date-grouped list, detail panel, step table, edit notes, search | ✅ **Done** |
 | Phase 8B | Export (PDF/DOCX/JSON/MD) + Import page (JSON file, paste text) | ✅ **Done** |
 | Phase 9 | Settings page, backup/restore, packaging (BenchFlow_Qt.spec, build scripts) | ✅ **Done** |
-| Phase 10 | Cutover — replace CTk on main, update GitHub Actions, signed builds | 🔲 |
+| Pre-merge Polish | App icon, settings persistence, CI Qt build, flowchart empty states | ✅ **Done** |
+| Phase 10 (merge) | Merge `qt-prototype` → `main`, retire CTk legacy | 🔲 Ready |
 
 ---
 

@@ -65,6 +65,14 @@ TAGS_FILE             = APP_DIR / "tags.json"
 SCHEDULE_FILE         = APP_DIR / "schedule.json"
 SCHEDULED_EXP_FILE    = APP_DIR / "scheduled_experiments.json"
 RUNTIME_FILE          = APP_DIR / "runtime_session.json"
+SETTINGS_FILE         = APP_DIR / "settings.json"
+
+# Default user preferences — merged over on load so new keys always exist
+_DEFAULT_SETTINGS: dict[str, Any] = {
+    "theme": "dark",
+    "autosave_interval_s": 30,
+    "session_recovery_enabled": True,
+}
 
 # Templates: repo root / templates/*.json  (read-only)
 _APP_BASE = (Path(sys._MEIPASS)          # type: ignore[attr-defined]
@@ -202,6 +210,28 @@ class DataService:
 
     def save_scheduled_experiments(self, experiments: list[dict[str, Any]]) -> None:
         _save_json(SCHEDULED_EXP_FILE, experiments)
+
+    # ── Settings (user preferences) ───────────────────────────────────────────
+
+    def load_settings(self) -> dict[str, Any]:
+        """Load settings.json, merged with defaults.
+
+        Missing keys are filled from ``_DEFAULT_SETTINGS`` so callers always
+        get the full expected schema even on first launch or after an upgrade
+        that added new preference keys.
+
+        If the file is corrupt it is backed up and defaults are returned.
+        """
+        stored = _load_json(SETTINGS_FILE, None)
+        if not isinstance(stored, dict):
+            stored = {}
+        merged: dict[str, Any] = dict(_DEFAULT_SETTINGS)
+        merged.update(stored)
+        return merged
+
+    def save_settings(self, settings: dict[str, Any]) -> None:
+        """Atomically persist *settings* to settings.json."""
+        _save_json(SETTINGS_FILE, settings)
 
     # ── Templates (built-in, read-only) ───────────────────────────────────────
 

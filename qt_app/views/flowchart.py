@@ -805,16 +805,15 @@ class FlowchartPage(BasePage):
         center_lay.addWidget(self._view, stretch=1)
 
         # Empty state overlay
-        self._empty_lbl = QLabel("Select a protocol from the left panel\n"
-                                 "to view its workflow here.")
+        self._empty_lbl = QLabel(
+            "Select a protocol or template to view its workflow."
+        )
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_lbl.setWordWrap(True)
         self._empty_lbl.setStyleSheet(
             f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px;"
             f"font-style: italic;"
         )
-        # We'll just add it to scene or show/hide the label over view
-        # Easier: just add to center_lay, hide when protocol loaded
         center_lay.addWidget(self._empty_lbl)
         self._view.hide()  # hidden until a protocol is loaded
 
@@ -904,10 +903,14 @@ class FlowchartPage(BasePage):
         self._detail.show_placeholder()
 
         if not steps:
-            name = proto.get("name", "Protocol")
-            self._empty_lbl.setText(
-                f'"{name}" has no steps yet.\nAdd steps in the Protocol Editor.'
-            )
+            is_tmpl = proto.get("id", "").startswith("tmpl_")
+            if is_tmpl:
+                self._empty_lbl.setText(
+                    "Viewing template workflow.\n"
+                    "Use Template to create an editable protocol."
+                )
+            else:
+                self._empty_lbl.setText("This protocol has no steps yet.")
             self._view.hide()
             self._empty_lbl.show()
             return

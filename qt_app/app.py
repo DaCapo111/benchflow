@@ -66,6 +66,12 @@ class BenchFlowApp(QMainWindow):
         self.state = AppState(self)
         self.bg    = init_bg(self)   # BackgroundTaskManager singleton
 
+        # ── Load persisted settings → apply to AppState ───────────────────────
+        _settings = self.data.load_settings()
+        self.state.autosave_interval_s = int(
+            _settings.get("autosave_interval_s", 30)
+        )
+
         # ── Central widget + main layout ──────────────────────────────────────
         central = QWidget()
         central.setObjectName("CentralWidget")
