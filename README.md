@@ -2,8 +2,12 @@
 
 **Interactive wet-lab workflow manager — protocol design, experiment scheduling, run tracking, and real-time lab organization.**
 
-BenchFlow is a local-first macOS / Windows desktop app built with Python + CustomTkinter.  
+BenchFlow is a local-first macOS / Windows desktop app built with Python.  
 No cloud. No account. All data stays on your machine.
+
+> **Two versions available:**  
+> `main` — stable release built with **CustomTkinter** (current distribution)  
+> `qt-prototype` — in-development rebuild with **PySide6 / Qt6** (see below)
 
 > **BenchFlow is distributed through [GitHub Releases](../../releases), not GitHub Packages.**  
 > Future distribution options: Homebrew cask, pip package, signed installer.
@@ -52,7 +56,79 @@ Each release also includes `checksums.txt` (SHA-256) to verify your download.
 
 ---
 
-## Build from source
+## PySide6 / Qt Version
+
+> **Status: Merge candidate — ready to replace CTk on `main`.**
+
+The Qt rewrite uses **PySide6 (Qt 6)** instead of CustomTkinter.  
+All user data files are 100% compatible — switching between versions uses the same JSON files.
+
+### Features
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1–4.75 | App skeleton, Run Mode, Schedule, EventBus, AppState, Toast | ✅ |
+| 5 | Protocol Library + Templates | ✅ |
+| 6 | Protocol Editor (full CRUD, reagents, conditions, reorder) | ✅ |
+| 7 | Lab Notebook (date-grouped, step table, edit notes) | ✅ |
+| 8A | Flowchart (QGraphicsScene nodes, zoom/pan) | ✅ |
+| 8B | Export (PDF/DOCX/JSON/MD) + Import (JSON/paste text) | ✅ |
+| 9 | Settings, backup/restore, PyInstaller packaging | ✅ |
+| Polish | App icon, settings persistence, CI Qt build, flowchart text | ✅ |
+| v0.1.1 | Light Theme + runtime theme switching | ✅ |
+
+### Run the Qt version
+
+```bash
+# Install Qt dependencies
+pip install -r requirements_qt.txt
+
+# Optional: install export dependencies
+pip install reportlab python-docx
+
+# Run
+python3 qt_app/main.py
+```
+
+User data and preferences are stored in:
+
+| Platform | Path |
+|----------|------|
+| macOS | `~/Library/Application Support/BenchFlow/` |
+| Windows | `%APPDATA%\BenchFlow\` |
+| Linux | `~/.local/share/BenchFlow/` |
+
+Preferences (`autosave_interval_s`, `theme`, `session_recovery_enabled`) are persisted in `settings.json` in that folder.
+
+### Build the Qt version
+
+**macOS:**
+```bash
+chmod +x build_qt_mac.sh
+./build_qt_mac.sh
+# Output: dist/mac_qt/BenchFlow.app
+#         releases/BenchFlow-Qt-v0.1.0-macOS.dmg
+```
+
+**Windows:**
+```batch
+build_qt_windows.bat
+REM Output: dist\win_qt\BenchFlow_Qt\BenchFlow_Qt.exe
+REM         releases\BenchFlow-Qt-v0.1.0-Windows.zip
+```
+
+### Qt dependencies
+
+| Package | Required | Purpose |
+|---------|----------|---------|
+| `PySide6 >= 6.6` | **Yes** | UI framework |
+| `reportlab >= 4.0` | No | PDF export |
+| `python-docx >= 1.1` | No | Word export |
+| `pyinstaller >= 6.0` | Build only | Packaging |
+
+---
+
+## Build from source (CTk version)
 
 ### Requirements
 
@@ -175,17 +251,30 @@ GitHub Actions artifacts for 30 days — useful for testing before an official r
 ## Project structure
 
 ```
-app.py                    Main application (single-file, all UI + logic)
+app.py                    CTk main app (main branch — stable)
+qt_app/                   PySide6 app (qt-prototype branch)
+  main.py                 Qt entry point
+  app.py                  BenchFlowApp(QMainWindow) — window + routing
+  theme.py                Colors, Fonts, QSS
+  services/               DataService, EventBus, AppState, export_service
+  views/                  All Qt pages (library, editor, history, …)
+  components/             Sidebar, widgets, toast
+  dialogs/                New protocol, restore session dialogs
+
 VERSION                   Current version number (e.g. 0.1.0)
 CHANGELOG.md              Release history
-requirements.txt          Python dependencies
+requirements.txt          CTk dependencies
+requirements_qt.txt       PySide6 dependencies
 
-BenchFlow.spec            PyInstaller spec — macOS bundle
-BenchFlow_windows.spec    PyInstaller spec — Windows exe
+BenchFlow.spec            PyInstaller spec — CTk macOS bundle
+BenchFlow_windows.spec    PyInstaller spec — CTk Windows exe
+BenchFlow_Qt.spec         PyInstaller spec — Qt macOS bundle
 
-build_mac.sh              One-click macOS build  (reads VERSION)
-build_windows.bat         One-click Windows build (reads VERSION)
-build.py                  Unified cross-platform build script
+build_mac.sh              One-click CTk macOS build
+build_windows.bat         One-click CTk Windows build
+build_qt_mac.sh           One-click Qt macOS build
+build_qt_windows.bat      One-click Qt Windows build
+build.py                  Unified cross-platform build script (CTk)
 
 AppIcon.icns              macOS app icon
 AppIcon.iconset/          Icon source images (all resolutions)
@@ -193,6 +282,9 @@ make_icon.py              Regenerate AppIcon.icns from source PNG
 
 releases/                 Local staging for release-ready files
                           (.dmg / .zip copied here by build scripts)
+
+docs/
+  QT_FULL_MIGRATION.md    Full PySide6 migration plan & progress
 
 .github/
   workflows/
