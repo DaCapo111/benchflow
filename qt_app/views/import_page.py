@@ -166,7 +166,7 @@ class _MethodCard(QFrame):
         col.addWidget(self._name_lbl)
         sub_lbl = QLabel(subtitle)
         sub_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             f"background: transparent;"
         )
         col.addWidget(sub_lbl)
@@ -194,7 +194,7 @@ class _MethodCard(QFrame):
                 f"  border: 1px solid {Colors.BORDER_LIGHT}; border-left: 3px solid {Colors.ACCENT}; }}"
             )
             self._name_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
+                f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; font-weight: 600; background: transparent;"
                 f"background: transparent;"
             )
         else:
@@ -205,7 +205,7 @@ class _MethodCard(QFrame):
                 f"  border: 1px solid {Colors.BORDER_LIGHT}; }}" + hover
             )
             self._name_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+                f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 f"font-weight: 600; background: transparent;"
             )
 
@@ -500,7 +500,7 @@ class _ComingSoonPanel(QWidget):
         title = QLabel(f"{label} Import")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; background: transparent;"
             f"font-weight: 700;"
         )
         lay.addWidget(title)
@@ -512,7 +512,7 @@ class _ComingSoonPanel(QWidget):
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sub.setWordWrap(True)
         sub.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lay.addWidget(sub)
 

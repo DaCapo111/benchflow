@@ -475,7 +475,7 @@ class _StepDetailPanel(QWidget):
         )
         hdr_row.addWidget(num_lbl)
         of_lbl = QLabel(f"of {total}")
-        of_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+        of_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
         hdr_row.addWidget(of_lbl)
         hdr_row.addStretch()
         lay.addLayout(hdr_row)
@@ -484,7 +484,7 @@ class _StepDetailPanel(QWidget):
         title_lbl = QLabel(step.get("title", f"Step {index + 1}"))
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700; background: transparent;"
         )
         lay.addWidget(title_lbl)
 
@@ -507,7 +507,7 @@ class _StepDetailPanel(QWidget):
             r.setSpacing(8)
             k = QLabel(label)
             k.setFixedWidth(72)
-            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             v = QLabel(DataService.format_duration(mins))
             v.setStyleSheet(f"color: {color}; font-size: {Fonts.SIZE_SM}px; font-weight: 600;")
             r.addWidget(k)
@@ -526,9 +526,9 @@ class _StepDetailPanel(QWidget):
             r = QHBoxLayout()
             k = QLabel("Total")
             k.setFixedWidth(72)
-            k.setStyleSheet(f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600;")
+            k.setStyleSheet(f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600; background: transparent;")
             v = QLabel(DataService.format_duration(total_m))
-            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; font-weight: 700;")
+            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; font-weight: 700; background: transparent;")
             r.addWidget(k); r.addWidget(v); r.addStretch()
             lay.addLayout(r)
             lay.addWidget(HSeparator())
@@ -545,10 +545,10 @@ class _StepDetailPanel(QWidget):
             r = QHBoxLayout()
             k = QLabel(label)
             k.setFixedWidth(72)
-            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             v = QLabel(val)
             v.setWordWrap(True)
-            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;")
+            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;")
             r.addWidget(k); r.addWidget(v, stretch=1)
             lay.addLayout(r)
         if any(v.strip() for _, v in conds):
@@ -586,7 +586,7 @@ class _StepDetailPanel(QWidget):
                 rl = QLabel(f"• {name}{suffix}")
                 rl.setWordWrap(True)
                 rl.setStyleSheet(
-                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 )
                 lay.addWidget(rl)
 
@@ -599,7 +599,7 @@ class _StepDetailPanel(QWidget):
                 el = QLabel(f"• {str(e).strip()}")
                 el.setWordWrap(True)
                 el.setStyleSheet(
-                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 )
                 lay.addWidget(el)
 
@@ -614,7 +614,7 @@ class _StepDetailPanel(QWidget):
                     cl = QLabel(f"☐  {txt}")
                     cl.setWordWrap(True)
                     cl.setStyleSheet(
-                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                     )
                     lay.addWidget(cl)
 
@@ -629,7 +629,7 @@ class _StepDetailPanel(QWidget):
                     sl = QLabel(f"  {i+1}. {txt}")
                     sl.setWordWrap(True)
                     sl.setStyleSheet(
-                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                     )
                     lay.addWidget(sl)
 
@@ -659,7 +659,7 @@ class _StepDetailPanel(QWidget):
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-style: italic;"
         )
         self._lay.addWidget(lbl)
@@ -741,7 +741,7 @@ class FlowchartPage(BasePage):
 
         self._proto_name_lbl = QLabel("— Select a protocol —")
         self._proto_name_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         bar_lay.addWidget(self._proto_name_lbl, stretch=1)
 
@@ -750,7 +750,7 @@ class FlowchartPage(BasePage):
         self._zoom_lbl.setFixedWidth(44)
         self._zoom_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._zoom_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
 
         fit_btn  = self._toolbar_btn("⊞ Fit",    self._on_fit)
@@ -780,7 +780,7 @@ class FlowchartPage(BasePage):
 
         lhdr = QLabel("Protocols")
         lhdr.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-weight: 700;"
         )
         left_lay.addWidget(lhdr)
@@ -810,7 +810,7 @@ class FlowchartPage(BasePage):
 
         self._step_count_lbl = QLabel("")
         self._step_count_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             f"text-align: center;"
         )
         self._step_count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -834,7 +834,7 @@ class FlowchartPage(BasePage):
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_lbl.setWordWrap(True)
         self._empty_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px; background: transparent;"
             f"font-style: italic;"
         )
         center_lay.addWidget(self._empty_lbl)

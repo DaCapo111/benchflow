@@ -143,7 +143,7 @@ def _mk_spinbox(max_val: float = 9999, decimals: int = 1) -> QDoubleSpinBox:
 def _field_label(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(
-        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
+        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; font-weight: 600; background: transparent;"
     )
     return lbl
 
@@ -151,7 +151,7 @@ def _field_label(text: str) -> QLabel:
 def _section_hdr(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(
-        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         f"font-weight: 700; letter-spacing: 0.5px;"
         f"padding-top: 6px;"
     )
@@ -227,7 +227,7 @@ class _StepRow(QFrame):
         num = QLabel(f"{self._index + 1}.")
         num.setFixedWidth(24)
         num.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lay.addWidget(num)
 
@@ -235,7 +235,7 @@ class _StepRow(QFrame):
         title = self._step.get("title", "") or f"Step {self._index + 1}"
         lbl = QLabel(title)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         lbl.setWordWrap(False)
@@ -250,7 +250,7 @@ class _StepRow(QFrame):
         if total > 0:
             dur = QLabel(f"{int(total)}m")
             dur.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             )
             lay.addWidget(dur)
 
@@ -363,7 +363,7 @@ class _TagChip(QFrame):
             f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         lbl = QLabel(f"#{tag}")
-        lbl.setStyleSheet(f"color: {Colors.ACCENT}; font-size: {Fonts.SIZE_XS}px;")
+        lbl.setStyleSheet(f"color: {Colors.ACCENT}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
         rm = QPushButton("×")
         rm.setFixedSize(16, 16)
         rm.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -447,7 +447,7 @@ class _StepForm(QScrollArea):
             f"  padding: 6px 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
             f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT}; background: transparent;"
             f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         idx = self._type_cb.findData(step.get("type", "other"))
@@ -612,7 +612,7 @@ class _StepForm(QScrollArea):
         hdr2.setSpacing(4)
         for lbl_text, w_val in [("Name", None), ("Amount", 80), ("Unit", 80), ("", 28)]:
             lbl = QLabel(lbl_text)
-            lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             if w_val:
                 lbl.setFixedWidth(w_val)
             else:
@@ -719,7 +719,7 @@ class _StepForm(QScrollArea):
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic; background: transparent;"
         )
         self._lay.addWidget(lbl)
         self._lay.addStretch()
@@ -947,13 +947,13 @@ class EditorPage(BasePage):
 
         self._proto_title_lbl = QLabel("Protocol Editor")
         self._proto_title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700; background: transparent;"
         )
         bar_lay.addWidget(self._proto_title_lbl, stretch=1)
 
         self._dirty_lbl = QLabel("")
         self._dirty_lbl.setStyleSheet(
-            f"color: {Colors.WARNING}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.WARNING}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         bar_lay.addWidget(self._dirty_lbl)
 
@@ -985,7 +985,7 @@ class EditorPage(BasePage):
         ph_lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ph_lbl = QLabel("Open a protocol from the Library to edit it.")
         ph_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px; font-style: italic; background: transparent;"
         )
         ph_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ph_lay.addWidget(ph_lbl)
@@ -1030,7 +1030,7 @@ class EditorPage(BasePage):
         step_hdr.setSpacing(8)
         self._step_count_lbl = QLabel("Steps (0)")
         self._step_count_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700; background: transparent;"
         )
         step_hdr.addWidget(self._step_count_lbl, stretch=1)
         add_step_btn = QPushButton("＋ Add Step")
@@ -1187,7 +1187,7 @@ class EditorPage(BasePage):
         if n == 0:
             lbl = QLabel("No steps yet. Click ＋ Add Step.")
             lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 f"font-style: italic; padding: 8px;"
             )
             self._step_list_lay.insertWidget(0, lbl)

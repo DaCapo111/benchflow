@@ -96,13 +96,13 @@ class _UndoSnackbar(QFrame):
 
         self._msg_lbl = QLabel(f"✓  '{step_title[:30]}' completed")
         self._msg_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lay.addWidget(self._msg_lbl, stretch=1)
 
         self._countdown_lbl = QLabel("9s")
         self._countdown_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lay.addWidget(self._countdown_lbl)
 
@@ -341,7 +341,7 @@ class RunModePage(BasePage):
         hdr = QLabel("Protocols")
         hdr.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
-            f"font-weight: 600; padding-left: 4px;"
+            f"font-weight: 600; padding-left: 4px; background: transparent;"
         )
         lay.addWidget(hdr)
 
@@ -363,7 +363,7 @@ class RunModePage(BasePage):
         self._steps_hdr = QLabel("Steps")
         self._steps_hdr.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
-            f"font-weight: 600; padding-left: 4px;"
+            f"font-weight: 600; padding-left: 4px; background: transparent;"
         )
         self._steps_hdr.setVisible(False)
         lay.addWidget(self._steps_hdr)
@@ -405,12 +405,13 @@ class RunModePage(BasePage):
         self._info_name = QLabel("—")
         self._info_name.setStyleSheet(
             f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
+            f"background: transparent;"
         )
         info_lay.addWidget(self._info_name)
 
         self._info_meta = QLabel("")
         self._info_meta.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         info_lay.addWidget(self._info_meta)
         info_lay.addStretch()
@@ -1065,7 +1066,7 @@ class RunModePage(BasePage):
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
             f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px;"
-            f"font-style: italic;"
+            f"font-style: italic; background: transparent;"
         )
         self._step_layout.addStretch()
         self._step_layout.addWidget(lbl)

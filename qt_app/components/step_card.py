@@ -229,6 +229,7 @@ class StepCard(QFrame):
         title_lbl = QLabel(step.get("title", "Untitled"))
         title_lbl.setStyleSheet(
             f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 600;"
+            f"background: transparent;"
         )
         title_lbl.setWordWrap(False)
         row1.addWidget(title_lbl, stretch=1)
@@ -244,7 +245,7 @@ class StepCard(QFrame):
         # Status badge (updated by apply_state)
         self._status_badge = QLabel("●  idle")
         self._status_badge.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         row1.addWidget(self._status_badge)
 
@@ -258,7 +259,7 @@ class StepCard(QFrame):
             self._timer_lbl = QLabel("00:00")
             self._timer_lbl.setStyleSheet(
                 f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_2XL}px;"
-                f"font-weight: 700; font-family: monospace;"
+                f"font-weight: 700; font-family: monospace; background: transparent;"
             )
             timer_row.addWidget(self._timer_lbl)
 
@@ -273,7 +274,7 @@ class StepCard(QFrame):
             if parts:
                 plan_lbl = QLabel("  ·  ".join(parts))
                 plan_lbl.setStyleSheet(
-                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 )
                 timer_row.addWidget(plan_lbl)
             timer_row.addStretch()
@@ -313,7 +314,7 @@ class StepCard(QFrame):
             if ho > 0:
                 est_lbl = QLabel(f"⏱  Hands-on estimate: {ho:.0f} min")
                 est_lbl.setStyleSheet(
-                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 )
                 root.addWidget(est_lbl)
 
@@ -322,7 +323,7 @@ class StepCard(QFrame):
         if desc:
             d_lbl = QLabel(desc[:140] + ("…" if len(desc) > 140 else ""))
             d_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             )
             d_lbl.setWordWrap(True)
             root.addWidget(d_lbl)
@@ -334,7 +335,7 @@ class StepCard(QFrame):
                 suffix = f" +{len(reagents)-3}" if len(reagents) > 3 else ""
                 r_lbl = QLabel("🧪 " + ", ".join(r_names) + suffix)
                 r_lbl.setStyleSheet(
-                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
+                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 )
                 root.addWidget(r_lbl)
 
@@ -449,7 +450,7 @@ class StepCard(QFrame):
             "skipped":   (f"color: {Colors.TEXT_MUTED};",    "⟩  skipped"),
         }
         badge_style, badge_text = badge_map.get(status, ("", ""))
-        self._status_badge.setStyleSheet(badge_style + f" font-size: {Fonts.SIZE_XS}px;")
+        self._status_badge.setStyleSheet(badge_style + f" font-size: {Fonts.SIZE_XS}px; background: transparent;")
         self._status_badge.setText(badge_text)
 
         # Button visibility
@@ -491,7 +492,7 @@ class StepCard(QFrame):
             self._timer_lbl.setText(format_timer(state.planned_secs, countdown=is_cd))
             self._timer_lbl.setStyleSheet(
                 f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_2XL}px;"
-                f"font-weight: 700; font-family: monospace;"
+                f"font-weight: 700; font-family: monospace; background: transparent;"
             )
         elif state.status in ("running", "paused"):
             if is_cd:
@@ -505,7 +506,7 @@ class StepCard(QFrame):
                 self._timer_lbl.setText(format_timer(elapsed, countdown=False))
             self._timer_lbl.setStyleSheet(
                 f"color: {color}; font-size: {Fonts.SIZE_2XL}px;"
-                f"font-weight: 700; font-family: monospace;"
+                f"font-weight: 700; font-family: monospace; background: transparent;"
             )
         elif state.status == "completed":
             if is_cd:
@@ -514,13 +515,13 @@ class StepCard(QFrame):
                 self._timer_lbl.setText(f"✓ {format_timer(state.elapsed_secs(now))}")
             self._timer_lbl.setStyleSheet(
                 f"color: {Colors.SUCCESS}; font-size: {Fonts.SIZE_2XL}px;"
-                f"font-weight: 700; font-family: monospace;"
+                f"font-weight: 700; font-family: monospace; background: transparent;"
             )
         elif state.status == "skipped":
             self._timer_lbl.setText("— skipped")
             self._timer_lbl.setStyleSheet(
                 f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_2XL}px;"
-                f"font-weight: 700;"
+                f"font-weight: 700; background: transparent;"
             )
 
     def update_progress(self, state: StepRunState, now: float | None = None) -> None:

@@ -226,7 +226,7 @@ class _RecordCard(QFrame):
         title = r.get("title", r.get("protocolName", "Run"))
         tl = QLabel(title)
         tl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-weight: 700;"
         )
         tl.setWordWrap(False)
@@ -236,7 +236,7 @@ class _RecordCard(QFrame):
         dur = _actual_duration(r)
         if dur > 0:
             dl = QLabel(_sec_duration(dur))
-            dl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            dl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             r1.addWidget(dl)
         lay.addLayout(r1)
 
@@ -250,7 +250,7 @@ class _RecordCard(QFrame):
         t_end   = _fmt_ts(r.get("endedAt"))
         if t_start != "—":
             tl2 = QLabel(f"{t_start}–{t_end}")
-            tl2.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            tl2.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             r2.addWidget(tl2)
         r2.addStretch()
         lay.addLayout(r2)
@@ -272,7 +272,7 @@ class _RecordCard(QFrame):
                 r3.addWidget(dot)
             if len(step_records) > 24:
                 more = QLabel(f"+{len(step_records)-24}")
-                more.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 8px;")
+                more.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 8px; background: transparent;")
                 r3.addWidget(more)
             r3.addStretch()
 
@@ -288,7 +288,7 @@ class _RecordCard(QFrame):
         obs = (r.get("observations") or r.get("notes") or "").strip()
         if obs:
             ol = QLabel(f"💬  {obs[:90]}{'…' if len(obs) > 90 else ''}")
-            ol.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            ol.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             ol.setWordWrap(True)
             lay.addWidget(ol)
 
@@ -442,7 +442,7 @@ class _DetailPanel(QWidget):
             v.setStyleSheet(f"color: {color}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;")
             k = QLabel(label)
             k.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             col.addWidget(v)
             col.addWidget(k)
             stats_row.addLayout(col)
@@ -658,7 +658,7 @@ class _DetailPanel(QWidget):
                                ("Actual", 0), ("Status", 0)]:
             lbl = QLabel(text)
             lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 f"font-weight: 600; padding: 2px 4px;"
             )
             if not stretch:
@@ -676,14 +676,14 @@ class _DetailPanel(QWidget):
             # Number
             n_lbl = QLabel(f"{i+1}")
             n_lbl.setFixedWidth(22)
-            n_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            n_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                                 f"padding: 3px 4px;")
             row.addWidget(n_lbl)
 
             # Title
             title_text = sr.get("stepTitle", f"Step {i+1}")
             t_lbl = QLabel(title_text)
-            t_lbl.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XS}px;"
+            t_lbl.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                                 f"padding: 3px 4px;")
             t_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
             t_lbl.setWordWrap(False)
@@ -694,7 +694,7 @@ class _DetailPanel(QWidget):
             p_lbl = QLabel(_sec_duration(planned_s))
             p_lbl.setFixedWidth(56)
             p_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            p_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            p_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                                 f"padding: 3px 4px;")
             row.addWidget(p_lbl)
 
@@ -732,7 +732,7 @@ class _DetailPanel(QWidget):
             if step_notes:
                 note_lbl = QLabel(f"   ↳ {step_notes[:100]}")
                 note_lbl.setStyleSheet(
-                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                     f"font-style: italic; padding: 0 4px 4px 26px;"
                 )
                 note_lbl.setWordWrap(True)
@@ -767,7 +767,7 @@ class _DetailPanel(QWidget):
                 tl = QLabel(t_str)
                 tl.setFixedWidth(48)
                 tl.setStyleSheet(
-                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 )
                 e_row.addWidget(tl)
             tl2 = QLabel(text)
@@ -830,7 +830,7 @@ class _DetailPanel(QWidget):
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-style: italic;"
         )
         self._lay.addWidget(lbl)
@@ -949,7 +949,7 @@ class HistoryPage(BasePage):
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
             f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT}; background: transparent;"
             f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         self._proto_cb.addItem("All Protocols", userData="")
@@ -958,7 +958,7 @@ class HistoryPage(BasePage):
 
         self._count_lbl = QLabel("")
         self._count_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         tb_lay.addWidget(self._count_lbl)
 
@@ -1080,7 +1080,7 @@ class HistoryPage(BasePage):
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 lbl.setWordWrap(True)
                 lbl.setStyleSheet(
-                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+                    f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                     f"font-style: italic;"
                 )
                 self._list_layout.addWidget(lbl)
@@ -1101,7 +1101,7 @@ class HistoryPage(BasePage):
                 dh_lay.setSpacing(8)
                 dh_lbl = QLabel(_fmt_date_header(date_key))
                 dh_lbl.setStyleSheet(
-                    f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
+                    f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; background: transparent;"
                     f"font-weight: 700;"
                 )
                 dh_lay.addWidget(dh_lbl)

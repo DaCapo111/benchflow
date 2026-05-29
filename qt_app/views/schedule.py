@@ -157,7 +157,7 @@ class _SessionBlock(QFrame):
         title_lbl = QLabel(exp.title)
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-weight: 600; background: transparent; border: none;"
         )
         lay.addWidget(title_lbl)
@@ -168,7 +168,7 @@ class _SessionBlock(QFrame):
         dur     = format_duration_min(exp.total_duration)
         time_lbl = QLabel(f"{t_start} – {t_end}  ·  {dur}")
         time_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             f"background: transparent; border: none;"
         )
         lay.addWidget(time_lbl)
@@ -595,7 +595,7 @@ class _TimelineBlockRow(QFrame):
         handle = QLabel("⠿")
         handle.setFixedWidth(16)
         handle.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 14px; padding: 0;"
+            f"color: {Colors.TEXT_MUTED}; font-size: 14px; padding: 0; background: transparent;"
         )
         handle.setToolTip("Drag to reorder (use ▲▼ buttons)")
         row.addWidget(handle)
@@ -606,11 +606,11 @@ class _TimelineBlockRow(QFrame):
         t_col.setContentsMargins(0, 0, 0, 0)
         t_start_lbl = QLabel(format_time_ms(block.start_time))
         t_start_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         t_end_lbl = QLabel(format_time_ms(block.end_time))
         t_end_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         t_col.addWidget(t_start_lbl)
         t_col.addWidget(t_end_lbl)
@@ -626,7 +626,7 @@ class _TimelineBlockRow(QFrame):
 
         title_lbl = QLabel(block.title)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED if is_inactive else Colors.TEXT_PRIMARY};"
+            f"color: {Colors.TEXT_MUTED if is_inactive else Colors.TEXT_PRIMARY}; background: transparent;"
             f"font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
             + ("text-decoration: line-through;" if is_inactive else "")
         )
@@ -642,14 +642,14 @@ class _TimelineBlockRow(QFrame):
             meta_parts.append(f"⏳ {block.wait_minutes:.0f}m wait")
         meta_lbl = QLabel("  ·  ".join(meta_parts))
         meta_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         content.addWidget(meta_lbl)
 
         if block.notes:
             notes_lbl = QLabel(block.notes[:80] + ("…" if len(block.notes) > 80 else ""))
             notes_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 f"font-style: italic;"
             )
             content.addWidget(notes_lbl)
@@ -1270,14 +1270,14 @@ class SchedulePage(BasePage):
         # ── Experiment header ──────────────────────────────────────────────
         title_lbl = QLabel(exp.title)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700; background: transparent;"
         )
         title_lbl.setWordWrap(True)
         self._detail_layout.addWidget(title_lbl)
 
         proto_lbl = QLabel(exp.protocol_name or "Custom")
         proto_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         self._detail_layout.addWidget(proto_lbl)
 
@@ -1287,14 +1287,14 @@ class SchedulePage(BasePage):
             f"  ·  {format_duration_min(exp.total_duration)}"
         )
         meta_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         self._detail_layout.addWidget(meta_lbl)
 
         if exp.notes:
             notes_lbl = QLabel(exp.notes)
             notes_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 f"font-style: italic;"
             )
             notes_lbl.setWordWrap(True)
@@ -1305,7 +1305,7 @@ class SchedulePage(BasePage):
         # ── Timeline blocks ────────────────────────────────────────────────
         steps_hdr = QLabel(f"Timeline  ({len(exp.timeline_blocks)} blocks)")
         steps_hdr.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600; background: transparent;"
         )
         self._detail_layout.addWidget(steps_hdr)
 
@@ -1362,7 +1362,7 @@ class SchedulePage(BasePage):
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-style: italic;"
         )
         self._detail_layout.addStretch()

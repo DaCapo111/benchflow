@@ -57,7 +57,7 @@ class _StatCard(Card):
 
         val_lbl = QLabel(value)
         val_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY};"
+            f"color: {Colors.TEXT_PRIMARY}; background: transparent;"
             f"font-size: {Fonts.SIZE_3XL}px; font-weight: 750;"
             f"background: transparent;"
         )
@@ -65,7 +65,7 @@ class _StatCard(Card):
 
         lab_lbl = QLabel(label)
         lab_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_MD}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_MD}px; background: transparent;"
             f"background: transparent;"
         )
         lay.addWidget(lab_lbl)
@@ -103,7 +103,7 @@ class _ActiveSessionBanner(QFrame):
         )
         msg = QLabel(f"Interrupted run: <b>{proto_name}</b>  — open Run Mode to resume")
         msg.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"background: transparent;"
         )
         msg.setTextFormat(Qt.TextFormat.RichText)
@@ -139,7 +139,7 @@ def _quick_card(emoji: str, label: str, page: str, app) -> QFrame:
 
     t_lbl = QLabel(label)
     t_lbl.setStyleSheet(
-        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
+        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; background: transparent;"
         f"font-weight: 700; background: transparent;"
     )
     lay.addWidget(t_lbl)
@@ -249,7 +249,7 @@ class DashboardPage(BasePage):
 
         ovr_lbl = QLabel("Overview")
         ovr_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XL}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XL}px; background: transparent;"
             f"font-weight: 700; background: transparent;"
         )
         root.addWidget(ovr_lbl)
@@ -274,7 +274,7 @@ class DashboardPage(BasePage):
         # ── Quick access ──────────────────────────────────────────────────────
         qa_lbl = QLabel("Quick access")
         qa_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XL}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XL}px; background: transparent;"
             f"font-weight: 700; background: transparent;"
         )
         root.addWidget(qa_lbl)

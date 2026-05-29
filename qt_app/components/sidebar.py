@@ -76,7 +76,7 @@ class Sidebar(QWidget):
         footer.setObjectName("SidebarFooter")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         self._footer = footer
         root.addWidget(footer)
@@ -91,7 +91,7 @@ class Sidebar(QWidget):
         title = QLabel("BenchFlow")
         title.setObjectName("SidebarTitle")
         title.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY};"
+            f"color: {Colors.TEXT_PRIMARY}; background: transparent;"
             f"font-size: {Fonts.SIZE_XL}px;"
             f"font-weight: 700;"
         )
@@ -100,7 +100,7 @@ class Sidebar(QWidget):
         subtitle = QLabel("Wet Lab Manager")
         subtitle.setObjectName("SidebarSubtitle")
         subtitle.setStyleSheet(
-            f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         self._logo_sub = subtitle
 
@@ -139,12 +139,12 @@ class Sidebar(QWidget):
         # Logo
         if self._logo_title:
             self._logo_title.setStyleSheet(
-                f"color: {Colors.TEXT_PRIMARY};"
+                f"color: {Colors.TEXT_PRIMARY}; background: transparent;"
                 f"font-size: {Fonts.SIZE_XL}px; font-weight: 700;"
             )
         if self._logo_sub:
             self._logo_sub.setStyleSheet(
-                f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px;"
+                f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             )
         # Nav buttons
         for pid, btn in self._nav_buttons.items():
@@ -153,7 +153,7 @@ class Sidebar(QWidget):
         # Footer
         if self._footer:
             self._footer.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ class Sidebar(QWidget):
             return (
                 "QPushButton {"
                 f"  background-color: {Colors.SB_ACTIVE};"
-                f"  color: {Colors.SB_TEXT_ACT};"
+                f"  color: {Colors.SB_TEXT_ACT}; background: transparent;"
                 f"  text-align: left;"
                 f"  padding: 0px 14px;"
                 f"  border-radius: 14px;"
@@ -176,7 +176,7 @@ class Sidebar(QWidget):
         return (
             "QPushButton {"
             f"  background-color: transparent;"
-            f"  color: {Colors.SB_TEXT};"
+            f"  color: {Colors.SB_TEXT}; background: transparent;"
             f"  text-align: left;"
             f"  padding: 0px 14px;"
             f"  border-radius: 14px;"
@@ -185,6 +185,6 @@ class Sidebar(QWidget):
             "}"
             "QPushButton:hover {"
             f"  background-color: {Colors.SB_HOVER};"
-            f"  color: {Colors.TEXT_PRIMARY};"
+            f"  color: {Colors.TEXT_PRIMARY}; background: transparent;"
             "}"
         )
