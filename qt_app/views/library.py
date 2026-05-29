@@ -537,14 +537,14 @@ class _DetailPanel(QWidget):
         if primary:
             btn.setStyleSheet(
                 f"QPushButton {{ background: {color}; color: white;"
-                f"  border: none; border-radius: {Radii.LG}px;"
+                f"  border: none; border-radius: 10px;"
                 f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; padding: 0 14px; }}"
-                f"QPushButton:hover {{ opacity: 0.9; }}"
+                f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
             )
         else:
             btn.setStyleSheet(
                 f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
-                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: 10px;"
                 f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
             )
@@ -557,7 +557,7 @@ class _DetailPanel(QWidget):
         btn.setEnabled(False)
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_SURFACE_ALT}; color: {Colors.TEXT_MUTED};"
-            f"  border: none; border-radius: {Radii.LG}px;"
+            f"  border: none; border-radius: 10px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; text-align: left; }}"
         )
         self._lay.addWidget(btn)
@@ -569,7 +569,7 @@ class _DetailPanel(QWidget):
         btn.setToolTip("Export this protocol as JSON, Markdown, or PDF")
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: 10px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )

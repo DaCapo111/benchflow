@@ -120,14 +120,14 @@ def _action_btn(label: str, color: str = Colors.TEXT_SECOND,
     if danger:
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.DANGER};"
-            f"  border: 1px solid {Colors.DANGER_BG}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.DANGER_BG}; border-radius: 10px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.DANGER_BG}; }}"
         )
     else:
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
-            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: 10px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )

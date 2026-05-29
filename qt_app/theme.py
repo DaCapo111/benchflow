@@ -91,30 +91,30 @@ _DARK: dict[str, object] = {
 }
 
 _LIGHT: dict[str, object] = {
-    "BG_DARK":      "#F6F3EE",   # app window / outer frame
-    "BG_SIDEBAR":   "#F1EEE8",   # sidebar background
+    "BG_DARK":      "#F7F6F3",   # app window / outer frame
+    "BG_SIDEBAR":   "#F3F2EF",   # sidebar background
     "BG_CARD":      "#FFFFFF",   # card / panel surface
-    "BG_CARD_HOV":  "#FFFDF9",   # card hover
+    "BG_CARD_HOV":  "#F9F8F5",   # card hover
     "BG_INPUT":     "#FFFFFF",   # input field
-    "BG_PAGE":      "#F8F6F2",   # page body
-    "BG_SURFACE_ALT": "#F4EFE7",
-    "BG_ELEVATED":  "#FFFDF9",
+    "BG_PAGE":      "#F7F7F5",   # page body
+    "BG_SURFACE_ALT": "#F2F1EE",
+    "BG_ELEVATED":  "#FFFDFC",
     "SELECTED_BG":  "#EAF2FF",
-    "HOVER_BG":     "#F4EFE7",
+    "HOVER_BG":     "#F2F1EE",
 
     "SB_ACTIVE":    "#EAF2FF",   # selected nav pill
-    "SB_HOVER":     "#E9E3DA",   # nav hover
-    "SB_TEXT":      "#6B6258",   # inactive nav text
-    "SB_TEXT_ACT":  "#171717",   # active nav text
-    "SB_BORDER":    "#DDD3C7",   # sidebar/border
+    "SB_HOVER":     "#E9E8E4",   # nav hover
+    "SB_TEXT":      "#4B5563",   # inactive nav text
+    "SB_TEXT_ACT":  "#111827",   # active nav text
+    "SB_BORDER":    "#DDDAD3",   # sidebar/border
 
-    "TEXT_PRIMARY": "#171717",   # main text
-    "TEXT_SECOND":  "#6B6258",   # secondary text
-    "TEXT_MUTED":   "#9A9187",   # muted / placeholder
+    "TEXT_PRIMARY": "#111827",   # main text
+    "TEXT_SECOND":  "#4B5563",   # secondary text
+    "TEXT_MUTED":   "#8A8178",   # muted / placeholder
 
-    "ACCENT":       "#2F6FED",
-    "ACCENT_HOVER": "#255DD1",
-    "ACCENT_LIGHT": "#3B73E6",
+    "ACCENT":       "#2563EB",
+    "ACCENT_HOVER": "#1D4ED8",
+    "ACCENT_LIGHT": "#2F6FED",
     "ACCENT_BG":    "#EAF1FF",
 
     "SUCCESS":      "#16A34A",   # darker green
@@ -124,11 +124,11 @@ _LIGHT: dict[str, object] = {
     "DANGER":       "#DC2626",   # darker red
     "DANGER_BG":    "#FEE2E2",   # light red background
 
-    "BORDER":       "#DDD3C7",
-    "BORDER_LIGHT": "#E6DED2",
+    "BORDER":       "#DDDAD3",
+    "BORDER_LIGHT": "#E5E2DC",
 
-    "SCROLL_HANDLE": "#D8CEC1",
-    "SCROLL_HOV":    "#B8AB9C",
+    "SCROLL_HANDLE": "#D7D3CB",
+    "SCROLL_HOV":    "#AFA79D",
 
     "STEP_COLORS": {
         "preparation":       ("#EBF3FF", "#3b82f6"),
@@ -351,26 +351,36 @@ QPushButton#PrimaryButton {{
     background-color: {c.ACCENT};
     color: #ffffff;
     border: none;
-    border-radius: {r.LG}px;
-    padding: 8px 20px;
+    border-radius: 10px;
+    padding: 8px 14px;
     font-size: {f.SIZE_MD}px;
     font-weight: 600;
 }}
 QPushButton#PrimaryButton:hover {{ background-color: {c.ACCENT_HOVER}; }}
 QPushButton#PrimaryButton:pressed {{ background-color: {c.ACCENT_HOVER}; }}
+QPushButton#PrimaryButton:disabled {{
+    background-color: {c.ACCENT_BG};
+    color: {c.ACCENT_LIGHT};
+    border: 1px solid {c.BORDER_LIGHT};
+}}
 
 QPushButton#SecondaryButton {{
     background-color: {c.BG_CARD};
     color: {c.TEXT_PRIMARY};
     border: 1px solid {c.BORDER_LIGHT};
-    border-radius: {r.LG}px;
-    padding: 8px 20px;
+    border-radius: 10px;
+    padding: 8px 14px;
     font-size: {f.SIZE_MD}px;
 }}
 QPushButton#SecondaryButton:hover {{
     background-color: {c.BG_CARD_HOV};
     color: {c.TEXT_PRIMARY};
     border-color: {c.BORDER};
+}}
+QPushButton#SecondaryButton:disabled {{
+    background-color: {c.BG_SURFACE_ALT};
+    color: {c.TEXT_MUTED};
+    border-color: {c.BORDER_LIGHT};
 }}
 
 QPushButton#DangerButton {{
