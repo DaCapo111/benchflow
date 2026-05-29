@@ -143,6 +143,7 @@ class RunModePage(BasePage):
     def __init__(self, app: "BenchFlowApp", parent: QWidget | None = None) -> None:  # type: ignore[name-defined]
         super().__init__(app, parent)
         self._session: RunModeSession | None = None
+        self._selected_proto: dict | None = None   # preview selection (no session)
         self._cards: list[StepCard] = []
         self._snackbar: _UndoSnackbar | None = None
 
@@ -171,10 +172,13 @@ class RunModePage(BasePage):
 
     def _on_theme_changed(self, theme: str = "dark", **_kw) -> None:
         """Refresh Run Mode without discarding an active timer session."""
-        if self._session is None:
+        if self._session is not None:
+            self._rebuild_active_theme()
+        elif self._selected_proto is not None:
             self._rebuild_theme()
-            return
-        self._rebuild_active_theme()
+            self._show_protocol_preview(self._selected_proto)
+        else:
+            self._rebuild_theme()
 
     def _ensure_fresh_theme(self) -> None:
         """Rebuild stale theme state while preserving active sessions."""
@@ -184,8 +188,11 @@ class RunModePage(BasePage):
             return
         if self._session is not None:
             self._rebuild_active_theme()
-            return
-        self._rebuild_theme()
+        elif self._selected_proto is not None:
+            self._rebuild_theme()
+            self._show_protocol_preview(self._selected_proto)
+        else:
+            self._rebuild_theme()
 
     def _rebuild_active_theme(self) -> None:
         """Rebuild theme-dependent widgets while keeping the run session object."""
@@ -233,6 +240,9 @@ class RunModePage(BasePage):
             )
             if not self._tick_timer.isActive():
                 self._tick_timer.start()
+        elif self._selected_proto is not None:
+            self._select_protocol_in_list(self._selected_proto.get("id", ""))
+            self._show_protocol_preview(self._selected_proto)
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -458,15 +468,17 @@ class RunModePage(BasePage):
                 item = self._proto_list.item(i)
                 proto = item.data(Qt.ItemDataRole.UserRole) if item else None
                 if proto and proto.get("id") == wanted_id:
+                    # Select in list (triggers _on_proto_selected → preview only)
                     self._proto_list.setCurrentItem(item)
                     break
             # Clear so a subsequent on_show() doesn't re-select stale value
             self.app.state.selected_protocol_id = ""
 
-        # Check for existing session
-        existing = self.app.data.load_active_session()
-        if existing and existing.get("version", 0) == 3:
-            self._offer_restore(existing)
+        # Check for existing session (startup restore dialog)
+        if self._session is None:
+            existing = self.app.data.load_active_session()
+            if existing and existing.get("version", 0) == 3:
+                self._offer_restore(existing)
 
     # ── Protocol list ─────────────────────────────────────────────────────────
 
@@ -496,24 +508,240 @@ class RunModePage(BasePage):
         if protocol is None:
             return
 
-        # If we already have an active session for this protocol, keep it
-        if (self._session is not None
-                and self._session.protocol_id == protocol.get("id", "")):
+        proto_id = protocol.get("id", "")
+
+        # If active session for THIS protocol is already running, keep it
+        if self._session is not None and self._session.protocol_id == proto_id:
             return
 
-        logger.info(f"select_protocol: {protocol.get('name', '?')}")
-        self._session = RunModeSession.new(protocol)
+        # If a DIFFERENT protocol is selected while a session is active, prevent switching
+        if self._session is not None:
+            ToastManager.show_warning("End the current run before switching protocols.")
+            self._select_protocol_in_list(self._session.protocol_id)
+            return
+
+        logger.info(f"select_protocol_preview: {protocol.get('name', '?')}")
+        self._selected_proto = protocol
+        self._show_protocol_preview(protocol)
+
+    # ── Protocol preview (selection without session) ──────────────────────────
+
+    def _show_protocol_preview(self, protocol: dict) -> None:
+        """Show read-only protocol info + Start/Resume Run button. No session created."""
+        # Update info bar
+        name = protocol.get("name", "Untitled")
+        self._info_name.setText(name)
+        proto_total_min = DataService.protocol_total_minutes(protocol)
+        steps = protocol.get("steps", [])
+        self._info_meta.setText(
+            f"{len(steps)} steps  ·  ~{DataService.format_duration(proto_total_min)}"
+        )
+
+        # Hide all session controls
+        self._add_block_btn.setVisible(False)
+        self._save_btn.setVisible(False)
+        self._end_run_btn.setVisible(False)
+        self._seq_btn.setVisible(False)
+        self._session_badge.setVisible(False)
+        self._step_status_list.setVisible(False)
+        self._steps_hdr.setVisible(False)
+
+        # Clear step area
+        while self._step_layout.count():
+            item = self._step_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Check for an existing saved session for this protocol
+        existing = self.app.data.load_active_session()
+        has_existing = (
+            existing and
+            existing.get("version", 0) == 3 and
+            existing.get("protocol_id", "") == protocol.get("id", "")
+        )
+
+        # ── Action button (Start Run / Resume Run) ────────────────────────────
+        if has_existing:
+            # Work out how many steps are done so we can show progress
+            saved_states = existing.get("step_states", [])
+            done = sum(1 for s in saved_states if s.get("status") == "completed")
+            skipped = sum(1 for s in saved_states if s.get("status") == "skipped")
+            progress_txt = f"  ({done} done, {skipped} skipped)" if saved_states else ""
+
+            action_btn = PrimaryButton(f"▶  Resume Run{progress_txt}")
+            action_btn.clicked.connect(lambda _=False, r=existing: self._on_resume_existing(r))
+            notice_lbl = QLabel("Unfinished session found — resume or start fresh")
+            notice_lbl.setStyleSheet(
+                f"color: {Colors.WARNING}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
+            )
+        else:
+            action_btn = PrimaryButton("▶  Start Run")
+            action_btn.clicked.connect(self._on_start_run)
+            notice_lbl = None
+
+        action_btn.setMinimumHeight(38)
+        action_btn.setMinimumWidth(140)
+        action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # ── Top info row: description + button ───────────────────────────────
+        top_row = QWidget()
+        top_row.setStyleSheet("background: transparent;")
+        top_lay = QHBoxLayout(top_row)
+        top_lay.setContentsMargins(0, 0, 0, 0)
+        top_lay.setSpacing(16)
+
+        info_col = QVBoxLayout()
+        info_col.setSpacing(4)
+
+        category = protocol.get("category", "").strip()
+        if category:
+            cat_lbl = QLabel(category)
+            cat_lbl.setStyleSheet(
+                f"color: {Colors.ACCENT}; font-size: {Fonts.SIZE_XS}px;"
+                f"font-weight: 600; background: transparent;"
+            )
+            info_col.addWidget(cat_lbl)
+
+        desc = protocol.get("description", "").strip()
+        if desc:
+            desc_lbl = QLabel(desc[:220] + ("…" if len(desc) > 220 else ""))
+            desc_lbl.setWordWrap(True)
+            desc_lbl.setStyleSheet(
+                f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
+            )
+            info_col.addWidget(desc_lbl)
+
+        if notice_lbl:
+            info_col.addWidget(notice_lbl)
+
+        top_lay.addLayout(info_col, stretch=1)
+
+        btn_col = QVBoxLayout()
+        btn_col.setAlignment(Qt.AlignmentFlag.AlignTop)
+        btn_col.setSpacing(6)
+        btn_col.addWidget(action_btn)
+        if has_existing:
+            fresh_btn = QPushButton("Start Fresh")
+            fresh_btn.setMinimumHeight(30)
+            fresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            fresh_btn.setStyleSheet(
+                f"QPushButton {{ background: transparent; color: {Colors.TEXT_MUTED};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
+                f"  padding: 4px 12px; font-size: {Fonts.SIZE_XS}px; }}"
+                f"QPushButton:hover {{ color: {Colors.DANGER}; border-color: {Colors.DANGER}; }}"
+            )
+            fresh_btn.clicked.connect(self._on_start_run)
+            btn_col.addWidget(fresh_btn)
+        top_lay.addLayout(btn_col)
+
+        self._step_layout.addWidget(top_row)
+        self._step_layout.addSpacing(4)
+        self._step_layout.addWidget(HSeparator())
+        self._step_layout.addSpacing(8)
+
+        # ── Step preview list ─────────────────────────────────────────────────
+        for i, step in enumerate(steps):
+            row = self._build_preview_step_row(i, step)
+            self._step_layout.addWidget(row)
+
+        self._step_layout.addStretch()
+
+    def _build_preview_step_row(self, idx: int, step: dict) -> QWidget:
+        """Compact read-only step row for protocol preview."""
+        stype = step.get("type", "other")
+        step_colors = Colors.STEP_COLORS.get(stype, Colors.STEP_COLORS["other"])
+        bg_color, accent_color = step_colors
+
+        row = QFrame()
+        row.setStyleSheet(
+            f"QFrame {{ background: {bg_color}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+        )
+        lay = QHBoxLayout(row)
+        lay.setContentsMargins(12, 7, 12, 7)
+        lay.setSpacing(10)
+
+        idx_lbl = QLabel(f"{idx + 1:02d}")
+        idx_lbl.setStyleSheet(
+            f"color: {accent_color}; font-size: {Fonts.SIZE_XS}px; font-weight: 700;"
+            f"background: {accent_color}25; border-radius: 4px; padding: 1px 5px;"
+        )
+        idx_lbl.setFixedWidth(28)
+        lay.addWidget(idx_lbl)
+
+        title_lbl = QLabel(step.get("title", "Untitled"))
+        title_lbl.setStyleSheet(
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"font-weight: 600; background: transparent;"
+        )
+        lay.addWidget(title_lbl, stretch=1)
+
+        # Duration
+        ho = float(step.get("handsOnMinutes", 0))
+        wt = float(step.get("waitMinutes", 0))
+        total_m = ho + wt
+        if total_m > 0:
+            dur_lbl = QLabel(f"~{total_m:.0f}m")
+            dur_lbl.setStyleSheet(
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
+            )
+            lay.addWidget(dur_lbl)
+
+        # Type badge
+        type_lbl = QLabel(stype.replace("_", " ").title())
+        type_lbl.setStyleSheet(
+            f"color: {accent_color}; background: {accent_color}20;"
+            f"border-radius: 4px; padding: 1px 6px;"
+            f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
+        )
+        lay.addWidget(type_lbl)
+
+        return row
+
+    # ── Start / Resume run ────────────────────────────────────────────────────
+
+    def _on_start_run(self) -> None:
+        """Create a new session for the selected protocol and begin the run."""
+        if self._selected_proto is None:
+            return
+        logger.info(f"start_run: {self._selected_proto.get('name', '?')}")
+
+        self._session = RunModeSession.new(self._selected_proto)
         self._sequential = False
         self._seq_btn.setChecked(False)
         self._render_step_cards_once()
         self._schedule_save()
         self._tick_timer.start()
+
         self._add_block_btn.setVisible(True)
         self._save_btn.setVisible(True)
         self._end_run_btn.setVisible(True)
         self._seq_btn.setVisible(True)
         self._session_badge.setText("● Active session")
         self._session_badge.setVisible(True)
+
+    def _on_resume_existing(self, raw: dict) -> None:
+        """Restore a previously saved session and continue the run."""
+        if self._selected_proto is None:
+            return
+        try:
+            restored = RunModeSession.from_dict(raw)
+            self._session = restored
+            self._render_step_cards_once()
+            self._tick_timer.start()
+
+            self._add_block_btn.setVisible(True)
+            self._save_btn.setVisible(True)
+            self._end_run_btn.setVisible(True)
+            self._seq_btn.setVisible(True)
+            self._session_badge.setText("● Resumed")
+            self._session_badge.setVisible(True)
+
+            logger.info(f"resume_existing: protocol_id={restored.protocol_id}")
+        except Exception as e:
+            logger.error(f"resume_existing error: {e}")
+            ToastManager.show_error("Could not resume session. Starting a fresh run.")
+            self._on_start_run()
 
     # ── Step card rendering (once per protocol) ───────────────────────────────
 
@@ -868,14 +1096,14 @@ class RunModePage(BasePage):
         logger.info("end_run")
 
     def _clear_session_state(self) -> None:
-        """Tear down all session state and reset the UI."""
+        """Tear down all session state. Returns to preview if a protocol is still selected."""
         self.app.data.clear_active_session()
         self._session = None
         self._cards.clear()
         self._sequential = False
         self._tick_timer.stop()
 
-        # Hide header buttons
+        # Reset header controls
         self._add_block_btn.setVisible(False)
         self._save_btn.setVisible(False)
         self._end_run_btn.setVisible(False)
@@ -883,14 +1111,16 @@ class RunModePage(BasePage):
         self._seq_btn.setVisible(False)
         self._session_badge.setVisible(False)
 
-        # Hide step list
-        self._step_status_list.setVisible(False)
-        self._steps_hdr.setVisible(False)
-        self._step_status_list.clear()
-
-        self._show_idle_state()
-        self._info_name.setText("—")
-        self._info_meta.setText("")
+        # Return to preview mode if a protocol is still selected, else idle
+        if self._selected_proto is not None:
+            self._show_protocol_preview(self._selected_proto)
+        else:
+            self._step_status_list.setVisible(False)
+            self._steps_hdr.setVisible(False)
+            self._step_status_list.clear()
+            self._show_idle_state()
+            self._info_name.setText("—")
+            self._info_meta.setText("")
 
     # ── Session restore ───────────────────────────────────────────────────────
 
@@ -919,12 +1149,16 @@ class RunModePage(BasePage):
                 self._session_badge.setText("● Resumed")
                 self._session_badge.setVisible(True)
 
-                # Highlight the restored protocol in the list
+                # Highlight the restored protocol in the list and set _selected_proto
                 proto_id = restored.protocol_id
                 for i in range(self._proto_list.count()):
                     item = self._proto_list.item(i)
-                    if item and (item.data(Qt.ItemDataRole.UserRole) or {}).get("id") == proto_id:
+                    proto = item.data(Qt.ItemDataRole.UserRole) if item else None
+                    if proto and proto.get("id") == proto_id:
+                        self._selected_proto = proto
+                        self._proto_list.blockSignals(True)
                         self._proto_list.setCurrentItem(item)
+                        self._proto_list.blockSignals(False)
                         break
                 logger.info(f"restore_session: resumed protocol_id={proto_id}")
             except Exception as e:
