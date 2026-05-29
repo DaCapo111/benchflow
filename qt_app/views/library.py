@@ -63,6 +63,17 @@ def _badge(text: str, fg: str, bg: str, parent: QWidget | None = None) -> QLabel
     return lbl
 
 
+def _tag_pill(text: str, parent: QWidget | None = None) -> QLabel:
+    lbl = QLabel(text, parent)
+    lbl.setFixedHeight(20)
+    lbl.setStyleSheet(
+        f"color: {Colors.TEXT_MUTED}; background: {Colors.BG_PAGE};"
+        f"border-radius: 999px; padding: 1px 9px;"
+        f"font-size: {Fonts.SIZE_XS}px; font-weight: 500;"
+    )
+    return lbl
+
+
 def _small_section_title(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(
@@ -175,9 +186,9 @@ class _ProtocolCard(QFrame):
             r3 = QHBoxLayout()
             r3.setSpacing(5)
             for tag in tags[:3]:
-                r3.addWidget(_badge(f"#{tag}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
+                r3.addWidget(_tag_pill(f"#{tag}"))
             if len(tags) > 3:
-                r3.addWidget(_badge(f"+{len(tags)-3}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
+                r3.addWidget(_tag_pill(f"+{len(tags)-3}"))
             r3.addStretch()
             lay.addLayout(r3)
 
@@ -247,13 +258,19 @@ class _DetailPanel(QWidget):
         title_lbl.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_XL, bold=True))
         lay.addWidget(title_lbl)
 
-        meta_row = QHBoxLayout()
-        meta_row.setSpacing(6)
-        if is_template:
-            meta_row.addWidget(_badge("Template", Colors.WARNING, Colors.WARNING_BG))
+        meta_parts: list[str] = []
         cat = proto.get("category", "")
         if cat:
-            meta_row.addWidget(_badge(cat, Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
+            meta_parts.append(cat)
+        meta_parts.append(f"{len(proto.get('steps', []))} step{'s' if len(proto.get('steps', [])) != 1 else ''}")
+        meta_parts.append(_format_dur(DataService.protocol_total_minutes(proto)))
+        meta_row = QHBoxLayout()
+        meta_row.setSpacing(8)
+        if is_template:
+            meta_row.addWidget(_badge("Template", Colors.WARNING, Colors.WARNING_BG))
+        meta_lbl = QLabel("  ·  ".join(meta_parts))
+        meta_lbl.setStyleSheet(_label_style(Colors.TEXT_SECOND, Fonts.SIZE_SM))
+        meta_row.addWidget(meta_lbl)
         meta_row.addStretch()
         lay.addLayout(meta_row)
 
@@ -261,9 +278,9 @@ class _DetailPanel(QWidget):
         tags = proto.get("tags", [])
         if tags:
             trow = QHBoxLayout()
-            trow.setSpacing(4)
+            trow.setSpacing(5)
             for t in tags:
-                trow.addWidget(_badge(f"#{t}", Colors.TEXT_SECOND, Colors.BG_SURFACE_ALT))
+                trow.addWidget(_tag_pill(f"#{t}"))
             trow.addStretch()
             lay.addLayout(trow)
 
@@ -294,11 +311,8 @@ class _DetailPanel(QWidget):
             ("Wait",      _format_dur(wait)),
         ]
         overview = QWidget()
-        overview.setStyleSheet(
-            f"background: {Colors.BG_SURFACE_ALT}; border-radius: {Radii.MD}px;"
-        )
         grid = QVBoxLayout(overview)
-        grid.setContentsMargins(12, 10, 12, 10)
+        grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(6)
         for label, val in stats:
             row = QHBoxLayout()
@@ -1065,12 +1079,36 @@ class LibraryPage(BasePage):
         self._load_data()
 
     def _on_edit(self, proto: dict) -> None:
-        proto_id = proto.get("id", "")
-        if not proto_id:
-            ToastManager.show_error("Cannot edit this protocol: missing protocol ID.")
+        resolved = self._resolve_editable_protocol(proto)
+        if resolved is None:
             return
+        proto_id = resolved.get("id", "")
+        self._selected_proto = resolved
+        self._selected_is_template = False
         self.app.state.selected_protocol_id = proto_id
+        self.app.state.protocol_selection_changed.emit(proto_id)
         self.app.navigate("editor")
+
+    def _resolve_editable_protocol(self, proto: dict) -> dict | None:
+        proto_id = (proto or {}).get("id", "")
+        if proto_id.startswith("tmpl_"):
+            ToastManager.show_info("Use Template first to create an editable protocol.")
+            return None
+
+        protocols = self.app.data.load_protocols()
+        if proto_id:
+            match = next((p for p in protocols if p.get("id") == proto_id), None)
+            if match is not None:
+                return match
+
+        name = (proto or {}).get("name", "")
+        if name:
+            match = next((p for p in protocols if p.get("name") == name), None)
+            if match is not None:
+                return match
+
+        ToastManager.show_error("Cannot edit this protocol: protocol was not found in My Protocols.")
+        return None
 
     def _on_flowchart(self, proto: dict) -> None:
         self.app.state.selected_protocol_id = proto.get("id", "")
