@@ -91,26 +91,26 @@ _DARK: dict[str, object] = {
 }
 
 _LIGHT: dict[str, object] = {
-    "BG_DARK":      "#F7F6F3",   # app window / outer frame
-    "BG_SIDEBAR":   "#F3F2EF",   # sidebar background
+    "BG_DARK":      "#FAFAFA",   # app window / outer frame
+    "BG_SIDEBAR":   "#F7F7F8",   # sidebar background
     "BG_CARD":      "#FFFFFF",   # card / panel surface
-    "BG_CARD_HOV":  "#F9F8F5",   # card hover
+    "BG_CARD_HOV":  "#F3F4F6",   # card hover
     "BG_INPUT":     "#FFFFFF",   # input field
-    "BG_PAGE":      "#F7F7F5",   # page body
-    "BG_SURFACE_ALT": "#F2F1EE",
-    "BG_ELEVATED":  "#FFFDFC",
+    "BG_PAGE":      "#FAFAFA",   # page body
+    "BG_SURFACE_ALT": "#F5F5F6",
+    "BG_ELEVATED":  "#FFFFFF",
     "SELECTED_BG":  "#EAF2FF",
-    "HOVER_BG":     "#F2F1EE",
+    "HOVER_BG":     "#F3F4F6",
 
     "SB_ACTIVE":    "#EAF2FF",   # selected nav pill
-    "SB_HOVER":     "#E9E8E4",   # nav hover
+    "SB_HOVER":     "#F3F4F6",   # nav hover
     "SB_TEXT":      "#4B5563",   # inactive nav text
     "SB_TEXT_ACT":  "#111827",   # active nav text
-    "SB_BORDER":    "#DDDAD3",   # sidebar/border
+    "SB_BORDER":    "#E5E7EB",   # sidebar/border
 
     "TEXT_PRIMARY": "#111827",   # main text
     "TEXT_SECOND":  "#4B5563",   # secondary text
-    "TEXT_MUTED":   "#8A8178",   # muted / placeholder
+    "TEXT_MUTED":   "#8A8F98",   # muted / placeholder
 
     "ACCENT":       "#2563EB",
     "ACCENT_HOVER": "#1D4ED8",
@@ -119,16 +119,16 @@ _LIGHT: dict[str, object] = {
 
     "SUCCESS":      "#16A34A",   # darker green
     "SUCCESS_BG":   "#DCFCE7",   # light green background
-    "WARNING":      "#D97706",   # darker amber
-    "WARNING_BG":   "#FEF3C7",   # light amber background
+    "WARNING":      "#B45309",   # darker amber
+    "WARNING_BG":   "#FFF4D6",   # light amber background
     "DANGER":       "#DC2626",   # darker red
     "DANGER_BG":    "#FEE2E2",   # light red background
 
-    "BORDER":       "#DDDAD3",
-    "BORDER_LIGHT": "#E5E2DC",
+    "BORDER":       "#E5E7EB",
+    "BORDER_LIGHT": "#E6E7EA",
 
-    "SCROLL_HANDLE": "#D7D3CB",
-    "SCROLL_HOV":    "#AFA79D",
+    "SCROLL_HANDLE": "#DADDE3",
+    "SCROLL_HOV":    "#AEB4BE",
 
     "STEP_COLORS": {
         "preparation":       ("#EBF3FF", "#3b82f6"),

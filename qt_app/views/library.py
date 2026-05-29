@@ -126,7 +126,7 @@ class _ProtocolCard(QFrame):
         self._is_template = is_template
         self._sel         = False
         self.setObjectName("ProtocolCard")
-        apply_card_shadow(self, blur=22, y_offset=7, alpha=24)
+        apply_card_shadow(self, blur=22, y_offset=6, alpha=24)
         self.setStyleSheet(self._style(False))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)

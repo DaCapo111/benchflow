@@ -81,7 +81,7 @@ def _card() -> QFrame:
         f"QFrame {{ background: {Colors.BG_ELEVATED}; border-radius: {Radii.MD}px;"
         f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
     )
-    apply_card_shadow(card, blur=24, y_offset=8, alpha=26)
+    apply_card_shadow(card, blur=24, y_offset=6, alpha=26)
     return card
 
 

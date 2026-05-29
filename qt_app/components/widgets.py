@@ -113,15 +113,15 @@ class IconButton(QPushButton):
 
 # ── Card ─────────────────────────────────────────────────────────────────────
 
-def apply_card_shadow(frame: QFrame, *, blur: int = 26,
-                      y_offset: int = 8, alpha: int = 31) -> None:
-    """Apply BenchFlow's warm light-theme card elevation."""
+def apply_card_shadow(frame: QFrame, *, blur: int = 22,
+                      y_offset: int = 6, alpha: int = 26) -> None:
+    """Apply BenchFlow's neutral card elevation."""
     frame.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
     frame.setAutoFillBackground(False)
     shadow = QGraphicsDropShadowEffect(frame)
     shadow.setBlurRadius(blur)
     shadow.setOffset(0, y_offset)
-    shadow.setColor(QColor(80, 60, 40, alpha))
+    shadow.setColor(QColor(15, 23, 42, alpha))
     frame.setGraphicsEffect(shadow)
 
 
