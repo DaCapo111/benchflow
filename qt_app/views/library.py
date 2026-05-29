@@ -161,7 +161,7 @@ class _ProtocolCard(QFrame):
         lay.setContentsMargins(14, 8, 14, 8)
         lay.setSpacing(4)
 
-        # Row 1: template badge + name
+        # Row 1: template badge + name + duration
         r1 = QHBoxLayout()
         r1.setSpacing(8)
         if self._is_template:
@@ -170,15 +170,18 @@ class _ProtocolCard(QFrame):
         name_lbl.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_MD, bold=True))
         name_lbl.setWordWrap(False)
         r1.addWidget(name_lbl, stretch=1)
+        total = DataService.protocol_total_minutes(p)
+        duration_lbl = QLabel(_format_dur(total))
+        duration_lbl.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_XS))
+        r1.addWidget(duration_lbl)
         lay.addLayout(r1)
 
         # Row 2: Category • steps • duration
         cat = p.get("category", "")
         n = len(p.get("steps", []))
-        total = DataService.protocol_total_minutes(p)
         meta_parts = [
             cat or "Uncategorized",
-            f"{n} Step{'s' if n != 1 else ''}",
+            f"{n} step{'s' if n != 1 else ''}",
             _format_dur(total),
         ]
         meta_lbl = QLabel("  •  ".join(meta_parts))
@@ -263,7 +266,7 @@ class _DetailPanel(QWidget):
         self._clear()
         lay = self._lay
 
-        # ── Title ─────────────────────────────────────────────────────────────
+        lay.addWidget(_small_section_title("Header"))
         title_lbl = QLabel(proto.get("name", "Untitled"))
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_XL, bold=True))
@@ -285,7 +288,9 @@ class _DetailPanel(QWidget):
         meta_row.addStretch()
         lay.addLayout(meta_row)
 
-        # Tags
+        lay.addSpacing(8)
+        lay.addWidget(_small_section_title("Tags / Description"))
+
         tags = proto.get("tags", [])
         if tags:
             trow = QHBoxLayout()
@@ -305,6 +310,10 @@ class _DetailPanel(QWidget):
                 f"font-style: italic;"
             )
             lay.addWidget(desc_lbl)
+        elif not tags:
+            empty_desc = QLabel("No tags or description yet.")
+            empty_desc.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_SM))
+            lay.addWidget(empty_desc)
 
         lay.addSpacing(6)
 
