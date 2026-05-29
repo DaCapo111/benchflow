@@ -113,16 +113,24 @@ class IconButton(QPushButton):
 
 # ── Card ─────────────────────────────────────────────────────────────────────
 
+def apply_card_shadow(frame: QFrame, *, blur: int = 26,
+                      y_offset: int = 8, alpha: int = 31) -> None:
+    """Apply BenchFlow's warm light-theme card elevation."""
+    frame.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    frame.setAutoFillBackground(False)
+    shadow = QGraphicsDropShadowEffect(frame)
+    shadow.setBlurRadius(blur)
+    shadow.setOffset(0, y_offset)
+    shadow.setColor(QColor(80, 60, 40, alpha))
+    frame.setGraphicsEffect(shadow)
+
+
 class Card(QFrame):
     """Rounded themed card container."""
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("Card")
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(24)
-        shadow.setOffset(0, 8)
-        shadow.setColor(QColor(15, 23, 42, 18))
-        self.setGraphicsEffect(shadow)
+        apply_card_shadow(self)
 
 
 # ── ScrollArea ────────────────────────────────────────────────────────────────

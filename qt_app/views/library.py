@@ -32,16 +32,15 @@ from datetime import datetime
 from typing import Any
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QGraphicsDropShadowEffect, QMenu, QMessageBox, QPushButton, QScrollArea,
+    QMenu, QMessageBox, QPushButton, QScrollArea,
     QSizePolicy, QSplitter, QVBoxLayout, QWidget,
 )
 
 from qt_app.theme import Colors, Fonts, Radii
 from qt_app.components.widgets import (
-    HSeparator, PageTitle, PrimaryButton, SubLabel,
+    HSeparator, PageTitle, PrimaryButton, SubLabel, apply_card_shadow,
 )
 from qt_app.components.toast import ToastManager
 from qt_app.services.event_bus import bus
@@ -127,11 +126,7 @@ class _ProtocolCard(QFrame):
         self._is_template = is_template
         self._sel         = False
         self.setObjectName("ProtocolCard")
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(18)
-        shadow.setOffset(0, 5)
-        shadow.setColor(QColor(15, 23, 42, 14))
-        self.setGraphicsEffect(shadow)
+        apply_card_shadow(self, blur=22, y_offset=7, alpha=24)
         self.setStyleSheet(self._style(False))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -148,10 +143,10 @@ class _ProtocolCard(QFrame):
                 f"QFrame#ProtocolCard:hover {{ background: {Colors.SELECTED_BG}; }}"
             )
         return (
-            f"QFrame#ProtocolCard {{ background: {Colors.BG_CARD};"
+            f"QFrame#ProtocolCard {{ background: {Colors.BG_ELEVATED};"
             f"  border-radius: {Radii.MD}px;"
             f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
-            f"QFrame#ProtocolCard:hover {{ background: {Colors.HOVER_BG};"
+            f"QFrame#ProtocolCard:hover {{ background: {Colors.BG_CARD};"
             f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
 

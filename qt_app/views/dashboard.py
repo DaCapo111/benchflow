@@ -36,9 +36,9 @@ class _StatCard(Card):
         super().__init__(parent)
         self.setMinimumHeight(138)
         self.setStyleSheet(
-            f"QFrame#Card {{ background: {Colors.BG_CARD};"
+            f"QFrame#Card {{ background: {Colors.BG_ELEVATED};"
             f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px; }}"
-            f"QFrame#Card:hover {{ background: {Colors.BG_CARD_HOV};"
+            f"QFrame#Card:hover {{ background: {Colors.BG_CARD};"
             f"  border-color: {Colors.BORDER_LIGHT}; }}"
         )
         lay = QVBoxLayout(self)
@@ -117,9 +117,9 @@ def _quick_card(emoji: str, label: str, page: str, app) -> QFrame:
     card.setCursor(Qt.CursorShape.PointingHandCursor)
     card.setMinimumHeight(94)
     card.setStyleSheet(
-        f"QFrame#Card {{ background: {Colors.BG_CARD};"
+        f"QFrame#Card {{ background: {Colors.BG_ELEVATED};"
         f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px; }}"
-        f"QFrame#Card:hover {{ background: {Colors.BG_CARD_HOV};"
+        f"QFrame#Card:hover {{ background: {Colors.BG_CARD};"
         f"  border-color: {Colors.BORDER_LIGHT}; }}"
     )
     card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)

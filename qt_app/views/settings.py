@@ -32,16 +32,16 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QColor, QDesktopServices
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
-    QGraphicsDropShadowEffect, QMessageBox, QPushButton, QScrollArea,
+    QMessageBox, QPushButton, QScrollArea,
     QSizePolicy, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from qt_app.theme import Colors, Fonts, Radii, apply_theme, current_theme
 from qt_app.components.widgets import (
-    HSeparator, PageTitle, PrimaryButton, SubLabel,
+    HSeparator, PageTitle, PrimaryButton, SubLabel, apply_card_shadow,
 )
 from qt_app.components.toast import ToastManager
 from qt_app.services.data import APP_DIR, _APP_VERSION
@@ -78,14 +78,10 @@ def _card() -> QFrame:
     """Styled card container for a settings section."""
     card = QFrame()
     card.setStyleSheet(
-        f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
+        f"QFrame {{ background: {Colors.BG_ELEVATED}; border-radius: {Radii.MD}px;"
         f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
     )
-    shadow = QGraphicsDropShadowEffect(card)
-    shadow.setBlurRadius(22)
-    shadow.setOffset(0, 7)
-    shadow.setColor(QColor(15, 23, 42, 16))
-    card.setGraphicsEffect(shadow)
+    apply_card_shadow(card, blur=24, y_offset=8, alpha=26)
     return card
 
 

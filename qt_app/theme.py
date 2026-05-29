@@ -91,30 +91,30 @@ _DARK: dict[str, object] = {
 }
 
 _LIGHT: dict[str, object] = {
-    "BG_DARK":      "#EEF1F5",   # app window / outer frame
-    "BG_SIDEBAR":   "#EEF2F7",   # sidebar background
+    "BG_DARK":      "#F6F3EE",   # app window / outer frame
+    "BG_SIDEBAR":   "#F1EEE8",   # sidebar background
     "BG_CARD":      "#FFFFFF",   # card / panel surface
-    "BG_CARD_HOV":  "#F8FAFC",   # card hover
+    "BG_CARD_HOV":  "#FFFDF9",   # card hover
     "BG_INPUT":     "#FFFFFF",   # input field
-    "BG_PAGE":      "#F3F5F8",   # page body
-    "BG_SURFACE_ALT": "#F8FAFC",
-    "BG_ELEVATED":  "#FFFFFF",
+    "BG_PAGE":      "#F8F6F2",   # page body
+    "BG_SURFACE_ALT": "#F4EFE7",
+    "BG_ELEVATED":  "#FFFDF9",
     "SELECTED_BG":  "#EAF2FF",
-    "HOVER_BG":     "#F8FAFC",
+    "HOVER_BG":     "#F4EFE7",
 
     "SB_ACTIVE":    "#EAF2FF",   # selected nav pill
-    "SB_HOVER":     "#F6F8FB",   # nav hover
-    "SB_TEXT":      "#4B5563",   # inactive nav text
-    "SB_TEXT_ACT":  "#111827",   # active nav text
-    "SB_BORDER":    "#D8DEE8",   # sidebar/border
+    "SB_HOVER":     "#E9E3DA",   # nav hover
+    "SB_TEXT":      "#6B6258",   # inactive nav text
+    "SB_TEXT_ACT":  "#171717",   # active nav text
+    "SB_BORDER":    "#DDD3C7",   # sidebar/border
 
-    "TEXT_PRIMARY": "#111827",   # main text
-    "TEXT_SECOND":  "#4B5563",   # secondary text
-    "TEXT_MUTED":   "#7C8594",   # muted / placeholder
+    "TEXT_PRIMARY": "#171717",   # main text
+    "TEXT_SECOND":  "#6B6258",   # secondary text
+    "TEXT_MUTED":   "#9A9187",   # muted / placeholder
 
-    "ACCENT":       "#2563EB",
-    "ACCENT_HOVER": "#1D4ED8",
-    "ACCENT_LIGHT": "#2563EB",
+    "ACCENT":       "#2F6FED",
+    "ACCENT_HOVER": "#255DD1",
+    "ACCENT_LIGHT": "#3B73E6",
     "ACCENT_BG":    "#EAF1FF",
 
     "SUCCESS":      "#16A34A",   # darker green
@@ -124,11 +124,11 @@ _LIGHT: dict[str, object] = {
     "DANGER":       "#DC2626",   # darker red
     "DANGER_BG":    "#FEE2E2",   # light red background
 
-    "BORDER":       "#DDE3EC",
-    "BORDER_LIGHT": "#EEF0F3",
+    "BORDER":       "#DDD3C7",
+    "BORDER_LIGHT": "#E6DED2",
 
-    "SCROLL_HANDLE": "#D1D5DB",
-    "SCROLL_HOV":    "#9CA3AF",
+    "SCROLL_HANDLE": "#D8CEC1",
+    "SCROLL_HOV":    "#B8AB9C",
 
     "STEP_COLORS": {
         "preparation":       ("#EBF3FF", "#3b82f6"),
@@ -317,7 +317,7 @@ QWidget#PageContainer {{
 
 /* ── Cards ───────────────────────────────────── */
 QFrame#Card {{
-    background-color: {c.BG_CARD};
+    background-color: {c.BG_ELEVATED};
     border-radius: {r.MD}px;
     border: 1px solid {c.BORDER_LIGHT};
 }}
