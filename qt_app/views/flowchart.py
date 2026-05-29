@@ -411,7 +411,7 @@ class _FlowchartView(QGraphicsView):
         self.zoom_changed.emit()
 
     def zoom_level_pct(self) -> int:
-        return int(self.transform().m11() * 100)
+        return round(self.transform().m11() * 100)
 
     def _do_zoom(self, factor: float) -> None:
         new_z = self._zoom_level * factor
@@ -936,6 +936,8 @@ class FlowchartPage(BasePage):
                 self._empty_lbl.setText("This protocol has no steps yet.")
             self._view.hide()
             self._empty_lbl.show()
+            self._view.reset_zoom()
+            self._update_zoom_label()
             return
 
         # Build nodes
@@ -959,9 +961,10 @@ class FlowchartPage(BasePage):
 
         self._view.show()
         self._empty_lbl.hide()
-        # Fit view after a brief moment (let scene settle)
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(50, self._view.fit_view)
+        self._scene.setSceneRect(self._scene.itemsBoundingRect().adjusted(-48, -48, 48, 48))
+        self._view.reset_zoom()
+        self._view.centerOn(self._scene.itemsBoundingRect().center().x(), 0)
+        self._view.verticalScrollBar().setValue(self._view.verticalScrollBar().minimum())
         self._update_zoom_label()
 
     def _on_node_clicked(self, idx: int) -> None:
