@@ -561,25 +561,33 @@ class RunModePage(BasePage):
         )
 
         # ── Action button (Start Run / Resume Run) ────────────────────────────
+        _btn_qss = (
+            f"QPushButton {{ background: {Colors.SUCCESS}; color: #ffffff; border: none;"
+            f"  border-radius: {Radii.MD}px; padding: 10px 22px;"
+            f"  font-size: {Fonts.SIZE_MD}px; font-weight: 700; }}"
+            f"QPushButton:hover {{ background: {Colors.ACCENT}; }}"
+            f"QPushButton:pressed {{ background: {Colors.ACCENT_HOVER}; }}"
+        )
+
         if has_existing:
-            # Work out how many steps are done so we can show progress
             saved_states = existing.get("step_states", [])
             done = sum(1 for s in saved_states if s.get("status") == "completed")
             skipped = sum(1 for s in saved_states if s.get("status") == "skipped")
             progress_txt = f"  ({done} done, {skipped} skipped)" if saved_states else ""
 
-            action_btn = PrimaryButton(f"▶  Resume Run{progress_txt}")
+            action_btn = QPushButton(f"▶  Resume Run{progress_txt}")
             action_btn.clicked.connect(lambda _=False, r=existing: self._on_resume_existing(r))
             notice_lbl = QLabel("Unfinished session found — resume or start fresh")
             notice_lbl.setStyleSheet(
                 f"color: {Colors.WARNING}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             )
         else:
-            action_btn = PrimaryButton("▶  Start Run")
+            action_btn = QPushButton("▶  Start Run")
             action_btn.clicked.connect(self._on_start_run)
             notice_lbl = None
 
-        action_btn.setMinimumHeight(38)
+        action_btn.setStyleSheet(_btn_qss)
+        action_btn.setMinimumHeight(42)
         action_btn.setMinimumWidth(140)
         action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
