@@ -91,19 +91,19 @@ _DARK: dict[str, object] = {
 }
 
 _LIGHT: dict[str, object] = {
-    "BG_DARK":      "#F2F4F7",   # app window / outer frame
-    "BG_SIDEBAR":   "#ECEFF4",   # sidebar background
+    "BG_DARK":      "#EEF1F5",   # app window / outer frame
+    "BG_SIDEBAR":   "#EEF2F7",   # sidebar background
     "BG_CARD":      "#FFFFFF",   # card / panel surface
-    "BG_CARD_HOV":  "#F7F9FC",   # card hover
+    "BG_CARD_HOV":  "#F8FAFC",   # card hover
     "BG_INPUT":     "#FFFFFF",   # input field
-    "BG_PAGE":      "#F6F7F9",   # page body
-    "BG_SURFACE_ALT": "#EEF1F5",
+    "BG_PAGE":      "#F3F5F8",   # page body
+    "BG_SURFACE_ALT": "#F8FAFC",
     "BG_ELEVATED":  "#FFFFFF",
-    "SELECTED_BG":  "#E6F0FF",
-    "HOVER_BG":     "#F0F3F8",
+    "SELECTED_BG":  "#EAF2FF",
+    "HOVER_BG":     "#F8FAFC",
 
-    "SB_ACTIVE":    "#DDEBFF",   # selected nav pill
-    "SB_HOVER":     "#E3E7EF",   # nav hover
+    "SB_ACTIVE":    "#EAF2FF",   # selected nav pill
+    "SB_HOVER":     "#F6F8FB",   # nav hover
     "SB_TEXT":      "#4B5563",   # inactive nav text
     "SB_TEXT_ACT":  "#111827",   # active nav text
     "SB_BORDER":    "#D8DEE8",   # sidebar/border
@@ -124,8 +124,8 @@ _LIGHT: dict[str, object] = {
     "DANGER":       "#DC2626",   # darker red
     "DANGER_BG":    "#FEE2E2",   # light red background
 
-    "BORDER":       "#D6DCE6",
-    "BORDER_LIGHT": "#E5E9F0",
+    "BORDER":       "#DDE3EC",
+    "BORDER_LIGHT": "#EEF0F3",
 
     "SCROLL_HANDLE": "#D1D5DB",
     "SCROLL_HOV":    "#9CA3AF",
@@ -288,7 +288,7 @@ QPushButton#NavButton {{
     color: {c.SB_TEXT};
     text-align: left;
     padding: 0px 14px;
-    border-radius: {r.LG}px;
+    border-radius: {r.MD}px;
     border: none;
     font-size: {f.SIZE_MD}px;
     height: 40px;
@@ -311,19 +311,19 @@ QLabel#SidebarFooter {{
 /* ── Page container ───────────────────────────── */
 QWidget#PageContainer {{
     background-color: {c.BG_PAGE};
-    border-radius: {r.XL}px;
-    border: 1px solid {c.BORDER};
+    border-radius: {r.LG}px;
+    border: 1px solid {c.BORDER_LIGHT};
 }}
 
 /* ── Cards ───────────────────────────────────── */
 QFrame#Card {{
-    background-color: {c.BG_ELEVATED};
-    border-radius: {r.LG}px;
-    border: 1px solid {c.BORDER};
+    background-color: {c.BG_CARD};
+    border-radius: {r.MD}px;
+    border: 1px solid {c.BORDER_LIGHT};
 }}
 QFrame#Card:hover {{
     background-color: {c.BG_CARD_HOV};
-    border: 1px solid {c.BORDER};
+    border: 1px solid {c.BORDER_LIGHT};
 }}
 
 /* ── Labels ──────────────────────────────────── */

@@ -32,10 +32,10 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
-    QMessageBox, QPushButton, QScrollArea,
+    QGraphicsDropShadowEffect, QMessageBox, QPushButton, QScrollArea,
     QSizePolicy, QSpinBox, QVBoxLayout, QWidget,
 )
 
@@ -58,6 +58,7 @@ def _lbl(text: str, color: str = Colors.TEXT_PRIMARY,
     weight = "700" if bold else "400"
     lbl.setStyleSheet(
         f"color: {color}; font-size: {size}px; font-weight: {weight};"
+        f"background: transparent;"
     )
     if wrap:
         lbl.setWordWrap(True)
@@ -77,9 +78,14 @@ def _card() -> QFrame:
     """Styled card container for a settings section."""
     card = QFrame()
     card.setStyleSheet(
-        f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
+        f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
         f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
     )
+    shadow = QGraphicsDropShadowEffect(card)
+    shadow.setBlurRadius(22)
+    shadow.setOffset(0, 7)
+    shadow.setColor(QColor(15, 23, 42, 16))
+    card.setGraphicsEffect(shadow)
     return card
 
 
@@ -118,14 +124,14 @@ def _action_btn(label: str, color: str = Colors.TEXT_SECOND,
     if danger:
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.DANGER};"
-            f"  border: 1px solid {Colors.DANGER_BG}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.DANGER_BG}; border-radius: {Radii.MD}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.DANGER_BG}; }}"
         )
     else:
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
-            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )

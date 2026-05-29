@@ -128,9 +128,9 @@ class _ProtocolCard(QFrame):
         self._sel         = False
         self.setObjectName("ProtocolCard")
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(10)
-        shadow.setOffset(0, 2)
-        shadow.setColor(QColor(17, 24, 39, 10))
+        shadow.setBlurRadius(18)
+        shadow.setOffset(0, 5)
+        shadow.setColor(QColor(15, 23, 42, 14))
         self.setGraphicsEffect(shadow)
         self.setStyleSheet(self._style(False))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -144,15 +144,15 @@ class _ProtocolCard(QFrame):
                 f"QFrame#ProtocolCard {{ background: {Colors.SELECTED_BG};"
                 f"  border-radius: {Radii.MD}px;"
                 f"  border: none;"
-                f"  border-left: 4px solid {Colors.ACCENT}; }}"
+                f"  border-left: 3px solid {Colors.ACCENT}; }}"
                 f"QFrame#ProtocolCard:hover {{ background: {Colors.SELECTED_BG}; }}"
             )
         return (
-            f"QFrame#ProtocolCard {{ background: {Colors.BG_ELEVATED};"
+            f"QFrame#ProtocolCard {{ background: {Colors.BG_CARD};"
             f"  border-radius: {Radii.MD}px;"
-            f"  border: none; }}"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
             f"QFrame#ProtocolCard:hover {{ background: {Colors.HOVER_BG};"
-            f"  border: none; }}"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
 
     def _build(self) -> None:

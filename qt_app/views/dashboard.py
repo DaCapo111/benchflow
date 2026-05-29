@@ -36,10 +36,10 @@ class _StatCard(Card):
         super().__init__(parent)
         self.setMinimumHeight(138)
         self.setStyleSheet(
-            f"QFrame#Card {{ background: {Colors.BG_ELEVATED};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.LG}px; }}"
+            f"QFrame#Card {{ background: {Colors.BG_CARD};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px; }}"
             f"QFrame#Card:hover {{ background: {Colors.BG_CARD_HOV};"
-            f"  border-color: {Colors.BORDER}; }}"
+            f"  border-color: {Colors.BORDER_LIGHT}; }}"
         )
         lay = QVBoxLayout(self)
         lay.setContentsMargins(20, 18, 20, 18)
@@ -51,7 +51,7 @@ class _StatCard(Card):
         icon_lbl.setStyleSheet(
             f"font-size: 20px; color: {accent};"
             f"background: {Colors.BG_SURFACE_ALT};"
-            f"border-radius: 12px;"
+            f"border-radius: {Radii.MD}px;"
         )
         lay.addWidget(icon_lbl)
 
@@ -117,10 +117,10 @@ def _quick_card(emoji: str, label: str, page: str, app) -> QFrame:
     card.setCursor(Qt.CursorShape.PointingHandCursor)
     card.setMinimumHeight(94)
     card.setStyleSheet(
-        f"QFrame#Card {{ background: {Colors.BG_ELEVATED};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.LG}px; }}"
+        f"QFrame#Card {{ background: {Colors.BG_CARD};"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px; }}"
         f"QFrame#Card:hover {{ background: {Colors.BG_CARD_HOV};"
-        f"  border-color: {Colors.BORDER}; }}"
+        f"  border-color: {Colors.BORDER_LIGHT}; }}"
     )
     card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
@@ -133,7 +133,7 @@ def _quick_card(emoji: str, label: str, page: str, app) -> QFrame:
     e_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     e_lbl.setStyleSheet(
         f"font-size: 20px; background: {Colors.BG_SURFACE_ALT};"
-        f"border-radius: 12px;"
+        f"border-radius: {Radii.MD}px;"
     )
     lay.addWidget(e_lbl)
 

@@ -119,9 +119,9 @@ class Card(QFrame):
         super().__init__(parent)
         self.setObjectName("Card")
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(18)
-        shadow.setOffset(0, 4)
-        shadow.setColor(QColor(17, 24, 39, 18))
+        shadow.setBlurRadius(24)
+        shadow.setOffset(0, 8)
+        shadow.setColor(QColor(15, 23, 42, 18))
         self.setGraphicsEffect(shadow)
 
 
