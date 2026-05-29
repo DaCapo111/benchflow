@@ -78,14 +78,14 @@ def _small_section_title(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(
         f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
-        f"font-weight: 700;"
+        f"font-weight: 700; background: transparent;"
     )
     return lbl
 
 
 def _label_style(color: str, size: int, bold: bool = False) -> str:
     return (
-        f"color: {color}; font-size: {size}px;"
+        f"color: {color}; font-size: {size}px; background: transparent;"
         + ("font-weight: 700;" if bold else "")
     )
 
@@ -307,7 +307,7 @@ class _DetailPanel(QWidget):
             desc_lbl.setWordWrap(True)
             desc_lbl.setStyleSheet(
                 f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
-                f"font-style: italic;"
+                f"font-style: italic; background: transparent;"
             )
             lay.addWidget(desc_lbl)
         elif not tags:
@@ -350,7 +350,8 @@ class _DetailPanel(QWidget):
         # ── Steps list ────────────────────────────────────────────────────────
         steps_hdr = _small_section_title("Step List")
         steps_hdr.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
+            f"font-weight: 700; background: transparent;"
         )
         lay.addWidget(steps_hdr)
 
@@ -389,7 +390,8 @@ class _DetailPanel(QWidget):
         if n_steps == 0:
             empty_lbl = QLabel("No steps yet.")
             empty_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+                f"font-style: italic; background: transparent;"
             )
             lay.addWidget(empty_lbl)
 
@@ -496,7 +498,7 @@ class _DetailPanel(QWidget):
                 row = QLabel(proto.get("name", "Untitled"))
                 row.setStyleSheet(
                     f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
-                    f"padding: 5px 0;"
+                    f"padding: 5px 0; background: transparent;"
                 )
                 lay.addWidget(row)
         else:
@@ -900,7 +902,7 @@ class LibraryPage(BasePage):
                     cat_lbl = QLabel(cat)
                     cat_lbl.setStyleSheet(
                         f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
-                        f"font-weight: 700; letter-spacing: 0.5px;"
+                        f"font-weight: 700; letter-spacing: 0.5px; background: transparent;"
                     )
                     self._list_layout.addWidget(cat_lbl)
                     self._list_layout.addSpacing(4)
@@ -935,7 +937,8 @@ class LibraryPage(BasePage):
         lay.setSpacing(8)
         lbl = QLabel(title)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
+            f"font-weight: 700; background: transparent;"
         )
         lay.addWidget(lbl)
         count_text = str(count) if (total < 0 or count == total) else f"{count}/{total}"
@@ -956,7 +959,8 @@ class LibraryPage(BasePage):
         lay.setContentsMargins(0, 4, 0, 4)
         lbl = QLabel(msg)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"font-style: italic; background: transparent;"
         )
         lay.addWidget(lbl)
         lay.addStretch()
