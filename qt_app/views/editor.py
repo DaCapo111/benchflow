@@ -46,6 +46,11 @@ from qt_app.views.base_page import BasePage
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
+def _edit_debug(stage: str, **values: Any) -> None:
+    details = " ".join(f"{key}={value!r}" for key, value in values.items())
+    print(f"[EditorEdit] {stage} {details}", flush=True)
+
+
 STEP_TYPES = [
     "preparation", "reagent_addition", "pipetting", "mixing",
     "incubation", "heating", "cooling", "waiting",
@@ -1078,6 +1083,7 @@ class EditorPage(BasePage):
 
     def on_show(self) -> None:
         wanted_id = getattr(self.app.state, "selected_protocol_id", "")
+        _edit_debug("on_show", selected_protocol_id=wanted_id)
         if wanted_id:
             current_id = self._proto.get("id", "") if self._proto else ""
             if wanted_id != current_id and not self._confirm_replace_current_protocol():
@@ -1097,6 +1103,11 @@ class EditorPage(BasePage):
 
     def _load_protocol_by_id(self, proto_id: str) -> bool:
         all_protos = self.app.data.load_protocols()
+        _edit_debug(
+            "load_protocol",
+            requested_id=proto_id,
+            available_ids=[p.get("id", "") for p in all_protos],
+        )
         proto = next((p for p in all_protos if p.get("id") == proto_id), None)
         if proto is None:
             ToastManager.show_error(f"Protocol not found: {proto_id}")

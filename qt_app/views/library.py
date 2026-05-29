@@ -90,6 +90,11 @@ def _label_style(color: str, size: int, bold: bool = False) -> str:
     )
 
 
+def _edit_debug(stage: str, **values: Any) -> None:
+    details = " ".join(f"{key}={value!r}" for key, value in values.items())
+    print(f"[LibraryEdit] {stage} {details}", flush=True)
+
+
 def _total_hands_on(proto: dict) -> float:
     return sum(
         float(s.get("handsOnMinutes", s.get("hands_on_minutes", 0)))
@@ -249,6 +254,12 @@ class _DetailPanel(QWidget):
     # ── Public API ────────────────────────────────────────────────────────────
 
     def show_protocol(self, proto: dict, is_template: bool) -> None:
+        _edit_debug(
+            "detail_show",
+            protocol_id=proto.get("id", "") if isinstance(proto, dict) else None,
+            protocol_name=proto.get("name", "") if isinstance(proto, dict) else None,
+            object_type="template" if is_template else "protocol",
+        )
         self._clear()
         lay = self._lay
 
@@ -531,7 +542,7 @@ class _DetailPanel(QWidget):
                 f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
             )
-        btn.clicked.connect(callback)
+        btn.clicked.connect(lambda _checked=False: callback())
         self._lay.addWidget(btn)
 
     def _add_disabled_action(self, label: str) -> None:
@@ -959,6 +970,12 @@ class LibraryPage(BasePage):
     # ── Card selection ────────────────────────────────────────────────────────
 
     def _on_card_clicked(self, proto: dict, is_template: bool) -> None:
+        _edit_debug(
+            "card_selected",
+            protocol_id=proto.get("id", "") if isinstance(proto, dict) else None,
+            protocol_name=proto.get("name", "") if isinstance(proto, dict) else None,
+            object_type="template" if is_template else "protocol",
+        )
         # Deselect previous
         for card in self._cards:
             card.set_selected(False)
@@ -1079,10 +1096,21 @@ class LibraryPage(BasePage):
         self._load_data()
 
     def _on_edit(self, proto: dict) -> None:
+        _edit_debug(
+            "edit_clicked",
+            raw_type=type(proto).__name__,
+            selected_id=proto.get("id", "") if isinstance(proto, dict) else None,
+            selected_name=proto.get("name", "") if isinstance(proto, dict) else None,
+        )
         resolved = self._resolve_editable_protocol(proto)
         if resolved is None:
             return
         proto_id = resolved.get("id", "")
+        _edit_debug(
+            "state_set",
+            selected_id=proto_id,
+            selected_name=resolved.get("name", ""),
+        )
         self._selected_proto = resolved
         self._selected_is_template = False
         self.app.state.selected_protocol_id = proto_id
@@ -1090,12 +1118,23 @@ class LibraryPage(BasePage):
         self.app.navigate("editor")
 
     def _resolve_editable_protocol(self, proto: dict) -> dict | None:
+        if not isinstance(proto, dict):
+            _edit_debug("resolve_failed", reason="non_dict", raw_type=type(proto).__name__)
+            ToastManager.show_error("Cannot edit this protocol: missing protocol data.")
+            return None
+
         proto_id = (proto or {}).get("id", "")
         if proto_id.startswith("tmpl_"):
             ToastManager.show_info("Use Template first to create an editable protocol.")
             return None
 
         protocols = self.app.data.load_protocols()
+        _edit_debug(
+            "resolve_lookup",
+            requested_id=proto_id,
+            requested_name=proto.get("name", ""),
+            available_ids=[p.get("id", "") for p in protocols],
+        )
         if proto_id:
             match = next((p for p in protocols if p.get("id") == proto_id), None)
             if match is not None:
