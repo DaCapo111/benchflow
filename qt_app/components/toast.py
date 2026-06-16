@@ -89,7 +89,7 @@ class _Toast(QFrame):
         msg_lbl = QLabel(message)
         msg_lbl.setWordWrap(False)
         msg_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         # Truncate long messages
         fm = msg_lbl.fontMetrics()

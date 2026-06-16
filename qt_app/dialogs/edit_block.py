@@ -35,11 +35,11 @@ class EditBlockDialog(QDialog):
         self.setWindowTitle(title)
         self.setMinimumWidth(400)
         self.setStyleSheet(
-            f"QDialog {{ background: {Colors.BG_SIDEBAR}; }}"
+            f"QDialog {{ background: {Colors.BG_CARD}; }}"
             f"QLabel {{ color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; }}"
             f"QLineEdit, QPlainTextEdit, QComboBox, QDoubleSpinBox {{"
             f"  background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 6px 10px; font-size: {Fonts.SIZE_MD}px; }}"
         )
         self._build()
@@ -111,13 +111,13 @@ class EditBlockDialog(QDialog):
         btns.button(QDialogButtonBox.StandardButton.Ok).setText(btn_label)
         btns.button(QDialogButtonBox.StandardButton.Ok).setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white; border: none;"
-            f"  border-radius: {Radii.SM}px; padding: 6px 16px;"
+            f"  border-radius: {Radii.LG}px; padding: 6px 16px;"
             f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
         btns.button(QDialogButtonBox.StandardButton.Cancel).setStyleSheet(
             f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 6px 16px; font-size: {Fonts.SIZE_SM}px; }}"
         )
         btns.accepted.connect(self.accept)

@@ -41,7 +41,7 @@ from PySide6.QtWidgets import (
 
 from qt_app.theme import Colors, Fonts, Radii, apply_theme, current_theme
 from qt_app.components.widgets import (
-    HSeparator, PageTitle, PrimaryButton, SubLabel,
+    HSeparator, PageTitle, PrimaryButton, SubLabel, apply_card_shadow,
 )
 from qt_app.components.toast import ToastManager
 from qt_app.services.data import APP_DIR, _APP_VERSION
@@ -58,6 +58,7 @@ def _lbl(text: str, color: str = Colors.TEXT_PRIMARY,
     weight = "700" if bold else "400"
     lbl.setStyleSheet(
         f"color: {color}; font-size: {size}px; font-weight: {weight};"
+        f"background: transparent;"
     )
     if wrap:
         lbl.setWordWrap(True)
@@ -65,10 +66,10 @@ def _lbl(text: str, color: str = Colors.TEXT_PRIMARY,
 
 
 def _section_header(title: str) -> QLabel:
-    lbl = QLabel(title.upper())
+    lbl = QLabel(title)
     lbl.setStyleSheet(
-        f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
-        f"font-weight: 700; letter-spacing: 1px;"
+        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px;"
+        f"font-weight: 700;"
     )
     return lbl
 
@@ -77,53 +78,56 @@ def _card() -> QFrame:
     """Styled card container for a settings section."""
     card = QFrame()
     card.setStyleSheet(
-        f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
-        f"  border: 1px solid {Colors.BORDER}; }}"
+        f"QFrame {{ background: {Colors.BG_ELEVATED}; border-radius: {Radii.MD}px;"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
     )
+    apply_card_shadow(card, blur=24, y_offset=6, alpha=26)
     return card
-
-
-def _row_style() -> str:
-    return (
-        f"QFrame {{ background: transparent; border: none; }}"
-        f"QFrame + QFrame {{ border-top: 1px solid {Colors.BORDER}; }}"
-    )
 
 
 def _dep_badge(ok: bool) -> QLabel:
     if ok:
-        lbl = QLabel("✓  Installed")
+        lbl = QLabel("Installed")
         lbl.setStyleSheet(
             f"color: {Colors.SUCCESS}; background: {Colors.SUCCESS_BG};"
-            f"border-radius: 6px; padding: 2px 10px;"
+            f"border-radius: 999px; padding: 3px 10px;"
             f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
         )
     else:
-        lbl = QLabel("✗  Missing")
+        lbl = QLabel("Missing")
         lbl.setStyleSheet(
             f"color: {Colors.DANGER}; background: {Colors.DANGER_BG};"
-            f"border-radius: 6px; padding: 2px 10px;"
+            f"border-radius: 999px; padding: 3px 10px;"
             f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
         )
+    return lbl
+
+
+def _soft_badge(text: str, color: str, bg: str) -> QLabel:
+    lbl = QLabel(text)
+    lbl.setStyleSheet(
+        f"color: {color}; background: {bg}; border-radius: 999px;"
+        f"padding: 3px 10px; font-size: {Fonts.SIZE_XS}px; font-weight: 700;"
+    )
     return lbl
 
 
 def _action_btn(label: str, color: str = Colors.TEXT_SECOND,
                 danger: bool = False) -> QPushButton:
     btn = QPushButton(label)
-    btn.setFixedHeight(32)
+    btn.setFixedHeight(34)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     if danger:
         btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.DANGER};"
-            f"  border: 1px solid {Colors.DANGER}; border-radius: {Radii.SM}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.DANGER};"
+            f"  border: 1px solid {Colors.DANGER_BG}; border-radius: 10px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.DANGER_BG}; }}"
         )
     else:
         btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {color};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: 10px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -140,50 +144,52 @@ def _check_dep(module: str) -> bool:
 
 def _build_row(key: str, value_widget: QWidget,
                note: str = "") -> QWidget:
-    """Single key–value row inside a card."""
+    """Preference row: label and description on the left, control on the right."""
     row = QWidget()
     row.setStyleSheet("background: transparent;")
     lay = QHBoxLayout(row)
-    lay.setContentsMargins(16, 10, 16, 10)
-    lay.setSpacing(12)
+    lay.setContentsMargins(18, 12, 18, 12)
+    lay.setSpacing(20)
 
-    k_lbl = _lbl(key, Colors.TEXT_SECOND, Fonts.SIZE_SM)
-    k_lbl.setMinimumWidth(160)
-    lay.addWidget(k_lbl)
-    lay.addWidget(value_widget, stretch=1)
+    text_col = QVBoxLayout()
+    text_col.setSpacing(3)
+    k_lbl = _lbl(key, Colors.TEXT_PRIMARY, Fonts.SIZE_SM, bold=True)
+    text_col.addWidget(k_lbl)
     if note:
-        n_lbl = _lbl(note, Colors.TEXT_MUTED, Fonts.SIZE_XS)
-        lay.addWidget(n_lbl)
+        n_lbl = _lbl(note, Colors.TEXT_MUTED, Fonts.SIZE_XS, wrap=True)
+        text_col.addWidget(n_lbl)
+    lay.addLayout(text_col, stretch=1)
+    lay.addWidget(value_widget, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     return row
 
 
 def _build_action_row(description: str, btn: QPushButton,
                       note: str = "") -> QWidget:
-    """Row with descriptive text on left and action button on right."""
+    """Action row with optional supporting text."""
     row = QWidget()
     row.setStyleSheet("background: transparent;")
     lay = QHBoxLayout(row)
-    lay.setContentsMargins(16, 10, 16, 10)
-    lay.setSpacing(12)
+    lay.setContentsMargins(18, 12, 18, 12)
+    lay.setSpacing(20)
 
-    desc_lbl = _lbl(description, Colors.TEXT_SECOND, Fonts.SIZE_SM, wrap=True)
-    desc_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-    lay.addWidget(desc_lbl, stretch=1)
+    text_col = QVBoxLayout()
+    text_col.setSpacing(3)
+    desc_lbl = _lbl(description, Colors.TEXT_PRIMARY, Fonts.SIZE_SM, bold=True, wrap=True)
+    text_col.addWidget(desc_lbl)
     if note:
-        n_lbl = _lbl(note, Colors.TEXT_MUTED, Fonts.SIZE_XS)
-        lay.addWidget(n_lbl)
-    lay.addWidget(btn)
+        n_lbl = _lbl(note, Colors.TEXT_MUTED, Fonts.SIZE_XS, wrap=True)
+        text_col.addWidget(n_lbl)
+    lay.addLayout(text_col, stretch=1)
+    lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     return row
 
 
 def _card_with_rows(rows: list[QWidget]) -> QFrame:
     card = _card()
     lay = QVBoxLayout(card)
-    lay.setContentsMargins(0, 0, 0, 0)
-    lay.setSpacing(0)
-    for i, row in enumerate(rows):
-        if i > 0:
-            lay.addWidget(HSeparator())
+    lay.setContentsMargins(0, 6, 0, 6)
+    lay.setSpacing(2)
+    for row in rows:
         lay.addWidget(row)
     return card
 
@@ -248,8 +254,7 @@ class SettingsPage(BasePage):
         open_folder_btn = _action_btn("Open Folder")
         open_folder_btn.clicked.connect(self._open_data_folder)
 
-        version_lbl = _lbl(f"v{_APP_VERSION}", Colors.TEXT_PRIMARY,
-                           Fonts.SIZE_SM, bold=True)
+        version_lbl = _soft_badge(f"v{_APP_VERSION}", Colors.ACCENT, Colors.ACCENT_BG)
 
         repo_btn = _action_btn("⎆  GitHub")
         repo_btn.clicked.connect(
@@ -260,11 +265,12 @@ class SettingsPage(BasePage):
 
         info_card = _card_with_rows([
             _build_row("Version", version_lbl),
-            _build_row("Data folder", data_path_lbl),
-            _build_action_row("Open the folder where BenchFlow stores all your data.",
-                              open_folder_btn),
-            _build_action_row("Source code, issues, and releases on GitHub.",
-                              repo_btn),
+            _build_row("Data folder", data_path_lbl,
+                       note="Local folder where BenchFlow stores protocols, runs, schedules, and backups."),
+            _build_action_row("Open data folder", open_folder_btn,
+                              note="Reveal BenchFlow's local application data in Finder."),
+            _build_action_row("GitHub repository", repo_btn,
+                              note="Source code, issues, and release notes."),
         ])
         content_lay.addWidget(info_card)
 
@@ -278,9 +284,10 @@ class SettingsPage(BasePage):
         self._theme_combo.setFixedHeight(32)
         self._theme_combo.setFixedWidth(140)
         self._theme_combo.setStyleSheet(
-            f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QComboBox {{ background: {Colors.BG_SURFACE_ALT}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 0 8px; font-size: {Fonts.SIZE_SM}px; }}"
+            f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
         )
         # Set current selection
         _theme_idx = {"dark": 0, "light": 1, "system": 2}.get(current_theme(), 0)
@@ -296,21 +303,22 @@ class SettingsPage(BasePage):
         self._autosave_spin.setFixedHeight(32)
         self._autosave_spin.setFixedWidth(140)
         self._autosave_spin.setStyleSheet(
-            f"QSpinBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QSpinBox {{ background: {Colors.BG_SURFACE_ALT}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 0 8px; font-size: {Fonts.SIZE_SM}px; }}"
+            f"QSpinBox:focus {{ border-color: {Colors.ACCENT}; }}"
         )
         self._autosave_spin.valueChanged.connect(self._on_autosave_changed)
 
-        recovery_lbl = _lbl("Enabled", Colors.SUCCESS, Fonts.SIZE_SM)
+        recovery_lbl = _soft_badge("Enabled", Colors.SUCCESS, Colors.SUCCESS_BG)
 
         pref_card = _card_with_rows([
             _build_row("Theme", self._theme_combo,
-                       note="Applies immediately"),
+                       note="Choose the visual appearance of BenchFlow. Applies immediately."),
             _build_row("Autosave interval", self._autosave_spin,
-                       note="Active run session saved every N seconds"),
+                       note="How often BenchFlow saves active runtime data."),
             _build_row("Session recovery", recovery_lbl,
-                       note="Resumable on next launch if app closes mid-run"),
+                       note="Resume interrupted experiments after restart."),
         ])
         content_lay.addWidget(pref_card)
 
@@ -322,9 +330,9 @@ class SettingsPage(BasePage):
 
         dep_rows = [
             _build_row("reportlab", _dep_badge(rl_ok),
-                       note="Required for PDF export"),
+                       note="Required for PDF export."),
             _build_row("python-docx", _dep_badge(docx_ok),
-                       note="Required for Word export"),
+                       note="Required for Word export."),
         ]
         if not rl_ok or not docx_ok:
             missing = []
@@ -339,7 +347,7 @@ class SettingsPage(BasePage):
             install_row = QWidget()
             install_row.setStyleSheet("background: transparent;")
             install_lay = QHBoxLayout(install_row)
-            install_lay.setContentsMargins(16, 8, 16, 8)
+            install_lay.setContentsMargins(18, 8, 18, 8)
             install_lay.addWidget(install_note)
             dep_rows.append(install_row)
 
@@ -353,9 +361,9 @@ class SettingsPage(BasePage):
 
         session_card = _card_with_rows([
             _build_action_row(
-                "Clear the saved run session so BenchFlow won't offer to resume "
-                "it on next launch. Use this if a session is stuck.",
+                "Reset active session",
                 reset_btn,
+                note="Clear the saved run session so BenchFlow will not offer to resume it on next launch.",
             ),
         ])
         content_lay.addWidget(session_card)
@@ -373,13 +381,14 @@ class SettingsPage(BasePage):
 
         br_card = _card_with_rows([
             _build_action_row(
-                "Export all data (protocols, runs, schedule) as a ZIP archive.",
+                "Backup all data",
                 backup_btn,
+                note="Export protocols, runs, schedule, and settings as a ZIP archive.",
             ),
             _build_action_row(
-                "Restore data from a previously created BenchFlow backup ZIP. "
-                "Existing data will be backed up before overwriting.",
+                "Restore from backup",
                 restore_btn,
+                note="Import a BenchFlow backup ZIP. Existing data is backed up before overwrite.",
             ),
         ])
         content_lay.addWidget(br_card)

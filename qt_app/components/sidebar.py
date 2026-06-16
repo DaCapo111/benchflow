@@ -37,7 +37,7 @@ class Sidebar(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("Sidebar")
-        self.setFixedWidth(196)
+        self.setFixedWidth(204)
         self._nav_buttons: dict[str, QPushButton] = {}
         self._active_page: str = ""
         self._logo_title: QLabel | None = None
@@ -50,21 +50,21 @@ class Sidebar(QWidget):
 
     def _build(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 20, 10, 16)
+        root.setContentsMargins(12, 20, 12, 16)
         root.setSpacing(0)
 
         # Logo
         root.addWidget(self._make_logo())
-        root.addSpacing(12)
+        root.addSpacing(16)
         root.addWidget(HSeparator())
-        root.addSpacing(8)
+        root.addSpacing(12)
 
         # Nav buttons
         for page_id, emoji, label in NAV_ITEMS:
             btn = self._make_nav_button(page_id, emoji, label)
             self._nav_buttons[page_id] = btn
             root.addWidget(btn)
-            root.addSpacing(2)
+            root.addSpacing(5)
 
         # Spacer pushes footer to bottom
         root.addStretch(1)
@@ -72,11 +72,11 @@ class Sidebar(QWidget):
         root.addSpacing(8)
 
         # Footer
-        footer = QLabel("Local · No cloud · No account")
+        footer = QLabel("Local workspace")
         footer.setObjectName("SidebarFooter")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         self._footer = footer
         root.addWidget(footer)
@@ -85,13 +85,13 @@ class Sidebar(QWidget):
         w = QWidget()
         w.setObjectName("SidebarLogo")
         lay = QVBoxLayout(w)
-        lay.setContentsMargins(6, 0, 0, 0)
+        lay.setContentsMargins(10, 0, 0, 0)
         lay.setSpacing(2)
 
         title = QLabel("BenchFlow")
         title.setObjectName("SidebarTitle")
         title.setStyleSheet(
-            f"color: {Colors.ACCENT_LIGHT};"
+            f"color: {Colors.TEXT_PRIMARY}; background: transparent;"
             f"font-size: {Fonts.SIZE_XL}px;"
             f"font-weight: 700;"
         )
@@ -100,7 +100,7 @@ class Sidebar(QWidget):
         subtitle = QLabel("Wet Lab Manager")
         subtitle.setObjectName("SidebarSubtitle")
         subtitle.setStyleSheet(
-            f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         self._logo_sub = subtitle
 
@@ -109,10 +109,10 @@ class Sidebar(QWidget):
         return w
 
     def _make_nav_button(self, page_id: str, emoji: str, label: str) -> QPushButton:
-        btn = QPushButton(f"  {emoji}   {label}")
+        btn = QPushButton(f"{emoji}   {label}")
         btn.setObjectName("NavButton")
         btn.setProperty("active", False)
-        btn.setMinimumHeight(42)
+        btn.setMinimumHeight(40)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(self._nav_style(False))
         btn.clicked.connect(lambda checked=False, pid=page_id: self.nav_requested.emit(pid))
@@ -139,12 +139,12 @@ class Sidebar(QWidget):
         # Logo
         if self._logo_title:
             self._logo_title.setStyleSheet(
-                f"color: {Colors.ACCENT_LIGHT};"
+                f"color: {Colors.TEXT_PRIMARY}; background: transparent;"
                 f"font-size: {Fonts.SIZE_XL}px; font-weight: 700;"
             )
         if self._logo_sub:
             self._logo_sub.setStyleSheet(
-                f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px;"
+                f"color: {Colors.SB_TEXT}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             )
         # Nav buttons
         for pid, btn in self._nav_buttons.items():
@@ -153,7 +153,7 @@ class Sidebar(QWidget):
         # Footer
         if self._footer:
             self._footer.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -164,27 +164,27 @@ class Sidebar(QWidget):
             return (
                 "QPushButton {"
                 f"  background-color: {Colors.SB_ACTIVE};"
-                f"  color: {Colors.SB_TEXT_ACT};"
+                f"  color: {Colors.SB_TEXT_ACT}; background: transparent;"
                 f"  text-align: left;"
                 f"  padding: 0px 14px;"
-                f"  border-radius: 12px;"
-                f"  border: none;"
+                f"  border-radius: 14px;"
+                f"  border-left: 3px solid {Colors.ACCENT};"
                 f"  font-size: {Fonts.SIZE_MD}px;"
-                f"  font-weight: 600;"
+                f"  font-weight: 700;"
                 "}"
             )
         return (
             "QPushButton {"
             f"  background-color: transparent;"
-            f"  color: {Colors.SB_TEXT};"
+            f"  color: {Colors.SB_TEXT}; background: transparent;"
             f"  text-align: left;"
             f"  padding: 0px 14px;"
-            f"  border-radius: 12px;"
+            f"  border-radius: 14px;"
             f"  border: none;"
             f"  font-size: {Fonts.SIZE_MD}px;"
             "}"
             "QPushButton:hover {"
             f"  background-color: {Colors.SB_HOVER};"
-            f"  color: {Colors.TEXT_PRIMARY};"
+            f"  color: {Colors.TEXT_PRIMARY}; background: transparent;"
             "}"
         )

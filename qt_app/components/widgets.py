@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QFrame, QLabel, QPushButton, QScrollArea, QSizePolicy,
+    QGraphicsDropShadowEffect,
     QWidget, QVBoxLayout,
 )
 
@@ -26,7 +27,7 @@ class HSeparator(QFrame):
         self.setFrameShape(QFrame.Shape.HLine)
         self.setFrameShadow(QFrame.Shadow.Plain)
         self.setFixedHeight(1)
-        self.setStyleSheet(f"background-color: {Colors.BORDER};")
+        self.setStyleSheet(f"background-color: {Colors.BORDER_LIGHT};")
 
 
 # ── Labels ────────────────────────────────────────────────────────────────────
@@ -112,11 +113,24 @@ class IconButton(QPushButton):
 
 # ── Card ─────────────────────────────────────────────────────────────────────
 
+def apply_card_shadow(frame: QFrame, *, blur: int = 22,
+                      y_offset: int = 6, alpha: int = 26) -> None:
+    """Apply BenchFlow's neutral card elevation."""
+    frame.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    frame.setAutoFillBackground(False)
+    shadow = QGraphicsDropShadowEffect(frame)
+    shadow.setBlurRadius(blur)
+    shadow.setOffset(0, y_offset)
+    shadow.setColor(QColor(15, 23, 42, alpha))
+    frame.setGraphicsEffect(shadow)
+
+
 class Card(QFrame):
-    """Rounded dark card container."""
+    """Rounded themed card container."""
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("Card")
+        apply_card_shadow(self)
 
 
 # ── ScrollArea ────────────────────────────────────────────────────────────────

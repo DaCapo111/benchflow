@@ -138,12 +138,12 @@ class _SessionBlock(QFrame):
 
         accent = _STATUS_ACCENT.get(exp.status, Colors.ACCENT)
         self.setStyleSheet(
-            f"QFrame {{ background: rgba(59,130,246,0.18);"
-            f"  border-radius: {Radii.SM}px;"
+            f"QFrame {{ background: {Colors.ACCENT_BG};"
+            f"  border-radius: {Radii.MD}px;"
             f"  border-left: 3px solid {accent};"
-            f"  border-top: 1px solid {accent}40;"
-            f"  border-right: 1px solid {accent}40;"
-            f"  border-bottom: 1px solid {accent}40; }}"
+            f"  border-top: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border-right: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border-bottom: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._build(exp)
@@ -157,7 +157,7 @@ class _SessionBlock(QFrame):
         title_lbl = QLabel(exp.title)
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-weight: 600; background: transparent; border: none;"
         )
         lay.addWidget(title_lbl)
@@ -168,7 +168,7 @@ class _SessionBlock(QFrame):
         dur     = format_duration_min(exp.total_duration)
         time_lbl = QLabel(f"{t_start} – {t_end}  ·  {dur}")
         time_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             f"background: transparent; border: none;"
         )
         lay.addWidget(time_lbl)
@@ -236,8 +236,8 @@ class _DayHeader(QWidget):
         super().__init__(parent)
         self.setFixedHeight(self.H)
         self.setStyleSheet(
-            f"background: {Colors.BG_SIDEBAR};"
-            f"border-bottom: 1px solid {Colors.BORDER};"
+            f"background: {Colors.BG_CARD};"
+            f"border-bottom: 1px solid {Colors.BORDER_LIGHT};"
         )
         self._dates: list[date] = []
 
@@ -395,12 +395,12 @@ class _CalendarGrid(QWidget):
         for eid, w in self._block_widgets.items():
             selected = (eid == exp_id)
             w.setStyleSheet(
-                f"QFrame {{ background: rgba(59,130,246,{'0.30' if selected else '0.18'});"
-                f"  border-radius: {Radii.SM}px;"
+                f"QFrame {{ background: {Colors.SELECTED_BG if selected else Colors.ACCENT_BG};"
+                f"  border-radius: {Radii.MD}px;"
                 f"  border-left: 3px solid {Colors.ACCENT};"
-                f"  border-top: 1px solid {Colors.ACCENT + ('80' if selected else '40')};"
-                f"  border-right: 1px solid {Colors.ACCENT + ('80' if selected else '40')};"
-                f"  border-bottom: 1px solid {Colors.ACCENT + ('80' if selected else '40')}; }}"
+                f"  border-top: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-right: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-bottom: 1px solid {Colors.BORDER_LIGHT}; }}"
             )
 
     # ── Internal helpers ──────────────────────────────────────────────────────
@@ -465,7 +465,7 @@ class _CalendarGrid(QWidget):
         # Today column highlight
         if today in dates:
             ci = dates.index(today)
-            p.fillRect(gw + ci * col_w, 0, col_w, gh, QColor(59, 130, 246, 16))
+            p.fillRect(gw + ci * col_w, 0, col_w, gh, QColor(37, 99, 235, 12))
 
         font_xs = QFont()
         font_xs.setPointSize(Fonts.SIZE_XS)
@@ -477,7 +477,7 @@ class _CalendarGrid(QWidget):
 
             # Hour line (main)
             if h > self.MIN_HOUR:
-                p.setPen(QPen(QColor(Colors.BORDER), 1))
+                p.setPen(QPen(QColor(Colors.BORDER_LIGHT), 1))
                 p.drawLine(gw, y, w, y)
 
             # Half-hour line (dashed, lighter)
@@ -498,7 +498,7 @@ class _CalendarGrid(QWidget):
                 p.drawText(4, y + 14, lbl)
 
         # Day separator lines
-        p.setPen(QPen(QColor(Colors.BORDER), 1))
+        p.setPen(QPen(QColor(Colors.BORDER_LIGHT), 1))
         for ci in range(n + 1):
             x = gw + ci * col_w
             p.drawLine(x, 0, x, gh)
@@ -537,13 +537,13 @@ def _context_menu_qss() -> str:
     return f"""
 QMenu {{
     background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};
-    border: 1px solid {Colors.BORDER}; border-radius: 6px;
+    border: 1px solid {Colors.BORDER_LIGHT}; border-radius: 10px;
     padding: 4px 0;
 }}
 QMenu::item {{ padding: 6px 18px 6px 14px; font-size: 13px; }}
 QMenu::item:selected {{ background: {Colors.BG_CARD_HOV}; color: {Colors.TEXT_PRIMARY}; }}
 QMenu::item:disabled {{ color: {Colors.TEXT_MUTED}; }}
-QMenu::separator {{ height: 1px; background: {Colors.BORDER}; margin: 3px 0; }}
+QMenu::separator {{ height: 1px; background: {Colors.BORDER_LIGHT}; margin: 3px 0; }}
 QMenu::indicator {{ width: 0; }}
 """
 
@@ -576,12 +576,12 @@ class _TimelineBlockRow(QFrame):
 
         self.setStyleSheet(
             f"_TimelineBlockRow {{ background: {Colors.BG_CARD};"
-            f"  border-radius: {Radii.MD}px;"
+            f"  border-radius: {Radii.LG}px;"
             f"  border-left: 3px solid {accent};"
-            f"  border-top: 1px solid {Colors.BORDER};"
-            f"  border-right: 1px solid {Colors.BORDER};"
-            f"  border-bottom: 1px solid {Colors.BORDER}; }}"
-            f"_TimelineBlockRow:hover {{ background: {Colors.BG_CARD_HOV}; }}"
+            f"  border-top: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border-right: 1px solid {Colors.BORDER_LIGHT};"
+            f"  border-bottom: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"_TimelineBlockRow:hover {{ background: {Colors.HOVER_BG}; }}"
         )
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -595,7 +595,7 @@ class _TimelineBlockRow(QFrame):
         handle = QLabel("⠿")
         handle.setFixedWidth(16)
         handle.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: 14px; padding: 0;"
+            f"color: {Colors.TEXT_MUTED}; font-size: 14px; padding: 0; background: transparent;"
         )
         handle.setToolTip("Drag to reorder (use ▲▼ buttons)")
         row.addWidget(handle)
@@ -606,11 +606,11 @@ class _TimelineBlockRow(QFrame):
         t_col.setContentsMargins(0, 0, 0, 0)
         t_start_lbl = QLabel(format_time_ms(block.start_time))
         t_start_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         t_end_lbl = QLabel(format_time_ms(block.end_time))
         t_end_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         t_col.addWidget(t_start_lbl)
         t_col.addWidget(t_end_lbl)
@@ -626,7 +626,7 @@ class _TimelineBlockRow(QFrame):
 
         title_lbl = QLabel(block.title)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED if is_inactive else Colors.TEXT_PRIMARY};"
+            f"color: {Colors.TEXT_MUTED if is_inactive else Colors.TEXT_PRIMARY}; background: transparent;"
             f"font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
             + ("text-decoration: line-through;" if is_inactive else "")
         )
@@ -642,14 +642,14 @@ class _TimelineBlockRow(QFrame):
             meta_parts.append(f"⏳ {block.wait_minutes:.0f}m wait")
         meta_lbl = QLabel("  ·  ".join(meta_parts))
         meta_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         content.addWidget(meta_lbl)
 
         if block.notes:
             notes_lbl = QLabel(block.notes[:80] + ("…" if len(block.notes) > 80 else ""))
             notes_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 f"font-style: italic;"
             )
             content.addWidget(notes_lbl)
@@ -658,10 +658,10 @@ class _TimelineBlockRow(QFrame):
 
         # Status badge
         _STATUS_BADGE = {
-            "planned":  (Colors.ACCENT,   "rgba(59,130,246,0.15)"),
-            "done":     (Colors.SUCCESS,  "rgba(34,197,94,0.15)"),
-            "skipped":  (Colors.WARNING,  "rgba(249,115,22,0.15)"),
-            "canceled": (Colors.DANGER,   "rgba(239,68,68,0.15)"),
+            "planned":  (Colors.ACCENT,   Colors.ACCENT_BG),
+            "done":     (Colors.SUCCESS,  Colors.SUCCESS_BG),
+            "skipped":  (Colors.WARNING,  Colors.WARNING_BG),
+            "canceled": (Colors.DANGER,   Colors.DANGER_BG),
         }
         sc, sbg = _STATUS_BADGE.get(block.status, (Colors.TEXT_MUTED, Colors.BG_CARD))
         s_lbl = QLabel(block.status)
@@ -801,10 +801,10 @@ class _TimelineBlockRow(QFrame):
             b.setFixedHeight(34)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setStyleSheet(
-                f"QPushButton {{ background: {Colors.BG_CARD_HOV}; color: {color};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_SM}px; padding: 0 12px; }}"
-                f"QPushButton:hover {{ background: {Colors.BORDER}; }}"
+                f"QPushButton:hover {{ background: {Colors.HOVER_BG}; }}"
             )
             return b
 
@@ -834,8 +834,8 @@ class _TimelineBlockRow(QFrame):
         b.setFixedSize(26, 26)
         b.setCursor(Qt.CursorShape.PointingHandCursor)
         b.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {color};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -894,7 +894,7 @@ class SchedulePage(BasePage):
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setStyleSheet(
                 f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_MD}px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
             )
@@ -911,7 +911,7 @@ class SchedulePage(BasePage):
         self._today_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._today_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -949,11 +949,11 @@ class SchedulePage(BasePage):
             b.setObjectName(f"view_{mode}")
             b.setStyleSheet(
                 f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
                 f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
-                f"QPushButton:checked {{ background: {Colors.ACCENT}; color: white;"
-                f"  border-color: {Colors.ACCENT}; font-weight: 600; }}"
-                f"QPushButton:hover:!checked {{ background: {Colors.BG_CARD_HOV}; }}"
+                f"QPushButton:checked {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY};"
+                f"  border-color: {Colors.BORDER_LIGHT}; font-weight: 600; }}"
+                f"QPushButton:hover:!checked {{ background: {Colors.HOVER_BG}; }}"
             )
             b.toggled.connect(lambda checked, m=mode, btn=b: self._on_view_toggled(m, checked, btn))
             hdr_lay.addWidget(b)
@@ -971,7 +971,7 @@ class SchedulePage(BasePage):
         # ── Splitter ──────────────────────────────────────────────────────────
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
         self._splitter.addWidget(self._build_calendar_panel())
         self._splitter.addWidget(self._build_detail_panel())
@@ -1015,8 +1015,8 @@ class SchedulePage(BasePage):
     def _build_detail_panel(self) -> QWidget:
         w = QWidget()
         w.setStyleSheet(
-            f"background: {Colors.BG_SIDEBAR}; "
-            f"border-left: 1px solid {Colors.BORDER};"
+            f"background: {Colors.BG_CARD}; "
+            f"border-left: 1px solid {Colors.BORDER_LIGHT};"
         )
         w.setMinimumWidth(280)
         w.setMaximumWidth(500)
@@ -1029,10 +1029,10 @@ class SchedulePage(BasePage):
         self._detail_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._detail_scroll.setWidgetResizable(True)
         self._detail_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._detail_scroll.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._detail_scroll.setStyleSheet(f"background: {Colors.BG_CARD};")
 
         self._detail_content = QWidget()
-        self._detail_content.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._detail_content.setStyleSheet(f"background: {Colors.BG_CARD};")
         self._detail_layout = QVBoxLayout(self._detail_content)
         self._detail_layout.setContentsMargins(16, 16, 16, 20)
         self._detail_layout.setSpacing(8)
@@ -1144,10 +1144,10 @@ class SchedulePage(BasePage):
         dlg.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         dlg.setStyleSheet(
             f"QDialog {{ background: {Colors.BG_CARD};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px; }}"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px; }}"
             f"QCalendarWidget QAbstractItemView:enabled {{"
             f"  color: {Colors.TEXT_PRIMARY}; background: {Colors.BG_CARD};"
-            f"  selection-background-color: {Colors.ACCENT}; selection-color: white; }}"
+            f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
             f"QCalendarWidget QWidget {{ color: {Colors.TEXT_PRIMARY};"
             f"  background: {Colors.BG_CARD}; }}"
             f"QCalendarWidget QToolButton {{ color: {Colors.TEXT_PRIMARY};"
@@ -1270,14 +1270,14 @@ class SchedulePage(BasePage):
         # ── Experiment header ──────────────────────────────────────────────
         title_lbl = QLabel(exp.title)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700; background: transparent;"
         )
         title_lbl.setWordWrap(True)
         self._detail_layout.addWidget(title_lbl)
 
         proto_lbl = QLabel(exp.protocol_name or "Custom")
         proto_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         self._detail_layout.addWidget(proto_lbl)
 
@@ -1287,14 +1287,14 @@ class SchedulePage(BasePage):
             f"  ·  {format_duration_min(exp.total_duration)}"
         )
         meta_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
         self._detail_layout.addWidget(meta_lbl)
 
         if exp.notes:
             notes_lbl = QLabel(exp.notes)
             notes_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
                 f"font-style: italic;"
             )
             notes_lbl.setWordWrap(True)
@@ -1305,7 +1305,7 @@ class SchedulePage(BasePage):
         # ── Timeline blocks ────────────────────────────────────────────────
         steps_hdr = QLabel(f"Timeline  ({len(exp.timeline_blocks)} blocks)")
         steps_hdr.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600; background: transparent;"
         )
         self._detail_layout.addWidget(steps_hdr)
 
@@ -1344,7 +1344,7 @@ class SchedulePage(BasePage):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(
                 f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_SM}px; padding: 0 10px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV};"
                 f"  color: {Colors.TEXT_PRIMARY}; }}"
@@ -1362,7 +1362,7 @@ class SchedulePage(BasePage):
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-style: italic;"
         )
         self._detail_layout.addStretch()

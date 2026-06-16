@@ -83,8 +83,8 @@ class BenchFlowApp(QMainWindow):
         ToastManager.install(central)
 
         layout = QHBoxLayout(central)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         # ── Sidebar ───────────────────────────────────────────────────────────
         self.sidebar = Sidebar()
@@ -96,7 +96,7 @@ class BenchFlowApp(QMainWindow):
         self._stack.setObjectName("PageContainer")
         self._stack.setStyleSheet(
             f"QStackedWidget#PageContainer {{"
-            f"  background: {Colors.BG_DARK};"
+            f"  background: {Colors.BG_PAGE};"
             f"  border-radius: 20px;"
             f"  border: 1px solid {Colors.BORDER};"
             f"}}"
@@ -145,7 +145,7 @@ class BenchFlowApp(QMainWindow):
             central.setStyleSheet(f"background: {Colors.BG_DARK};")
         self._stack.setStyleSheet(
             f"QStackedWidget#PageContainer {{"
-            f"  background: {Colors.BG_DARK};"
+            f"  background: {Colors.BG_PAGE};"
             f"  border-radius: 20px;"
             f"  border: 1px solid {Colors.BORDER};"
             f"}}"

@@ -20,9 +20,9 @@ from PySide6.QtWidgets import (
     QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
-from qt_app.theme import Colors, Fonts
+from qt_app.theme import Colors, Fonts, Radii
 from qt_app.components.widgets import (
-    Card, HSeparator, PageTitle, PrimaryButton, SubLabel,
+    Card, PageTitle, PrimaryButton, SubLabel,
 )
 from qt_app.services.event_bus import bus
 from qt_app.views.base_page import BasePage
@@ -34,25 +34,39 @@ class _StatCard(Card):
     def __init__(self, icon: str, value: str, label: str, accent: str,
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setMinimumHeight(138)
+        self.setStyleSheet(
+            f"QFrame#Card {{ background: {Colors.BG_ELEVATED};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px; }}"
+            f"QFrame#Card:hover {{ background: {Colors.BG_CARD};"
+            f"  border-color: {Colors.BORDER_LIGHT}; }}"
+        )
         lay = QVBoxLayout(self)
         lay.setContentsMargins(20, 18, 20, 18)
-        lay.setSpacing(4)
+        lay.setSpacing(8)
 
         icon_lbl = QLabel(icon)
-        icon_lbl.setStyleSheet(f"font-size: 26px; color: {accent};")
+        icon_lbl.setFixedSize(36, 36)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_lbl.setStyleSheet(
+            f"font-size: 20px; color: {accent};"
+            f"background: {Colors.BG_SURFACE_ALT};"
+            f"border-radius: {Radii.MD}px;"
+        )
         lay.addWidget(icon_lbl)
-        lay.addSpacing(4)
 
         val_lbl = QLabel(value)
         val_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY};"
-            f"font-size: {Fonts.SIZE_2XL}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; background: transparent;"
+            f"font-size: {Fonts.SIZE_3XL}px; font-weight: 750;"
+            f"background: transparent;"
         )
         lay.addWidget(val_lbl)
 
         lab_lbl = QLabel(label)
         lab_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_MD}px; background: transparent;"
+            f"background: transparent;"
         )
         lay.addWidget(lab_lbl)
         lay.addStretch()
@@ -67,9 +81,10 @@ class _ActiveSessionBanner(QFrame):
         super().__init__(parent)
         self.setStyleSheet(
             f"QFrame {{"
-            f"  background: rgba(249,115,22,0.12);"
-            f"  border: 1px solid {Colors.WARNING};"
-            f"  border-radius: 12px;"
+            f"  background: {Colors.WARNING_BG};"
+            f"  border: 1px solid {Colors.BORDER};"
+            f"  border-left: 3px solid {Colors.WARNING};"
+            f"  border-radius: {Radii.LG}px;"
             f"}}"
         )
         lay = QHBoxLayout(self)
@@ -77,7 +92,9 @@ class _ActiveSessionBanner(QFrame):
         lay.setSpacing(14)
 
         icon = QLabel("⚠")
-        icon.setStyleSheet(f"color: {Colors.WARNING}; font-size: 20px;")
+        icon.setStyleSheet(
+            f"color: {Colors.WARNING}; font-size: 20px; background: transparent;"
+        )
         lay.addWidget(icon)
 
         proto_name = (
@@ -86,7 +103,8 @@ class _ActiveSessionBanner(QFrame):
         )
         msg = QLabel(f"Interrupted run: <b>{proto_name}</b>  — open Run Mode to resume")
         msg.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
+            f"background: transparent;"
         )
         msg.setTextFormat(Qt.TextFormat.RichText)
         lay.addWidget(msg, stretch=1)
@@ -97,26 +115,40 @@ class _ActiveSessionBanner(QFrame):
 def _quick_card(emoji: str, label: str, page: str, app) -> QFrame:
     card = Card()
     card.setCursor(Qt.CursorShape.PointingHandCursor)
-    card.setMinimumHeight(76)
+    card.setMinimumHeight(94)
+    card.setStyleSheet(
+        f"QFrame#Card {{ background: {Colors.BG_ELEVATED};"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px; }}"
+        f"QFrame#Card:hover {{ background: {Colors.BG_CARD};"
+        f"  border-color: {Colors.BORDER_LIGHT}; }}"
+    )
     card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
     lay = QHBoxLayout(card)
-    lay.setContentsMargins(18, 14, 18, 14)
-    lay.setSpacing(12)
+    lay.setContentsMargins(18, 16, 18, 16)
+    lay.setSpacing(14)
 
     e_lbl = QLabel(emoji)
-    e_lbl.setStyleSheet("font-size: 22px;")
+    e_lbl.setFixedSize(36, 36)
+    e_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    e_lbl.setStyleSheet(
+        f"font-size: 20px; background: {Colors.BG_SURFACE_ALT};"
+        f"border-radius: {Radii.MD}px;"
+    )
     lay.addWidget(e_lbl)
 
     t_lbl = QLabel(label)
     t_lbl.setStyleSheet(
-        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 600;"
+        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; background: transparent;"
+        f"font-weight: 700; background: transparent;"
     )
     lay.addWidget(t_lbl)
     lay.addStretch()
 
     arr = QLabel("›")
-    arr.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: 22px;")
+    arr.setStyleSheet(
+        f"color: {Colors.TEXT_MUTED}; font-size: 22px; background: transparent;"
+    )
     lay.addWidget(arr)
 
     card.mousePressEvent = lambda e, p=page: app.navigate(p)
@@ -181,7 +213,7 @@ class DashboardPage(BasePage):
         scroll.setWidget(inner)
 
         root = QVBoxLayout(inner)
-        root.setContentsMargins(32, 32, 32, 32)
+        root.setContentsMargins(36, 34, 36, 36)
         root.setSpacing(0)
 
         # ── Active session banner (optional) ──────────────────────────────────
@@ -196,9 +228,9 @@ class DashboardPage(BasePage):
         header.setSpacing(16)
 
         col = QVBoxLayout()
-        col.setSpacing(4)
+        col.setSpacing(6)
         col.addWidget(PageTitle("Dashboard"))
-        col.addWidget(SubLabel("Your lab at a glance."))
+        col.addWidget(SubLabel("Protocols, scheduled work, and recent runs in one place."))
         header.addLayout(col)
         header.addStretch()
 
@@ -207,9 +239,7 @@ class DashboardPage(BasePage):
         run_btn.clicked.connect(lambda: self.app.navigate("run"))
         header.addWidget(run_btn)
         root.addLayout(header)
-        root.addSpacing(20)
-        root.addWidget(HSeparator())
-        root.addSpacing(20)
+        root.addSpacing(24)
 
         # ── Stats ─────────────────────────────────────────────────────────────
         n_protocols = len(self.app.data.load_protocols())
@@ -219,14 +249,14 @@ class DashboardPage(BasePage):
 
         ovr_lbl = QLabel("Overview")
         ovr_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
-            f"font-weight: 600; letter-spacing: 1px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XL}px; background: transparent;"
+            f"font-weight: 700; background: transparent;"
         )
         root.addWidget(ovr_lbl)
         root.addSpacing(10)
 
         grid = QGridLayout()
-        grid.setSpacing(10)
+        grid.setSpacing(14)
         grid.setContentsMargins(0, 0, 0, 0)
 
         stats = [
@@ -237,22 +267,21 @@ class DashboardPage(BasePage):
         ]
         for col_idx, (icon, val, lbl, color) in enumerate(stats):
             card = _StatCard(icon, val, lbl, color)
-            card.setMinimumHeight(120)
             grid.addWidget(card, 0, col_idx)
         root.addLayout(grid)
-        root.addSpacing(28)
+        root.addSpacing(30)
 
         # ── Quick access ──────────────────────────────────────────────────────
         qa_lbl = QLabel("Quick access")
         qa_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
-            f"font-weight: 600; letter-spacing: 1px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_XL}px; background: transparent;"
+            f"font-weight: 700; background: transparent;"
         )
         root.addWidget(qa_lbl)
         root.addSpacing(10)
 
         qa_row = QHBoxLayout()
-        qa_row.setSpacing(10)
+        qa_row.setSpacing(14)
         for label, page, emoji in [
             ("Protocol Library", "library",  "📋"),
             ("Run Mode",         "run",      "▶"),

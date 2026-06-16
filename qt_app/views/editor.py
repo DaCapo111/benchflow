@@ -46,6 +46,11 @@ from qt_app.views.base_page import BasePage
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
+def _edit_debug(stage: str, **values: Any) -> None:
+    details = " ".join(f"{key}={value!r}" for key, value in values.items())
+    print(f"[EditorEdit] {stage} {details}", flush=True)
+
+
 STEP_TYPES = [
     "preparation", "reagent_addition", "pipetting", "mixing",
     "incubation", "heating", "cooling", "waiting",
@@ -96,7 +101,7 @@ def _mk_input(placeholder: str = "", height: int = 36) -> QLineEdit:
     e.setFixedHeight(height)
     e.setStyleSheet(
         f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
         f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
         f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
     )
@@ -110,7 +115,7 @@ def _mk_textarea(placeholder: str = "", min_h: int = 64) -> QPlainTextEdit:
     t.setMaximumHeight(min_h * 2)
     t.setStyleSheet(
         f"QPlainTextEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
         f"  padding: 8px 10px; font-size: {Fonts.SIZE_SM}px; }}"
         f"QPlainTextEdit:focus {{ border-color: {Colors.ACCENT}; }}"
     )
@@ -126,7 +131,7 @@ def _mk_spinbox(max_val: float = 9999, decimals: int = 1) -> QDoubleSpinBox:
     sb.setFixedWidth(110)
     sb.setStyleSheet(
         f"QDoubleSpinBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-        f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+        f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
         f"  padding: 0 8px; font-size: {Fonts.SIZE_SM}px; }}"
         f"QDoubleSpinBox:focus {{ border-color: {Colors.ACCENT}; }}"
         f"QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{"
@@ -138,7 +143,7 @@ def _mk_spinbox(max_val: float = 9999, decimals: int = 1) -> QDoubleSpinBox:
 def _field_label(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(
-        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; font-weight: 600;"
+        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; font-weight: 600; background: transparent;"
     )
     return lbl
 
@@ -146,7 +151,7 @@ def _field_label(text: str) -> QLabel:
 def _section_hdr(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(
-        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         f"font-weight: 700; letter-spacing: 0.5px;"
         f"padding-top: 6px;"
     )
@@ -180,17 +185,6 @@ class _StepRow(QFrame):
     duplicate    = Signal(int)
     deleted      = Signal(int)
 
-    _STYLE = (
-        f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
-        f"  border: 1px solid {Colors.BORDER}; }}"
-        f"QFrame:hover {{ border-color: {Colors.ACCENT}; }}"
-    )
-    _STYLE_SEL = (
-        f"QFrame {{ background: rgba(59,130,246,0.12);"
-        f"  border-radius: {Radii.MD}px;"
-        f"  border: 2px solid {Colors.ACCENT}; }}"
-    )
-
     def __init__(self, index: int, step: dict,
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -199,8 +193,23 @@ class _StepRow(QFrame):
         self._sel   = False
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet(self._STYLE)
+        self.setStyleSheet(self._style(False))
         self._build()
+
+    @staticmethod
+    def _style(selected: bool) -> str:
+        if selected:
+            return (
+                f"QFrame {{ background: {Colors.SELECTED_BG};"
+                f"  border-radius: {Radii.LG}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT};"
+                f"  border-left: 3px solid {Colors.ACCENT}; }}"
+            )
+        return (
+            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"QFrame:hover {{ background: {Colors.HOVER_BG}; }}"
+        )
 
     def _build(self) -> None:
         lay = QHBoxLayout(self)
@@ -218,7 +227,7 @@ class _StepRow(QFrame):
         num = QLabel(f"{self._index + 1}.")
         num.setFixedWidth(24)
         num.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lay.addWidget(num)
 
@@ -226,7 +235,7 @@ class _StepRow(QFrame):
         title = self._step.get("title", "") or f"Step {self._index + 1}"
         lbl = QLabel(title)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         lbl.setWordWrap(False)
@@ -241,7 +250,7 @@ class _StepRow(QFrame):
         if total > 0:
             dur = QLabel(f"{int(total)}m")
             dur.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             )
             lay.addWidget(dur)
 
@@ -264,7 +273,7 @@ class _StepRow(QFrame):
 
     def set_selected(self, sel: bool) -> None:
         self._sel = sel
-        self.setStyleSheet(self._STYLE_SEL if sel else self._STYLE)
+        self.setStyleSheet(self._style(sel))
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -349,12 +358,12 @@ class _TagChip(QFrame):
         lay.setContentsMargins(8, 3, 4, 3)
         lay.setSpacing(4)
         self.setStyleSheet(
-            f"QFrame {{ background: rgba(59,130,246,0.15);"
-            f"  border-radius: {Radii.SM}px;"
-            f"  border: 1px solid {Colors.ACCENT}; }}"
+            f"QFrame {{ background: {Colors.ACCENT_BG};"
+            f"  border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         lbl = QLabel(f"#{tag}")
-        lbl.setStyleSheet(f"color: {Colors.ACCENT_LIGHT}; font-size: {Fonts.SIZE_XS}px;")
+        lbl.setStyleSheet(f"color: {Colors.ACCENT}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
         rm = QPushButton("×")
         rm.setFixedSize(16, 16)
         rm.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -409,6 +418,13 @@ class _StepForm(QScrollArea):
 
     def load_step(self, step: dict) -> None:
         """Populate form from step dict."""
+        self.blockSignals(True)
+        try:
+            self._load_step(step)
+        finally:
+            self.blockSignals(False)
+
+    def _load_step(self, step: dict) -> None:
         self._step = step
         self._clear()
         lay = self._lay
@@ -427,12 +443,12 @@ class _StepForm(QScrollArea):
             self._type_cb.addItem(t.replace("_", " ").title(), userData=t)
         self._type_cb.setStyleSheet(
             f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 6px 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
-            f"QComboBox QAbstractItemView {{ background: {Colors.BG_SIDEBAR};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER};"
-            f"  selection-background-color: {Colors.ACCENT}; }}"
+            f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT}; background: transparent;"
+            f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         idx = self._type_cb.findData(step.get("type", "other"))
         self._type_cb.setCurrentIndex(max(0, idx))
@@ -500,7 +516,7 @@ class _StepForm(QScrollArea):
         self._warn_edit = _mk_textarea("Safety notes, critical pitfalls…", min_h=56)
         self._warn_edit.setStyleSheet(
             f"QPlainTextEdit {{ background: {Colors.BG_INPUT}; color: {Colors.WARNING};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 8px 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPlainTextEdit:focus {{ border-color: {Colors.WARNING}; }}"
         )
@@ -583,10 +599,10 @@ class _StepForm(QScrollArea):
         add_btn.setFixedWidth(70)
         add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.ACCENT};"
-            f"  border: 1px solid {Colors.ACCENT}; border-radius: {Radii.XS}px;"
+            f"QPushButton {{ background: {Colors.ACCENT_BG}; color: {Colors.ACCENT};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_XS}px; font-weight: 600; }}"
-            f"QPushButton:hover {{ background: rgba(59,130,246,0.15); }}"
+            f"QPushButton:hover {{ background: {Colors.ACCENT_BG}; }}"
         )
         hdr.addWidget(add_btn)
         lay.addLayout(hdr)
@@ -596,7 +612,7 @@ class _StepForm(QScrollArea):
         hdr2.setSpacing(4)
         for lbl_text, w_val in [("Name", None), ("Amount", 80), ("Unit", 80), ("", 28)]:
             lbl = QLabel(lbl_text)
-            lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             if w_val:
                 lbl.setFixedWidth(w_val)
             else:
@@ -651,10 +667,10 @@ class _StepForm(QScrollArea):
         add_btn.setFixedWidth(70)
         add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.ACCENT};"
-            f"  border: 1px solid {Colors.ACCENT}; border-radius: {Radii.XS}px;"
+            f"QPushButton {{ background: {Colors.ACCENT_BG}; color: {Colors.ACCENT};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_XS}px; font-weight: 600; }}"
-            f"QPushButton:hover {{ background: rgba(59,130,246,0.15); }}"
+            f"QPushButton:hover {{ background: {Colors.ACCENT_BG}; }}"
         )
         hdr.addWidget(add_btn)
         lay.addLayout(hdr)
@@ -703,7 +719,7 @@ class _StepForm(QScrollArea):
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic; background: transparent;"
         )
         self._lay.addWidget(lbl)
         self._lay.addStretch()
@@ -742,8 +758,8 @@ class _MetaCard(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setStyleSheet(
-            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.MD}px;"
-            f"  border: 1px solid {Colors.BORDER}; }}"
+            f"QFrame {{ background: {Colors.BG_CARD}; border-radius: {Radii.LG}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         self._tag_chips: list[_TagChip] = []
         self._build()
@@ -765,11 +781,11 @@ class _MetaCard(QFrame):
         self._name_edit.setFixedHeight(36)
         self._name_edit.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_MD}px; font-weight: 700; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
-        self._name_edit.textChanged.connect(self.changed.emit)
+        self._name_edit.textChanged.connect(lambda *_: self.changed.emit())
         name_col.addWidget(self._name_edit)
         r1.addLayout(name_col, stretch=2)
 
@@ -777,7 +793,7 @@ class _MetaCard(QFrame):
         cat_col.setSpacing(3)
         cat_col.addWidget(_field_label("Category"))
         self._cat_edit = _mk_input("e.g. Cell Biology, Biochemistry")
-        self._cat_edit.textChanged.connect(self.changed.emit)
+        self._cat_edit.textChanged.connect(lambda *_: self.changed.emit())
         cat_col.addWidget(self._cat_edit)
         r1.addLayout(cat_col, stretch=1)
 
@@ -788,7 +804,7 @@ class _MetaCard(QFrame):
         desc_col.setSpacing(3)
         desc_col.addWidget(_field_label("Description"))
         self._desc_edit = _mk_textarea("Short description of this protocol…", min_h=52)
-        self._desc_edit.textChanged.connect(self.changed.emit)
+        self._desc_edit.textChanged.connect(lambda *_: self.changed.emit())
         desc_col.addWidget(self._desc_edit)
         outer.addLayout(desc_col)
 
@@ -807,7 +823,7 @@ class _MetaCard(QFrame):
         add_tag_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_tag_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-            f"  border: none; border-radius: {Radii.SM}px; font-size: 14px; }}"
+            f"  border: none; border-radius: {Radii.LG}px; font-size: 14px; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
         add_tag_btn.clicked.connect(self._on_add_tag)
@@ -826,15 +842,19 @@ class _MetaCard(QFrame):
         outer.addLayout(tag_col)
 
     def load(self, proto: dict) -> None:
-        self._name_edit.setText(proto.get("name", ""))
-        self._cat_edit.setText(proto.get("category", ""))
-        self._desc_edit.setPlainText(proto.get("description", ""))
-        # Clear chips
-        for chip in list(self._tag_chips):
-            chip.deleteLater()
-        self._tag_chips.clear()
-        for tag in proto.get("tags", []):
-            self._add_chip(tag, emit=False)
+        self.blockSignals(True)
+        try:
+            self._name_edit.setText(proto.get("name", ""))
+            self._cat_edit.setText(proto.get("category", ""))
+            self._desc_edit.setPlainText(proto.get("description", ""))
+            # Clear chips
+            for chip in list(self._tag_chips):
+                chip.deleteLater()
+            self._tag_chips.clear()
+            for tag in proto.get("tags", []):
+                self._add_chip(tag, emit=False)
+        finally:
+            self.blockSignals(False)
 
     def collect(self) -> tuple[str, str, str, list[str]]:
         """Return (name, category, description, tags)."""
@@ -927,13 +947,13 @@ class EditorPage(BasePage):
 
         self._proto_title_lbl = QLabel("Protocol Editor")
         self._proto_title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700; background: transparent;"
         )
         bar_lay.addWidget(self._proto_title_lbl, stretch=1)
 
         self._dirty_lbl = QLabel("")
         self._dirty_lbl.setStyleSheet(
-            f"color: {Colors.WARNING}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.WARNING}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         bar_lay.addWidget(self._dirty_lbl)
 
@@ -942,8 +962,8 @@ class EditorPage(BasePage):
         self._export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._export_btn.setToolTip("Export this protocol as JSON, Markdown, or PDF")
         self._export_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -965,7 +985,7 @@ class EditorPage(BasePage):
         ph_lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ph_lbl = QLabel("Open a protocol from the Library to edit it.")
         ph_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px; font-style: italic; background: transparent;"
         )
         ph_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ph_lay.addWidget(ph_lbl)
@@ -974,7 +994,7 @@ class EditorPage(BasePage):
         ph_open.setCursor(Qt.CursorShape.PointingHandCursor)
         ph_open.setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-            f"  border: none; border-radius: {Radii.MD}px; font-size: {Fonts.SIZE_SM}px; }}"
+            f"  border: none; border-radius: {Radii.LG}px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
         ph_open.clicked.connect(lambda: self.app.navigate("library"))
@@ -996,7 +1016,7 @@ class EditorPage(BasePage):
         # Splitter: step list | step form
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         # ── Left: step list ───────────────────────────────────────────────────
@@ -1010,7 +1030,7 @@ class EditorPage(BasePage):
         step_hdr.setSpacing(8)
         self._step_count_lbl = QLabel("Steps (0)")
         self._step_count_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700; background: transparent;"
         )
         step_hdr.addWidget(self._step_count_lbl, stretch=1)
         add_step_btn = QPushButton("＋ Add Step")
@@ -1018,7 +1038,7 @@ class EditorPage(BasePage):
         add_step_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_step_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-            f"  border: none; border-radius: {Radii.SM}px;"
+            f"  border: none; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; padding: 0 12px; }}"
             f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
         )
@@ -1063,7 +1083,15 @@ class EditorPage(BasePage):
 
     def on_show(self) -> None:
         wanted_id = getattr(self.app.state, "selected_protocol_id", "")
+        _edit_debug("on_show", selected_protocol_id=wanted_id)
         if wanted_id:
+            current_id = self._proto.get("id", "") if self._proto else ""
+            if wanted_id != current_id and not self._confirm_replace_current_protocol():
+                self.app.state.selected_protocol_id = ""
+                if self._proto is None:
+                    self._editor_w.hide()
+                    self._placeholder_w.show()
+                return
             self._load_protocol_by_id(wanted_id)
             self.app.state.selected_protocol_id = ""
         elif self._proto is None:
@@ -1073,13 +1101,40 @@ class EditorPage(BasePage):
 
     # ── Protocol loading ──────────────────────────────────────────────────────
 
-    def _load_protocol_by_id(self, proto_id: str) -> None:
+    def _load_protocol_by_id(self, proto_id: str) -> bool:
         all_protos = self.app.data.load_protocols()
+        _edit_debug(
+            "load_protocol",
+            requested_id=proto_id,
+            available_ids=[p.get("id", "") for p in all_protos],
+        )
         proto = next((p for p in all_protos if p.get("id") == proto_id), None)
         if proto is None:
             ToastManager.show_error(f"Protocol not found: {proto_id}")
-            return
+            return False
         self._open_proto(proto)
+        return True
+
+    def _confirm_replace_current_protocol(self) -> bool:
+        """Ask before replacing an editor buffer with unsaved changes."""
+        if not self._dirty:
+            return True
+
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("Unsaved Changes")
+        dlg.setText("You have unsaved changes. Save before opening another protocol?")
+        save_btn = dlg.addButton("Save & Open", QMessageBox.ButtonRole.AcceptRole)
+        discard_btn = dlg.addButton("Discard", QMessageBox.ButtonRole.DestructiveRole)
+        dlg.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+        dlg.exec()
+
+        clicked = dlg.clickedButton()
+        if clicked is save_btn:
+            self._on_save()
+            return not self._dirty
+        if clicked is discard_btn:
+            return True
+        return False
 
     def _open_proto(self, proto: dict) -> None:
         self._proto       = copy.deepcopy(proto)
@@ -1132,7 +1187,7 @@ class EditorPage(BasePage):
         if n == 0:
             lbl = QLabel("No steps yet. Click ＋ Add Step.")
             lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 f"font-style: italic; padding: 8px;"
             )
             self._step_list_lay.insertWidget(0, lbl)
@@ -1184,7 +1239,7 @@ class EditorPage(BasePage):
             self._dirty_lbl.setText("● Unsaved changes")
             self._save_btn.setStyleSheet(
                 f"QPushButton {{ background: {Colors.ACCENT}; color: white;"
-                f"  border: none; border-radius: {Radii.MD}px;"
+                f"  border: none; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_MD}px; font-weight: 600; padding: 8px 20px; }}"
                 f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
             )
@@ -1192,7 +1247,7 @@ class EditorPage(BasePage):
             self._dirty_lbl.setText("")
             self._save_btn.setStyleSheet(
                 f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
                 f"  font-size: {Fonts.SIZE_MD}px; padding: 8px 20px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV};"
                 f"  color: {Colors.TEXT_PRIMARY}; }}"
@@ -1411,11 +1466,11 @@ class EditorPage(BasePage):
         proto = self._proto
         menu = QMenu(self._export_btn)
         menu.setStyleSheet(
-            f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"QMenu {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
             f"  padding: 4px 0; }}"
             f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
-            f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+            f"QMenu::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY}; }}"
         )
         menu.addAction("{ }  JSON").triggered.connect(
             lambda: self._do_export(proto, "json")

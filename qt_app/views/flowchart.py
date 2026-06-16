@@ -168,11 +168,11 @@ class _StepNode(QGraphicsObject):
         bg_path.addRoundedRect(QRectF(0, 0, w, h), NODE_RAD, NODE_RAD)
 
         if self._sel:
-            bg_color = QColor(Colors.BG_CARD_HOV)
-            border_pen = QPen(QColor(Colors.ACCENT), 2)
+            bg_color = QColor(Colors.SELECTED_BG)
+            border_pen = QPen(QColor(Colors.ACCENT), 1.4)
         else:
             bg_color = QColor(Colors.BG_CARD)
-            border_pen = QPen(QColor(Colors.BORDER), 1)
+            border_pen = QPen(QColor(Colors.BORDER_LIGHT), 1)
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(bg_color)
@@ -340,7 +340,7 @@ class _ArrowItem(QGraphicsPathItem):
         self.setPath(path)
         self.setPos(x_center, y_start)
 
-        pen = QPen(QColor(Colors.BORDER), 1.5)
+        pen = QPen(QColor(Colors.BORDER), 1.2)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         self.setPen(pen)
@@ -350,7 +350,9 @@ class _ArrowItem(QGraphicsPathItem):
 # ── _FlowchartView ────────────────────────────────────────────────────────────
 
 class _FlowchartView(QGraphicsView):
-    """QGraphicsView with Ctrl+wheel zoom and drag-to-pan."""
+    """QGraphicsView with modifier-wheel zoom and drag-to-pan."""
+
+    zoom_changed = Signal()
 
     def __init__(self, scene: QGraphicsScene,
                  parent: QWidget | None = None) -> None:
@@ -362,12 +364,26 @@ class _FlowchartView(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
-        self.setStyleSheet(f"background: {Colors.BG_PAGE}; border: none;")
+        self.setStyleSheet(f"background: {Colors.BG_SURFACE_ALT}; border: none;")
         self._zoom_level = 1.0
 
     def wheelEvent(self, event) -> None:
-        factor = 1.20 if event.angleDelta().y() > 0 else (1 / 1.20)
-        self._do_zoom(factor)
+        mods = event.modifiers()
+        zoom_requested = bool(
+            mods & (
+                Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.MetaModifier
+            )
+        )
+        if zoom_requested:
+            delta = event.angleDelta().y() or event.pixelDelta().y()
+            if delta:
+                factor = 1.20 if delta > 0 else (1 / 1.20)
+                self._do_zoom(factor)
+                event.accept()
+                return
+
+        super().wheelEvent(event)
 
     def zoom_in(self) -> None:
         self._do_zoom(1.25)
@@ -382,6 +398,7 @@ class _FlowchartView(QGraphicsView):
         padded = rect.adjusted(-24, -24, 24, 24)
         self.fitInView(padded, Qt.AspectRatioMode.KeepAspectRatio)
         self._zoom_level = self.transform().m11()
+        self.zoom_changed.emit()
 
     def center_view(self) -> None:
         rect = self.scene().itemsBoundingRect()
@@ -391,9 +408,10 @@ class _FlowchartView(QGraphicsView):
     def reset_zoom(self) -> None:
         self.setTransform(QTransform())
         self._zoom_level = 1.0
+        self.zoom_changed.emit()
 
     def zoom_level_pct(self) -> int:
-        return int(self.transform().m11() * 100)
+        return round(self.transform().m11() * 100)
 
     def _do_zoom(self, factor: float) -> None:
         new_z = self._zoom_level * factor
@@ -401,6 +419,7 @@ class _FlowchartView(QGraphicsView):
             return
         self.scale(factor, factor)
         self._zoom_level = new_z
+        self.zoom_changed.emit()
 
 
 # ── _StepDetailPanel ──────────────────────────────────────────────────────────
@@ -411,7 +430,10 @@ class _StepDetailPanel(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMinimumWidth(280)
-        self.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-left: 1px solid {Colors.BORDER_LIGHT};"
+        )
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -421,11 +443,11 @@ class _StepDetailPanel(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._scroll.setStyleSheet(f"background: {Colors.BG_CARD};")
         outer.addWidget(self._scroll)
 
         self._inner = QWidget()
-        self._inner.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._inner.setStyleSheet(f"background: {Colors.BG_CARD};")
         self._lay = QVBoxLayout(self._inner)
         self._lay.setContentsMargins(16, 16, 16, 24)
         self._lay.setSpacing(6)
@@ -453,7 +475,7 @@ class _StepDetailPanel(QWidget):
         )
         hdr_row.addWidget(num_lbl)
         of_lbl = QLabel(f"of {total}")
-        of_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+        of_lbl.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
         hdr_row.addWidget(of_lbl)
         hdr_row.addStretch()
         lay.addLayout(hdr_row)
@@ -462,14 +484,14 @@ class _StepDetailPanel(QWidget):
         title_lbl = QLabel(step.get("title", f"Step {index + 1}"))
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px; font-weight: 700; background: transparent;"
         )
         lay.addWidget(title_lbl)
 
         # Type badge
         type_lbl = QLabel(stype.replace("_", " ").title())
         type_lbl.setStyleSheet(
-            f"color: {tcolor}; background: rgba(0,0,0,0.25);"
+            f"color: {tcolor}; background: {Colors.BG_SURFACE_ALT};"
             f"border-radius: 6px; padding: 2px 8px;"
             f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
         )
@@ -485,7 +507,7 @@ class _StepDetailPanel(QWidget):
             r.setSpacing(8)
             k = QLabel(label)
             k.setFixedWidth(72)
-            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             v = QLabel(DataService.format_duration(mins))
             v.setStyleSheet(f"color: {color}; font-size: {Fonts.SIZE_SM}px; font-weight: 600;")
             r.addWidget(k)
@@ -504,9 +526,9 @@ class _StepDetailPanel(QWidget):
             r = QHBoxLayout()
             k = QLabel("Total")
             k.setFixedWidth(72)
-            k.setStyleSheet(f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600;")
+            k.setStyleSheet(f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 600; background: transparent;")
             v = QLabel(DataService.format_duration(total_m))
-            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; font-weight: 700;")
+            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; font-weight: 700; background: transparent;")
             r.addWidget(k); r.addWidget(v); r.addStretch()
             lay.addLayout(r)
             lay.addWidget(HSeparator())
@@ -523,10 +545,10 @@ class _StepDetailPanel(QWidget):
             r = QHBoxLayout()
             k = QLabel(label)
             k.setFixedWidth(72)
-            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;")
+            k.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;")
             v = QLabel(val)
             v.setWordWrap(True)
-            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;")
+            v.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;")
             r.addWidget(k); r.addWidget(v, stretch=1)
             lay.addLayout(r)
         if any(v.strip() for _, v in conds):
@@ -564,7 +586,7 @@ class _StepDetailPanel(QWidget):
                 rl = QLabel(f"• {name}{suffix}")
                 rl.setWordWrap(True)
                 rl.setStyleSheet(
-                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 )
                 lay.addWidget(rl)
 
@@ -577,7 +599,7 @@ class _StepDetailPanel(QWidget):
                 el = QLabel(f"• {str(e).strip()}")
                 el.setWordWrap(True)
                 el.setStyleSheet(
-                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                    f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                 )
                 lay.addWidget(el)
 
@@ -592,7 +614,7 @@ class _StepDetailPanel(QWidget):
                     cl = QLabel(f"☐  {txt}")
                     cl.setWordWrap(True)
                     cl.setStyleSheet(
-                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                     )
                     lay.addWidget(cl)
 
@@ -607,7 +629,7 @@ class _StepDetailPanel(QWidget):
                     sl = QLabel(f"  {i+1}. {txt}")
                     sl.setWordWrap(True)
                     sl.setStyleSheet(
-                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+                        f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
                     )
                     lay.addWidget(sl)
 
@@ -637,7 +659,7 @@ class _StepDetailPanel(QWidget):
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-style: italic;"
         )
         self._lay.addWidget(lbl)
@@ -677,7 +699,7 @@ class FlowchartPage(BasePage):
         self._search_str:  str = ""
 
         self._scene  = QGraphicsScene()
-        self._scene.setBackgroundBrush(QBrush(QColor(Colors.BG_PAGE)))
+        self._scene.setBackgroundBrush(QBrush(QColor(Colors.BG_SURFACE_ALT)))
 
         self._build()
         self._subscribe_events()
@@ -719,7 +741,7 @@ class FlowchartPage(BasePage):
 
         self._proto_name_lbl = QLabel("— Select a protocol —")
         self._proto_name_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         bar_lay.addWidget(self._proto_name_lbl, stretch=1)
 
@@ -728,7 +750,7 @@ class FlowchartPage(BasePage):
         self._zoom_lbl.setFixedWidth(44)
         self._zoom_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._zoom_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
         )
 
         fit_btn  = self._toolbar_btn("⊞ Fit",    self._on_fit)
@@ -746,7 +768,7 @@ class FlowchartPage(BasePage):
         # ── 3-pane splitter ───────────────────────────────────────────────────
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         # ── Left: protocol list ───────────────────────────────────────────────
@@ -758,7 +780,7 @@ class FlowchartPage(BasePage):
 
         lhdr = QLabel("Protocols")
         lhdr.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
             f"font-weight: 700;"
         )
         left_lay.addWidget(lhdr)
@@ -768,7 +790,7 @@ class FlowchartPage(BasePage):
         self._search_box.setFixedHeight(32)
         self._search_box.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
@@ -780,15 +802,15 @@ class FlowchartPage(BasePage):
             f"QListWidget {{ background: transparent; color: {Colors.TEXT_PRIMARY};"
             f"  border: none; outline: none; font-size: {Fonts.SIZE_SM}px; }}"
             f"QListWidget::item {{ padding: 7px 8px; border-radius: {Radii.SM}px; }}"
-            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QListWidget::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+            f"QListWidget::item:hover {{ background: {Colors.HOVER_BG}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY}; }}"
         )
         self._proto_list.currentItemChanged.connect(self._on_list_selection)
         left_lay.addWidget(self._proto_list, stretch=1)
 
         self._step_count_lbl = QLabel("")
         self._step_count_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
             f"text-align: center;"
         )
         self._step_count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -802,6 +824,7 @@ class FlowchartPage(BasePage):
         center_lay.setSpacing(0)
 
         self._view = _FlowchartView(self._scene)
+        self._view.zoom_changed.connect(self._update_zoom_label)
         center_lay.addWidget(self._view, stretch=1)
 
         # Empty state overlay
@@ -811,7 +834,7 @@ class FlowchartPage(BasePage):
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_lbl.setWordWrap(True)
         self._empty_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px; background: transparent;"
             f"font-style: italic;"
         )
         center_lay.addWidget(self._empty_lbl)
@@ -837,7 +860,7 @@ class FlowchartPage(BasePage):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 8px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV};"
             f"  color: {Colors.TEXT_PRIMARY}; }}"
@@ -913,6 +936,8 @@ class FlowchartPage(BasePage):
                 self._empty_lbl.setText("This protocol has no steps yet.")
             self._view.hide()
             self._empty_lbl.show()
+            self._view.reset_zoom()
+            self._update_zoom_label()
             return
 
         # Build nodes
@@ -936,9 +961,10 @@ class FlowchartPage(BasePage):
 
         self._view.show()
         self._empty_lbl.hide()
-        # Fit view after a brief moment (let scene settle)
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(50, self._view.fit_view)
+        self._scene.setSceneRect(self._scene.itemsBoundingRect().adjusted(-48, -48, 48, 48))
+        self._view.reset_zoom()
+        self._view.centerOn(self._scene.itemsBoundingRect().center().x(), 0)
+        self._view.verticalScrollBar().setValue(self._view.verticalScrollBar().minimum())
         self._update_zoom_label()
 
     def _on_node_clicked(self, idx: int) -> None:

@@ -86,9 +86,9 @@ class _UndoSnackbar(QFrame):
         self._on_undo = on_undo
         self._remaining = 9
         self.setStyleSheet(
-            f"QFrame {{ background: {Colors.BG_SIDEBAR};"
+            f"QFrame {{ background: {Colors.BG_CARD};"
             f"  border-radius: {Radii.MD}px;"
-            f"  border: 1px solid {Colors.SUCCESS}80; }}"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
         )
         lay = QHBoxLayout(self)
         lay.setContentsMargins(14, 10, 14, 10)
@@ -96,13 +96,13 @@ class _UndoSnackbar(QFrame):
 
         self._msg_lbl = QLabel(f"✓  '{step_title[:30]}' completed")
         self._msg_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lay.addWidget(self._msg_lbl, stretch=1)
 
         self._countdown_lbl = QLabel("9s")
         self._countdown_lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         lay.addWidget(self._countdown_lbl)
 
@@ -143,6 +143,7 @@ class RunModePage(BasePage):
     def __init__(self, app: "BenchFlowApp", parent: QWidget | None = None) -> None:  # type: ignore[name-defined]
         super().__init__(app, parent)
         self._session: RunModeSession | None = None
+        self._selected_proto: dict | None = None   # preview selection (no session)
         self._cards: list[StepCard] = []
         self._snackbar: _UndoSnackbar | None = None
 
@@ -171,10 +172,13 @@ class RunModePage(BasePage):
 
     def _on_theme_changed(self, theme: str = "dark", **_kw) -> None:
         """Refresh Run Mode without discarding an active timer session."""
-        if self._session is None:
+        if self._session is not None:
+            self._rebuild_active_theme()
+        elif self._selected_proto is not None:
             self._rebuild_theme()
-            return
-        self._rebuild_active_theme()
+            self._show_protocol_preview(self._selected_proto)
+        else:
+            self._rebuild_theme()
 
     def _ensure_fresh_theme(self) -> None:
         """Rebuild stale theme state while preserving active sessions."""
@@ -184,8 +188,11 @@ class RunModePage(BasePage):
             return
         if self._session is not None:
             self._rebuild_active_theme()
-            return
-        self._rebuild_theme()
+        elif self._selected_proto is not None:
+            self._rebuild_theme()
+            self._show_protocol_preview(self._selected_proto)
+        else:
+            self._rebuild_theme()
 
     def _rebuild_active_theme(self) -> None:
         """Rebuild theme-dependent widgets while keeping the run session object."""
@@ -233,6 +240,9 @@ class RunModePage(BasePage):
             )
             if not self._tick_timer.isActive():
                 self._tick_timer.start()
+        elif self._selected_proto is not None:
+            self._select_protocol_in_list(self._selected_proto.get("id", ""))
+            self._show_protocol_preview(self._selected_proto)
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -264,12 +274,12 @@ class RunModePage(BasePage):
         self._seq_btn.setVisible(False)
         self._seq_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 6px 16px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QPushButton:checked {{ background: {Colors.ACCENT}; color: white;"
-            f"  border-color: {Colors.ACCENT}; }}"
-            f"QPushButton:checked:hover {{ background: {Colors.ACCENT_HOVER}; }}"
+            f"QPushButton:checked {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY};"
+            f"  border-color: {Colors.BORDER_LIGHT}; }}"
+            f"QPushButton:checked:hover {{ background: {Colors.SELECTED_BG}; }}"
         )
         self._seq_btn.toggled.connect(self._on_sequential_toggled)
         hdr_lay.addWidget(self._seq_btn)
@@ -289,7 +299,7 @@ class RunModePage(BasePage):
         self._save_btn.setVisible(False)
         self._save_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 6px 16px; font-size: {Fonts.SIZE_SM}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -302,7 +312,7 @@ class RunModePage(BasePage):
         self._end_run_btn.setVisible(False)
         self._end_run_btn.setStyleSheet(
             f"QPushButton {{ background: {Colors.DANGER}; color: white; border: none;"
-            f"  border-radius: {Radii.MD}px; padding: 8px 20px;"
+            f"  border-radius: {Radii.LG}px; padding: 8px 20px;"
             f"  font-size: {Fonts.SIZE_MD}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: #dc2626; }}"
         )
@@ -315,7 +325,7 @@ class RunModePage(BasePage):
         # Main splitter
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setStyleSheet(
-            f"QSplitter::handle {{ background: {Colors.BORDER}; width: 1px; }}"
+            f"QSplitter::handle {{ background: {Colors.BORDER_LIGHT}; width: 1px; }}"
         )
 
         self._splitter.addWidget(self._build_left_panel())
@@ -328,7 +338,10 @@ class RunModePage(BasePage):
 
     def _build_left_panel(self) -> QWidget:
         w = QWidget()
-        w.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        w.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-right: 1px solid {Colors.BORDER_LIGHT};"
+        )
         w.setMinimumWidth(180)
         w.setMaximumWidth(280)
         lay = QVBoxLayout(w)
@@ -338,7 +351,7 @@ class RunModePage(BasePage):
         hdr = QLabel("Protocols")
         hdr.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
-            f"font-weight: 600; padding-left: 4px;"
+            f"font-weight: 600; padding-left: 4px; background: transparent;"
         )
         lay.addWidget(hdr)
 
@@ -347,8 +360,8 @@ class RunModePage(BasePage):
             f"QListWidget {{ background: transparent; border: none; outline: none;"
             f"  font-size: {Fonts.SIZE_MD}px; color: {Colors.TEXT_PRIMARY}; }}"
             f"QListWidget::item {{ padding: 9px 8px; border-radius: 10px; margin: 1px 0; }}"
-            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QListWidget::item:selected {{ background: {Colors.ACCENT}; color: white;"
+            f"QListWidget::item:hover {{ background: {Colors.HOVER_BG}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY};"
             f"  border-radius: 10px; }}"
         )
         self._proto_list.currentItemChanged.connect(self._on_proto_selected)
@@ -360,7 +373,7 @@ class RunModePage(BasePage):
         self._steps_hdr = QLabel("Steps")
         self._steps_hdr.setStyleSheet(
             f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
-            f"font-weight: 600; padding-left: 4px;"
+            f"font-weight: 600; padding-left: 4px; background: transparent;"
         )
         self._steps_hdr.setVisible(False)
         lay.addWidget(self._steps_hdr)
@@ -370,8 +383,8 @@ class RunModePage(BasePage):
             f"QListWidget {{ background: transparent; border: none; outline: none;"
             f"  font-size: {Fonts.SIZE_XS}px; }}"
             f"QListWidget::item {{ padding: 3px 4px; border-radius: 6px; margin: 1px 0; }}"
-            f"QListWidget::item:hover {{ background: {Colors.BG_CARD_HOV}; }}"
-            f"QListWidget::item:selected {{ background: {Colors.ACCENT}20; }}"
+            f"QListWidget::item:hover {{ background: {Colors.HOVER_BG}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.SELECTED_BG}; }}"
         )
         self._step_status_list.setVisible(False)
         self._step_status_list.setMaximumHeight(220)
@@ -393,7 +406,7 @@ class RunModePage(BasePage):
         # Info bar (protocol name, step counts)
         self._info_bar = QWidget()
         self._info_bar.setStyleSheet(
-            f"background: {Colors.BG_SIDEBAR}; border-bottom: 1px solid {Colors.BORDER};"
+            f"background: {Colors.BG_CARD}; border-bottom: 1px solid {Colors.BORDER_LIGHT};"
         )
         info_lay = QHBoxLayout(self._info_bar)
         info_lay.setContentsMargins(20, 10, 20, 10)
@@ -402,19 +415,20 @@ class RunModePage(BasePage):
         self._info_name = QLabel("—")
         self._info_name.setStyleSheet(
             f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
+            f"background: transparent;"
         )
         info_lay.addWidget(self._info_name)
 
         self._info_meta = QLabel("")
         self._info_meta.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
+            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
         )
         info_lay.addWidget(self._info_meta)
         info_lay.addStretch()
 
         self._session_badge = QLabel("")
         self._session_badge.setStyleSheet(
-            f"color: {Colors.SUCCESS}; background: rgba(34,197,94,0.12);"
+            f"color: {Colors.SUCCESS}; background: {Colors.SUCCESS_BG};"
             f"border-radius: 8px; padding: 3px 10px;"
             f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
         )
@@ -454,15 +468,17 @@ class RunModePage(BasePage):
                 item = self._proto_list.item(i)
                 proto = item.data(Qt.ItemDataRole.UserRole) if item else None
                 if proto and proto.get("id") == wanted_id:
+                    # Select in list (triggers _on_proto_selected → preview only)
                     self._proto_list.setCurrentItem(item)
                     break
             # Clear so a subsequent on_show() doesn't re-select stale value
             self.app.state.selected_protocol_id = ""
 
-        # Check for existing session
-        existing = self.app.data.load_active_session()
-        if existing and existing.get("version", 0) == 3:
-            self._offer_restore(existing)
+        # Check for existing session (startup restore dialog)
+        if self._session is None:
+            existing = self.app.data.load_active_session()
+            if existing and existing.get("version", 0) == 3:
+                self._offer_restore(existing)
 
     # ── Protocol list ─────────────────────────────────────────────────────────
 
@@ -492,24 +508,248 @@ class RunModePage(BasePage):
         if protocol is None:
             return
 
-        # If we already have an active session for this protocol, keep it
-        if (self._session is not None
-                and self._session.protocol_id == protocol.get("id", "")):
+        proto_id = protocol.get("id", "")
+
+        # If active session for THIS protocol is already running, keep it
+        if self._session is not None and self._session.protocol_id == proto_id:
             return
 
-        logger.info(f"select_protocol: {protocol.get('name', '?')}")
-        self._session = RunModeSession.new(protocol)
+        # If a DIFFERENT protocol is selected while a session is active, prevent switching
+        if self._session is not None:
+            ToastManager.show_warning("End the current run before switching protocols.")
+            self._select_protocol_in_list(self._session.protocol_id)
+            return
+
+        logger.info(f"select_protocol_preview: {protocol.get('name', '?')}")
+        self._selected_proto = protocol
+        self._show_protocol_preview(protocol)
+
+    # ── Protocol preview (selection without session) ──────────────────────────
+
+    def _show_protocol_preview(self, protocol: dict) -> None:
+        """Show read-only protocol info + Start/Resume Run button. No session created."""
+        # Update info bar
+        name = protocol.get("name", "Untitled")
+        self._info_name.setText(name)
+        proto_total_min = DataService.protocol_total_minutes(protocol)
+        steps = protocol.get("steps", [])
+        self._info_meta.setText(
+            f"{len(steps)} steps  ·  ~{DataService.format_duration(proto_total_min)}"
+        )
+
+        # Hide all session controls
+        self._add_block_btn.setVisible(False)
+        self._save_btn.setVisible(False)
+        self._end_run_btn.setVisible(False)
+        self._seq_btn.setVisible(False)
+        self._session_badge.setVisible(False)
+        self._step_status_list.setVisible(False)
+        self._steps_hdr.setVisible(False)
+
+        # Clear step area
+        while self._step_layout.count():
+            item = self._step_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Check for an existing saved session for this protocol
+        existing = self.app.data.load_active_session()
+        has_existing = (
+            existing and
+            existing.get("version", 0) == 3 and
+            existing.get("protocol_id", "") == protocol.get("id", "")
+        )
+
+        # ── Action button (Start Run / Resume Run) ────────────────────────────
+        _btn_qss = (
+            f"QPushButton {{ background: {Colors.SUCCESS}; color: #ffffff; border: none;"
+            f"  border-radius: {Radii.MD}px; padding: 10px 22px;"
+            f"  font-size: {Fonts.SIZE_MD}px; font-weight: 700; }}"
+            f"QPushButton:hover {{ background: {Colors.ACCENT}; }}"
+            f"QPushButton:pressed {{ background: {Colors.ACCENT_HOVER}; }}"
+        )
+
+        if has_existing:
+            saved_states = existing.get("step_states", [])
+            done = sum(1 for s in saved_states if s.get("status") == "completed")
+            skipped = sum(1 for s in saved_states if s.get("status") == "skipped")
+            progress_txt = f"  ({done} done, {skipped} skipped)" if saved_states else ""
+
+            action_btn = QPushButton(f"▶  Resume Run{progress_txt}")
+            action_btn.clicked.connect(lambda _=False, r=existing: self._on_resume_existing(r))
+            notice_lbl = QLabel("Unfinished session found — resume or start fresh")
+            notice_lbl.setStyleSheet(
+                f"color: {Colors.WARNING}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
+            )
+        else:
+            action_btn = QPushButton("▶  Start Run")
+            action_btn.clicked.connect(self._on_start_run)
+            notice_lbl = None
+
+        action_btn.setStyleSheet(_btn_qss)
+        action_btn.setMinimumHeight(42)
+        action_btn.setMinimumWidth(140)
+        action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # ── Top info row: description + button ───────────────────────────────
+        top_row = QWidget()
+        top_row.setStyleSheet("background: transparent;")
+        top_lay = QHBoxLayout(top_row)
+        top_lay.setContentsMargins(0, 0, 0, 0)
+        top_lay.setSpacing(16)
+
+        info_col = QVBoxLayout()
+        info_col.setSpacing(4)
+
+        category = protocol.get("category", "").strip()
+        if category:
+            cat_lbl = QLabel(category)
+            cat_lbl.setStyleSheet(
+                f"color: {Colors.ACCENT}; font-size: {Fonts.SIZE_XS}px;"
+                f"font-weight: 600; background: transparent;"
+            )
+            info_col.addWidget(cat_lbl)
+
+        desc = protocol.get("description", "").strip()
+        if desc:
+            desc_lbl = QLabel(desc[:220] + ("…" if len(desc) > 220 else ""))
+            desc_lbl.setWordWrap(True)
+            desc_lbl.setStyleSheet(
+                f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px; background: transparent;"
+            )
+            info_col.addWidget(desc_lbl)
+
+        if notice_lbl:
+            info_col.addWidget(notice_lbl)
+
+        top_lay.addLayout(info_col, stretch=1)
+
+        btn_col = QVBoxLayout()
+        btn_col.setAlignment(Qt.AlignmentFlag.AlignTop)
+        btn_col.setSpacing(6)
+        btn_col.addWidget(action_btn)
+        if has_existing:
+            fresh_btn = QPushButton("Start Fresh")
+            fresh_btn.setMinimumHeight(30)
+            fresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            fresh_btn.setStyleSheet(
+                f"QPushButton {{ background: transparent; color: {Colors.TEXT_MUTED};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
+                f"  padding: 4px 12px; font-size: {Fonts.SIZE_XS}px; }}"
+                f"QPushButton:hover {{ color: {Colors.DANGER}; border-color: {Colors.DANGER}; }}"
+            )
+            fresh_btn.clicked.connect(self._on_start_run)
+            btn_col.addWidget(fresh_btn)
+        top_lay.addLayout(btn_col)
+
+        self._step_layout.addWidget(top_row)
+        self._step_layout.addSpacing(4)
+        self._step_layout.addWidget(HSeparator())
+        self._step_layout.addSpacing(8)
+
+        # ── Step preview list ─────────────────────────────────────────────────
+        for i, step in enumerate(steps):
+            row = self._build_preview_step_row(i, step)
+            self._step_layout.addWidget(row)
+
+        self._step_layout.addStretch()
+
+    def _build_preview_step_row(self, idx: int, step: dict) -> QWidget:
+        """Compact read-only step row for protocol preview."""
+        stype = step.get("type", "other")
+        step_colors = Colors.STEP_COLORS.get(stype, Colors.STEP_COLORS["other"])
+        bg_color, accent_color = step_colors
+
+        row = QFrame()
+        row.setStyleSheet(
+            f"QFrame {{ background: {bg_color}; border-radius: {Radii.SM}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+        )
+        lay = QHBoxLayout(row)
+        lay.setContentsMargins(12, 7, 12, 7)
+        lay.setSpacing(10)
+
+        idx_lbl = QLabel(f"{idx + 1:02d}")
+        idx_lbl.setStyleSheet(
+            f"color: {accent_color}; font-size: {Fonts.SIZE_XS}px; font-weight: 700;"
+            f"background: {accent_color}25; border-radius: 4px; padding: 1px 5px;"
+        )
+        idx_lbl.setFixedWidth(28)
+        lay.addWidget(idx_lbl)
+
+        title_lbl = QLabel(step.get("title", "Untitled"))
+        title_lbl.setStyleSheet(
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+            f"font-weight: 600; background: transparent;"
+        )
+        lay.addWidget(title_lbl, stretch=1)
+
+        # Duration
+        ho = float(step.get("handsOnMinutes", 0))
+        wt = float(step.get("waitMinutes", 0))
+        total_m = ho + wt
+        if total_m > 0:
+            dur_lbl = QLabel(f"~{total_m:.0f}m")
+            dur_lbl.setStyleSheet(
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_XS}px; background: transparent;"
+            )
+            lay.addWidget(dur_lbl)
+
+        # Type badge
+        type_lbl = QLabel(stype.replace("_", " ").title())
+        type_lbl.setStyleSheet(
+            f"color: {accent_color}; background: {accent_color}20;"
+            f"border-radius: 4px; padding: 1px 6px;"
+            f"font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
+        )
+        lay.addWidget(type_lbl)
+
+        return row
+
+    # ── Start / Resume run ────────────────────────────────────────────────────
+
+    def _on_start_run(self) -> None:
+        """Create a new session for the selected protocol and begin the run."""
+        if self._selected_proto is None:
+            return
+        logger.info(f"start_run: {self._selected_proto.get('name', '?')}")
+
+        self._session = RunModeSession.new(self._selected_proto)
         self._sequential = False
         self._seq_btn.setChecked(False)
         self._render_step_cards_once()
         self._schedule_save()
         self._tick_timer.start()
+
         self._add_block_btn.setVisible(True)
         self._save_btn.setVisible(True)
         self._end_run_btn.setVisible(True)
         self._seq_btn.setVisible(True)
         self._session_badge.setText("● Active session")
         self._session_badge.setVisible(True)
+
+    def _on_resume_existing(self, raw: dict) -> None:
+        """Restore a previously saved session and continue the run."""
+        if self._selected_proto is None:
+            return
+        try:
+            restored = RunModeSession.from_dict(raw)
+            self._session = restored
+            self._render_step_cards_once()
+            self._tick_timer.start()
+
+            self._add_block_btn.setVisible(True)
+            self._save_btn.setVisible(True)
+            self._end_run_btn.setVisible(True)
+            self._seq_btn.setVisible(True)
+            self._session_badge.setText("● Resumed")
+            self._session_badge.setVisible(True)
+
+            logger.info(f"resume_existing: protocol_id={restored.protocol_id}")
+        except Exception as e:
+            logger.error(f"resume_existing error: {e}")
+            ToastManager.show_error("Could not resume session. Starting a fresh run.")
+            self._on_start_run()
 
     # ── Step card rendering (once per protocol) ───────────────────────────────
 
@@ -864,14 +1104,14 @@ class RunModePage(BasePage):
         logger.info("end_run")
 
     def _clear_session_state(self) -> None:
-        """Tear down all session state and reset the UI."""
+        """Tear down all session state. Returns to preview if a protocol is still selected."""
         self.app.data.clear_active_session()
         self._session = None
         self._cards.clear()
         self._sequential = False
         self._tick_timer.stop()
 
-        # Hide header buttons
+        # Reset header controls
         self._add_block_btn.setVisible(False)
         self._save_btn.setVisible(False)
         self._end_run_btn.setVisible(False)
@@ -879,14 +1119,16 @@ class RunModePage(BasePage):
         self._seq_btn.setVisible(False)
         self._session_badge.setVisible(False)
 
-        # Hide step list
-        self._step_status_list.setVisible(False)
-        self._steps_hdr.setVisible(False)
-        self._step_status_list.clear()
-
-        self._show_idle_state()
-        self._info_name.setText("—")
-        self._info_meta.setText("")
+        # Return to preview mode if a protocol is still selected, else idle
+        if self._selected_proto is not None:
+            self._show_protocol_preview(self._selected_proto)
+        else:
+            self._step_status_list.setVisible(False)
+            self._steps_hdr.setVisible(False)
+            self._step_status_list.clear()
+            self._show_idle_state()
+            self._info_name.setText("—")
+            self._info_meta.setText("")
 
     # ── Session restore ───────────────────────────────────────────────────────
 
@@ -915,12 +1157,16 @@ class RunModePage(BasePage):
                 self._session_badge.setText("● Resumed")
                 self._session_badge.setVisible(True)
 
-                # Highlight the restored protocol in the list
+                # Highlight the restored protocol in the list and set _selected_proto
                 proto_id = restored.protocol_id
                 for i in range(self._proto_list.count()):
                     item = self._proto_list.item(i)
-                    if item and (item.data(Qt.ItemDataRole.UserRole) or {}).get("id") == proto_id:
+                    proto = item.data(Qt.ItemDataRole.UserRole) if item else None
+                    if proto and proto.get("id") == proto_id:
+                        self._selected_proto = proto
+                        self._proto_list.blockSignals(True)
                         self._proto_list.setCurrentItem(item)
+                        self._proto_list.blockSignals(False)
                         break
                 logger.info(f"restore_session: resumed protocol_id={proto_id}")
             except Exception as e:
@@ -1062,7 +1308,7 @@ class RunModePage(BasePage):
         lbl.setWordWrap(True)
         lbl.setStyleSheet(
             f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_MD}px;"
-            f"font-style: italic;"
+            f"font-style: italic; background: transparent;"
         )
         self._step_layout.addStretch()
         self._step_layout.addWidget(lbl)

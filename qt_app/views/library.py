@@ -40,7 +40,7 @@ from PySide6.QtWidgets import (
 
 from qt_app.theme import Colors, Fonts, Radii
 from qt_app.components.widgets import (
-    HSeparator, PageTitle, PrimaryButton, SubLabel,
+    HSeparator, PageTitle, PrimaryButton, SubLabel, apply_card_shadow,
 )
 from qt_app.components.toast import ToastManager
 from qt_app.services.event_bus import bus
@@ -54,18 +54,44 @@ from qt_app.views.base_page import BasePage
 
 def _badge(text: str, fg: str, bg: str, parent: QWidget | None = None) -> QLabel:
     lbl = QLabel(text, parent)
+    lbl.setFixedHeight(22)
     lbl.setStyleSheet(
-        f"color: {fg}; background: {bg}; border-radius: 6px;"
-        f"padding: 2px 8px; font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
+        f"color: {fg}; background: {bg}; border-radius: 999px;"
+        f"padding: 2px 10px; font-size: {Fonts.SIZE_XS}px; font-weight: 600;"
+    )
+    return lbl
+
+
+def _tag_pill(text: str, parent: QWidget | None = None) -> QLabel:
+    lbl = QLabel(text, parent)
+    lbl.setFixedHeight(20)
+    lbl.setStyleSheet(
+        f"color: {Colors.TEXT_MUTED}; background: {Colors.BG_PAGE};"
+        f"border-radius: 999px; padding: 1px 9px;"
+        f"font-size: {Fonts.SIZE_XS}px; font-weight: 500;"
+    )
+    return lbl
+
+
+def _small_section_title(text: str) -> QLabel:
+    lbl = QLabel(text)
+    lbl.setStyleSheet(
+        f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
+        f"font-weight: 700; background: transparent;"
     )
     return lbl
 
 
 def _label_style(color: str, size: int, bold: bool = False) -> str:
     return (
-        f"color: {color}; font-size: {size}px;"
+        f"color: {color}; font-size: {size}px; background: transparent;"
         + ("font-weight: 700;" if bold else "")
     )
+
+
+def _edit_debug(stage: str, **values: Any) -> None:
+    details = " ".join(f"{key}={value!r}" for key, value in values.items())
+    print(f"[LibraryEdit] {stage} {details}", flush=True)
 
 
 def _total_hands_on(proto: dict) -> float:
@@ -93,77 +119,85 @@ class _ProtocolCard(QFrame):
 
     clicked = Signal(dict, bool)   # (protocol_dict, is_template)
 
-    _STYLE = (
-        f"QFrame {{ background: {Colors.BG_CARD};"
-        f"  border-radius: {Radii.LG}px;"
-        f"  border: 1px solid {Colors.BORDER}; }}"
-        f"QFrame:hover {{ border: 1px solid {Colors.ACCENT}; }}"
-    )
-    _STYLE_SEL = (
-        f"QFrame {{ background: rgba(59,130,246,0.10);"
-        f"  border-radius: {Radii.LG}px;"
-        f"  border: 2px solid {Colors.ACCENT}; }}"
-    )
-
     def __init__(self, proto: dict, is_template: bool = False,
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._proto       = proto
         self._is_template = is_template
         self._sel         = False
-        self.setStyleSheet(self._STYLE)
+        self.setObjectName("ProtocolCard")
+        apply_card_shadow(self, blur=22, y_offset=6, alpha=24)
+        self.setStyleSheet(self._style(False))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._build()
 
+    @staticmethod
+    def _style(selected: bool) -> str:
+        if selected:
+            return (
+                f"QFrame#ProtocolCard {{ background: {Colors.SELECTED_BG};"
+                f"  border-radius: {Radii.MD}px;"
+                f"  border: none;"
+                f"  border-left: 3px solid {Colors.ACCENT}; }}"
+                f"QFrame#ProtocolCard:hover {{ background: {Colors.SELECTED_BG}; }}"
+            )
+        return (
+            f"QFrame#ProtocolCard {{ background: {Colors.BG_ELEVATED};"
+            f"  border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+            f"QFrame#ProtocolCard:hover {{ background: {Colors.BG_CARD};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; }}"
+        )
+
     def _build(self) -> None:
         p   = self._proto
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 12, 16, 12)
-        lay.setSpacing(5)
+        lay.setContentsMargins(14, 8, 14, 8)
+        lay.setSpacing(4)
 
-        # Row 1: name + duration
+        # Row 1: template badge + name + duration
         r1 = QHBoxLayout()
-        r1.setSpacing(6)
+        r1.setSpacing(8)
+        if self._is_template:
+            r1.addWidget(_badge("Template", Colors.WARNING, Colors.WARNING_BG))
         name_lbl = QLabel(p.get("name", "Untitled"))
         name_lbl.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_MD, bold=True))
         name_lbl.setWordWrap(False)
         r1.addWidget(name_lbl, stretch=1)
-
         total = DataService.protocol_total_minutes(p)
-        dur_lbl = QLabel(_format_dur(total))
-        dur_lbl.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_SM))
-        r1.addWidget(dur_lbl)
+        duration_lbl = QLabel(_format_dur(total))
+        duration_lbl.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_XS))
+        r1.addWidget(duration_lbl)
         lay.addLayout(r1)
 
-        # Row 2: category + steps + template badge
-        r2 = QHBoxLayout()
-        r2.setSpacing(6)
+        # Row 2: Category • steps • duration
         cat = p.get("category", "")
-        if cat:
-            r2.addWidget(_badge(cat, Colors.ACCENT, "rgba(59,130,246,0.15)"))
         n = len(p.get("steps", []))
-        r2.addWidget(_badge(f"{n} step{'s' if n!=1 else ''}", Colors.TEXT_SECOND, Colors.BG_CARD_HOV))
-        if self._is_template:
-            r2.addWidget(_badge("Template", Colors.WARNING, "rgba(249,115,22,0.15)"))
-        r2.addStretch()
-        lay.addLayout(r2)
+        meta_parts = [
+            cat or "Uncategorized",
+            f"{n} step{'s' if n != 1 else ''}",
+            _format_dur(total),
+        ]
+        meta_lbl = QLabel("  •  ".join(meta_parts))
+        meta_lbl.setStyleSheet(_label_style(Colors.TEXT_SECOND, Fonts.SIZE_SM))
+        lay.addWidget(meta_lbl)
 
         # Row 3: tags (up to 3)
         tags = p.get("tags", [])
         if tags:
             r3 = QHBoxLayout()
-            r3.setSpacing(4)
+            r3.setSpacing(5)
             for tag in tags[:3]:
-                r3.addWidget(_badge(f"#{tag}", Colors.TEXT_MUTED, Colors.BG_CARD_HOV))
+                r3.addWidget(_tag_pill(f"#{tag}"))
             if len(tags) > 3:
-                r3.addWidget(_badge(f"+{len(tags)-3}", Colors.TEXT_MUTED, Colors.BG_CARD_HOV))
+                r3.addWidget(_tag_pill(f"+{len(tags)-3}"))
             r3.addStretch()
             lay.addLayout(r3)
 
     def set_selected(self, sel: bool) -> None:
         self._sel = sel
-        self.setStyleSheet(self._STYLE_SEL if sel else self._STYLE)
+        self.setStyleSheet(self._style(sel))
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -185,11 +219,15 @@ class _DetailPanel(QWidget):
     edit_requested          = Signal(dict)   # opens Protocol Editor (Phase 6)
     flowchart_requested     = Signal(dict)   # opens Flowchart (Phase 8A)
     export_requested        = Signal(dict, str)  # (protocol, fmt) — "json"|"md"|"pdf"
+    new_protocol_requested  = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMinimumWidth(280)
-        self.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self.setStyleSheet(
+            f"background: {Colors.BG_CARD};"
+            f"border-left: 1px solid {Colors.BORDER_LIGHT};"
+        )
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -199,14 +237,14 @@ class _DetailPanel(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._scroll.setStyleSheet(f"background: {Colors.BG_CARD};")
         outer.addWidget(self._scroll)
 
         self._inner = QWidget()
-        self._inner.setStyleSheet(f"background: {Colors.BG_SIDEBAR};")
+        self._inner.setStyleSheet(f"background: {Colors.BG_CARD};")
         self._lay = QVBoxLayout(self._inner)
-        self._lay.setContentsMargins(20, 20, 20, 24)
-        self._lay.setSpacing(10)
+        self._lay.setContentsMargins(22, 22, 22, 24)
+        self._lay.setSpacing(12)
         self._scroll.setWidget(self._inner)
 
         self._show_placeholder()
@@ -214,30 +252,46 @@ class _DetailPanel(QWidget):
     # ── Public API ────────────────────────────────────────────────────────────
 
     def show_protocol(self, proto: dict, is_template: bool) -> None:
+        _edit_debug(
+            "detail_show",
+            protocol_id=proto.get("id", "") if isinstance(proto, dict) else None,
+            protocol_name=proto.get("name", "") if isinstance(proto, dict) else None,
+            object_type="template" if is_template else "protocol",
+        )
         self._clear()
         lay = self._lay
 
-        # ── Title row ─────────────────────────────────────────────────────────
+        lay.addWidget(_small_section_title("Header"))
         title_lbl = QLabel(proto.get("name", "Untitled"))
         title_lbl.setWordWrap(True)
-        title_lbl.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_LG, bold=True))
+        title_lbl.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_XL, bold=True))
         lay.addWidget(title_lbl)
 
-        # Type badge
+        meta_parts: list[str] = []
+        cat = proto.get("category", "")
+        if cat:
+            meta_parts.append(cat)
+        meta_parts.append(f"{len(proto.get('steps', []))} step{'s' if len(proto.get('steps', [])) != 1 else ''}")
+        meta_parts.append(_format_dur(DataService.protocol_total_minutes(proto)))
+        meta_row = QHBoxLayout()
+        meta_row.setSpacing(8)
         if is_template:
-            lay.addWidget(_badge("Built-in Template", Colors.WARNING, "rgba(249,115,22,0.15)"))
-        else:
-            cat = proto.get("category", "")
-            if cat:
-                lay.addWidget(_badge(cat, Colors.ACCENT, "rgba(59,130,246,0.15)"))
+            meta_row.addWidget(_badge("Template", Colors.WARNING, Colors.WARNING_BG))
+        meta_lbl = QLabel("  ·  ".join(meta_parts))
+        meta_lbl.setStyleSheet(_label_style(Colors.TEXT_SECOND, Fonts.SIZE_SM))
+        meta_row.addWidget(meta_lbl)
+        meta_row.addStretch()
+        lay.addLayout(meta_row)
 
-        # Tags
+        lay.addSpacing(8)
+        lay.addWidget(_small_section_title("Tags / Description"))
+
         tags = proto.get("tags", [])
         if tags:
             trow = QHBoxLayout()
-            trow.setSpacing(4)
+            trow.setSpacing(5)
             for t in tags:
-                trow.addWidget(_badge(f"#{t}", Colors.TEXT_MUTED, Colors.BG_CARD_HOV))
+                trow.addWidget(_tag_pill(f"#{t}"))
             trow.addStretch()
             lay.addLayout(trow)
 
@@ -248,13 +302,18 @@ class _DetailPanel(QWidget):
             desc_lbl.setWordWrap(True)
             desc_lbl.setStyleSheet(
                 f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_SM}px;"
-                f"font-style: italic;"
+                f"font-style: italic; background: transparent;"
             )
             lay.addWidget(desc_lbl)
+        elif not tags:
+            empty_desc = QLabel("No tags or description yet.")
+            empty_desc.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_SM))
+            lay.addWidget(empty_desc)
 
-        lay.addWidget(HSeparator())
+        lay.addSpacing(6)
 
-        # ── Stats ─────────────────────────────────────────────────────────────
+        # ── Overview ──────────────────────────────────────────────────────────
+        lay.addWidget(_small_section_title("Overview"))
         total  = DataService.protocol_total_minutes(proto)
         hands  = _total_hands_on(proto)
         wait   = _total_wait(proto)
@@ -266,25 +325,28 @@ class _DetailPanel(QWidget):
             ("Hands-on",  _format_dur(hands)),
             ("Wait",      _format_dur(wait)),
         ]
+        overview = QWidget()
+        grid = QVBoxLayout(overview)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(6)
         for label, val in stats:
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
             k = QLabel(label)
             k.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_XS))
-            k.setFixedWidth(70)
             v = QLabel(val)
             v.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_SM, bold=True))
             row.addWidget(k)
-            row.addWidget(v)
             row.addStretch()
-            lay.addLayout(row)
-
-        lay.addWidget(HSeparator())
+            row.addWidget(v)
+            grid.addLayout(row)
+        lay.addWidget(overview)
 
         # ── Steps list ────────────────────────────────────────────────────────
-        steps_hdr = QLabel(f"Steps ({n_steps})")
+        steps_hdr = _small_section_title("Step List")
         steps_hdr.setStyleSheet(
-            f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
+            f"font-weight: 700; background: transparent;"
         )
         lay.addWidget(steps_hdr)
 
@@ -323,13 +385,15 @@ class _DetailPanel(QWidget):
         if n_steps == 0:
             empty_lbl = QLabel("No steps yet.")
             empty_lbl.setStyleSheet(
-                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic;"
+                f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+                f"font-style: italic; background: transparent;"
             )
             lay.addWidget(empty_lbl)
 
-        lay.addWidget(HSeparator())
+        lay.addSpacing(4)
 
         # ── Action buttons ────────────────────────────────────────────────────
+        lay.addWidget(_small_section_title("Actions"))
         if is_template:
             self._add_action_btn(
                 "⊕  Use Template",
@@ -354,7 +418,7 @@ class _DetailPanel(QWidget):
                 lambda p=proto: self.edit_requested.emit(p),
             )
             self._add_action_btn(
-                "▶  Open in Run Mode",
+                "▶  Run Protocol",
                 Colors.SUCCESS, False,
                 lambda p=proto: self.run_requested.emit(p),
             )
@@ -364,7 +428,7 @@ class _DetailPanel(QWidget):
                 lambda p=proto: self.flowchart_requested.emit(p),
             )
             self._add_action_btn(
-                "🗓  Schedule Experiment",
+                "📅  Schedule",
                 Colors.TEXT_SECOND, False,
                 lambda p=proto: self.schedule_requested.emit(p),
             )
@@ -386,17 +450,82 @@ class _DetailPanel(QWidget):
         self._clear()
         self._show_placeholder()
 
+    def show_summary(self, protocols: list[dict], templates: list[dict]) -> None:
+        self._clear()
+        lay = self._lay
+
+        title = QLabel("Protocol Summary")
+        title.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_XL, bold=True))
+        lay.addWidget(title)
+
+        summary = QWidget()
+        summary.setStyleSheet(
+            f"background: {Colors.BG_SURFACE_ALT}; border-radius: {Radii.MD}px;"
+        )
+        s_lay = QVBoxLayout(summary)
+        s_lay.setContentsMargins(12, 10, 12, 10)
+        s_lay.setSpacing(7)
+        for label, val in [
+            ("Protocols", str(len(protocols))),
+            ("Templates", str(len(templates))),
+        ]:
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            k = QLabel(label)
+            k.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_SM))
+            v = QLabel(val)
+            v.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_MD, bold=True))
+            row.addWidget(k)
+            row.addStretch()
+            row.addWidget(v)
+            s_lay.addLayout(row)
+        lay.addWidget(summary)
+
+        lay.addSpacing(8)
+        lay.addWidget(_small_section_title("Recent Protocols"))
+        recent = sorted(
+            protocols,
+            key=lambda p: p.get("updatedAt", p.get("createdAt", 0)),
+            reverse=True,
+        )[:3]
+        if recent:
+            for proto in recent:
+                row = QLabel(proto.get("name", "Untitled"))
+                row.setStyleSheet(
+                    f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_SM}px;"
+                    f"padding: 5px 0; background: transparent;"
+                )
+                lay.addWidget(row)
+        else:
+            empty = QLabel("No protocols yet.")
+            empty.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_SM))
+            lay.addWidget(empty)
+
+        lay.addSpacing(8)
+        lay.addWidget(_small_section_title("Quick Actions"))
+        self._add_action_btn(
+            "＋  New Protocol",
+            Colors.ACCENT,
+            True,
+            lambda: self.new_protocol_requested.emit(),
+        )
+        self._add_disabled_action("▶  Run Protocol")
+        self._add_disabled_action("📅  Schedule Protocol")
+
+        hint = QLabel("Select a protocol to run or schedule it.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_XS))
+        lay.addWidget(hint)
+        lay.addStretch()
+
     # ── Internals ─────────────────────────────────────────────────────────────
 
     def _show_placeholder(self) -> None:
-        self._lay.addStretch()
-        lbl = QLabel("Select a protocol or template\nto view details and actions.")
-        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setWordWrap(True)
-        lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
-            f"font-style: italic;"
-        )
+        title = QLabel("Protocol Summary")
+        title.setStyleSheet(_label_style(Colors.TEXT_PRIMARY, Fonts.SIZE_XL, bold=True))
+        self._lay.addWidget(title)
+        lbl = QLabel("Loading protocols…")
+        lbl.setStyleSheet(_label_style(Colors.TEXT_MUTED, Fonts.SIZE_SM))
         self._lay.addWidget(lbl)
         self._lay.addStretch()
 
@@ -408,18 +537,29 @@ class _DetailPanel(QWidget):
         if primary:
             btn.setStyleSheet(
                 f"QPushButton {{ background: {color}; color: white;"
-                f"  border: none; border-radius: {Radii.MD}px;"
+                f"  border: none; border-radius: 10px;"
                 f"  font-size: {Fonts.SIZE_SM}px; font-weight: 600; padding: 0 14px; }}"
-                f"QPushButton:hover {{ opacity: 0.9; }}"
+                f"QPushButton:hover {{ background: {Colors.ACCENT_HOVER}; }}"
             )
         else:
             btn.setStyleSheet(
-                f"QPushButton {{ background: transparent; color: {color};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+                f"QPushButton {{ background: {Colors.BG_CARD}; color: {color};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: 10px;"
                 f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
                 f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
             )
-        btn.clicked.connect(callback)
+        btn.clicked.connect(lambda _checked=False: callback())
+        self._lay.addWidget(btn)
+
+    def _add_disabled_action(self, label: str) -> None:
+        btn = QPushButton(label)
+        btn.setFixedHeight(36)
+        btn.setEnabled(False)
+        btn.setStyleSheet(
+            f"QPushButton {{ background: {Colors.BG_SURFACE_ALT}; color: {Colors.TEXT_MUTED};"
+            f"  border: none; border-radius: 10px;"
+            f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; text-align: left; }}"
+        )
         self._lay.addWidget(btn)
 
     def _add_export_menu_btn(self, proto: dict) -> None:
@@ -428,8 +568,8 @@ class _DetailPanel(QWidget):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setToolTip("Export this protocol as JSON, Markdown, or PDF")
         btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {Colors.TEXT_SECOND};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"QPushButton {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_SECOND};"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: 10px;"
             f"  font-size: {Fonts.SIZE_SM}px; padding: 0 14px; }}"
             f"QPushButton:hover {{ background: {Colors.BG_CARD_HOV}; }}"
         )
@@ -437,11 +577,11 @@ class _DetailPanel(QWidget):
         def _show_menu():
             menu = QMenu(btn)
             menu.setStyleSheet(
-                f"QMenu {{ background: {Colors.BG_SIDEBAR}; color: {Colors.TEXT_PRIMARY};"
-                f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.SM}px;"
+                f"QMenu {{ background: {Colors.BG_CARD}; color: {Colors.TEXT_PRIMARY};"
+                f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.MD}px;"
                 f"  padding: 4px 0; }}"
                 f"QMenu::item {{ padding: 6px 20px; font-size: {Fonts.SIZE_SM}px; }}"
-                f"QMenu::item:selected {{ background: {Colors.ACCENT}; color: white; }}"
+                f"QMenu::item:selected {{ background: {Colors.SELECTED_BG}; color: {Colors.TEXT_PRIMARY}; }}"
             )
             menu.addAction("{ }  JSON").triggered.connect(
                 lambda: self.export_requested.emit(proto, "json")
@@ -555,11 +695,11 @@ class LibraryPage(BasePage):
 
         self._search_box = QLineEdit()
         self._search_box.setPlaceholderText("🔍  Search protocols…")
-        self._search_box.setFixedHeight(34)
+        self._search_box.setFixedHeight(38)
         self._search_box.setStyleSheet(
             f"QLineEdit {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
-            f"  padding: 0 12px; font-size: {Fonts.SIZE_SM}px; }}"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
+            f"  padding: 0 14px; font-size: {Fonts.SIZE_MD}px; }}"
             f"QLineEdit:focus {{ border-color: {Colors.ACCENT}; }}"
         )
         self._search_box.textChanged.connect(self._on_search_changed)
@@ -614,13 +754,14 @@ class LibraryPage(BasePage):
         self._detail.duplicate_requested.connect(self._on_duplicate)
         self._detail.delete_requested.connect(self._on_delete)
         self._detail.use_template_requested.connect(self._on_use_template)
+        self._detail.new_protocol_requested.connect(self._on_new_protocol)
         self._detail.edit_requested.connect(self._on_edit)
         self._detail.flowchart_requested.connect(self._on_flowchart)
         self._detail.export_requested.connect(self._on_export_protocol)
 
         self._splitter.addWidget(list_w)
         self._splitter.addWidget(self._detail)
-        self._splitter.setSizes([520, 340])
+        self._splitter.setSizes([560, 320])
         self._splitter.setChildrenCollapsible(False)
 
         outer.addWidget(self._splitter, stretch=1)
@@ -629,16 +770,16 @@ class LibraryPage(BasePage):
     @staticmethod
     def _toolbar_combo() -> QComboBox:
         cb = QComboBox()
-        cb.setFixedHeight(34)
+        cb.setFixedHeight(38)
         cb.setMinimumWidth(140)
         cb.setStyleSheet(
             f"QComboBox {{ background: {Colors.BG_INPUT}; color: {Colors.TEXT_PRIMARY};"
-            f"  border: 1px solid {Colors.BORDER}; border-radius: {Radii.MD}px;"
+            f"  border: 1px solid {Colors.BORDER_LIGHT}; border-radius: {Radii.LG}px;"
             f"  padding: 0 10px; font-size: {Fonts.SIZE_SM}px; }}"
             f"QComboBox:focus {{ border-color: {Colors.ACCENT}; }}"
-            f"QComboBox QAbstractItemView {{ background: {Colors.BG_SIDEBAR};"
-            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER};"
-            f"  selection-background-color: {Colors.ACCENT}; }}"
+            f"QComboBox QAbstractItemView {{ background: {Colors.BG_CARD};"
+            f"  color: {Colors.TEXT_PRIMARY}; border: 1px solid {Colors.BORDER_LIGHT};"
+            f"  selection-background-color: {Colors.SELECTED_BG}; selection-color: {Colors.TEXT_PRIMARY}; }}"
         )
         return cb
 
@@ -717,12 +858,15 @@ class LibraryPage(BasePage):
                 if item.widget():
                     item.widget().deleteLater()
 
+            if self._selected_proto is None:
+                self._detail.show_summary(self._protocols, self._templates)
+
             # My Protocols
             self._list_layout.addWidget(
                 self._section_header("My Protocols", len(self._filtered_p),
                                      total=len(self._protocols))
             )
-            self._list_layout.addSpacing(8)
+            self._list_layout.addSpacing(6)
 
             if self._filtered_p:
                 for p in self._filtered_p:
@@ -735,14 +879,14 @@ class LibraryPage(BasePage):
                 )
                 self._list_layout.addWidget(self._empty(empty_msg))
 
-            self._list_layout.addSpacing(24)
+            self._list_layout.addSpacing(20)
 
             # Built-in Templates
             self._list_layout.addWidget(
                 self._section_header("Built-in Templates", len(self._filtered_t),
                                      total=len(self._templates))
             )
-            self._list_layout.addSpacing(8)
+            self._list_layout.addSpacing(6)
 
             if self._filtered_t:
                 # Group by category
@@ -753,7 +897,7 @@ class LibraryPage(BasePage):
                     cat_lbl = QLabel(cat)
                     cat_lbl.setStyleSheet(
                         f"color: {Colors.TEXT_SECOND}; font-size: {Fonts.SIZE_XS}px;"
-                        f"font-weight: 700; letter-spacing: 0.5px;"
+                        f"font-weight: 700; letter-spacing: 0.5px; background: transparent;"
                     )
                     self._list_layout.addWidget(cat_lbl)
                     self._list_layout.addSpacing(4)
@@ -778,7 +922,7 @@ class LibraryPage(BasePage):
         card.clicked.connect(self._on_card_clicked)
         self._cards.append(card)
         self._list_layout.addWidget(card)
-        self._list_layout.addSpacing(6)
+        self._list_layout.addSpacing(4)
 
     @staticmethod
     def _section_header(title: str, count: int, total: int = -1) -> QWidget:
@@ -788,15 +932,16 @@ class LibraryPage(BasePage):
         lay.setSpacing(8)
         lbl = QLabel(title)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_LG}px; font-weight: 700;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Fonts.SIZE_MD}px;"
+            f"font-weight: 700; background: transparent;"
         )
         lay.addWidget(lbl)
         count_text = str(count) if (total < 0 or count == total) else f"{count}/{total}"
         cnt = QLabel(count_text)
         cnt.setStyleSheet(
-            f"color: {Colors.ACCENT_LIGHT}; background: rgba(59,130,246,0.15);"
+            f"color: {Colors.TEXT_MUTED}; background: {Colors.BG_SURFACE_ALT};"
             f"border-radius: 8px; padding: 2px 10px;"
-            f"font-size: {Fonts.SIZE_SM}px; font-weight: 700;"
+            f"font-size: {Fonts.SIZE_XS}px; font-weight: 700;"
         )
         lay.addWidget(cnt)
         lay.addStretch()
@@ -809,7 +954,8 @@ class LibraryPage(BasePage):
         lay.setContentsMargins(0, 4, 0, 4)
         lbl = QLabel(msg)
         lbl.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Fonts.SIZE_SM}px;"
+            f"font-style: italic; background: transparent;"
         )
         lay.addWidget(lbl)
         lay.addStretch()
@@ -832,6 +978,12 @@ class LibraryPage(BasePage):
     # ── Card selection ────────────────────────────────────────────────────────
 
     def _on_card_clicked(self, proto: dict, is_template: bool) -> None:
+        _edit_debug(
+            "card_selected",
+            protocol_id=proto.get("id", "") if isinstance(proto, dict) else None,
+            protocol_name=proto.get("name", "") if isinstance(proto, dict) else None,
+            object_type="template" if is_template else "protocol",
+        )
         # Deselect previous
         for card in self._cards:
             card.set_selected(False)
@@ -948,12 +1100,62 @@ class LibraryPage(BasePage):
         bus.emit("protocol_deleted", protocol_id=proto_id)
 
         self._selected_proto = None
-        self._detail.show_placeholder()
+        self._detail.show_summary(protocols, self._templates)
         self._load_data()
 
     def _on_edit(self, proto: dict) -> None:
-        self.app.state.selected_protocol_id = proto.get("id", "")
+        _edit_debug(
+            "edit_clicked",
+            raw_type=type(proto).__name__,
+            selected_id=proto.get("id", "") if isinstance(proto, dict) else None,
+            selected_name=proto.get("name", "") if isinstance(proto, dict) else None,
+        )
+        resolved = self._resolve_editable_protocol(proto)
+        if resolved is None:
+            return
+        proto_id = resolved.get("id", "")
+        _edit_debug(
+            "state_set",
+            selected_id=proto_id,
+            selected_name=resolved.get("name", ""),
+        )
+        self._selected_proto = resolved
+        self._selected_is_template = False
+        self.app.state.selected_protocol_id = proto_id
+        self.app.state.protocol_selection_changed.emit(proto_id)
         self.app.navigate("editor")
+
+    def _resolve_editable_protocol(self, proto: dict) -> dict | None:
+        if not isinstance(proto, dict):
+            _edit_debug("resolve_failed", reason="non_dict", raw_type=type(proto).__name__)
+            ToastManager.show_error("Cannot edit this protocol: missing protocol data.")
+            return None
+
+        proto_id = (proto or {}).get("id", "")
+        if proto_id.startswith("tmpl_"):
+            ToastManager.show_info("Use Template first to create an editable protocol.")
+            return None
+
+        protocols = self.app.data.load_protocols()
+        _edit_debug(
+            "resolve_lookup",
+            requested_id=proto_id,
+            requested_name=proto.get("name", ""),
+            available_ids=[p.get("id", "") for p in protocols],
+        )
+        if proto_id:
+            match = next((p for p in protocols if p.get("id") == proto_id), None)
+            if match is not None:
+                return match
+
+        name = (proto or {}).get("name", "")
+        if name:
+            match = next((p for p in protocols if p.get("name") == name), None)
+            if match is not None:
+                return match
+
+        ToastManager.show_error("Cannot edit this protocol: protocol was not found in My Protocols.")
+        return None
 
     def _on_flowchart(self, proto: dict) -> None:
         self.app.state.selected_protocol_id = proto.get("id", "")
@@ -1005,3 +1207,5 @@ class LibraryPage(BasePage):
             self._detail.show_protocol(
                 self._selected_proto, self._selected_is_template
             )
+        else:
+            self._detail.show_summary(self._protocols, self._templates)
